@@ -1,0 +1,36 @@
+# Gradle / Kotlin / KMP
+.gradle/
+build/
+out/
+*.iml
+.idea/
+local.properties
+.kotlin/
+
+# Android
+*.apk
+*.aab
+.cxx/
+captures/
+
+# iOS / Xcode
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+Pods/
+.build/
+
+# Node / Next.js
+node_modules/
+.next/
+.env
+.env.*.local
+
+# Secrets / local config
+*.pem
+application-local.yml
+application-local.yaml
+
+# OS
+.DS_Store
+Thumbs.db
