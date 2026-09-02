@@ -48,6 +48,11 @@ dependencies {
 	implementation("software.amazon.awssdk:s3")
 	implementation("com.bucket4j:bucket4j-core:8.10.1")
 
+	// Added in Task 3 (auth feature): HS256 access-token signing/verification. Version is
+	// managed by the Spring Boot BOM (Spring Security depends on it for spring-security-oauth2-jose),
+	// so it stays in lockstep with the rest of the Spring stack.
+	implementation("com.nimbusds:nimbus-jose-jwt")
+
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
