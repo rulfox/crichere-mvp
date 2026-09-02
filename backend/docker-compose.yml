@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: crichere_dev
+      POSTGRES_USER: crichere
+      POSTGRES_PASSWORD: crichere
+    ports:
+      - "5432:5432"
+    volumes:
+      - crichere-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  crichere-postgres-data:

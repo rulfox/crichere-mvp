@@ -1,0 +1,52 @@
+# Default configuration, always applied. Profile-specific documents below override/add to this.
+spring:
+  application:
+    name: crichere-backend
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# Namespaced placeholders for later tasks. Structure is sketched now so those tasks don't
+# have to restructure this file; actual @ConfigurationProperties classes come with the
+# feature that owns them.
+crichere:
+  jwt:
+    secret: ${JWT_SECRET:}
+  phone-crypto:
+    key: ${PHONE_CRYPTO_KEY:}
+  firebase:
+    service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET:}
+      region: ${AWS_REGION:}
+  rate-limit:
+    enabled: true
+
+---
+# local profile: developer machine, Postgres via backend/docker-compose.yml
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://localhost:5432/crichere_dev
+    username: ${DB_USERNAME:crichere}
+    password: ${DB_PASSWORD:crichere}
+
+---
+# test profile: used by Testcontainers-backed integration tests. Datasource is normally
+# supplied dynamically via @ServiceConnection against a Testcontainers Postgres instance.
+spring:
+  config:
+    activate:
+      on-profile: test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

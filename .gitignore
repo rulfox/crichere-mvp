@@ -30,6 +30,7 @@ node_modules/
 *.pem
 application-local.yml
 application-local.yaml
+firebase-service-account*.json
 
 # OS
 .DS_Store
