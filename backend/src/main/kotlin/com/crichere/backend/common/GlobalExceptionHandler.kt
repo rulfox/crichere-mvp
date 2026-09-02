@@ -2,6 +2,10 @@ package com.crichere.backend.common
 
 import com.crichere.backend.auth.AuthenticationFailedException
 import com.crichere.backend.auth.RateLimitExceededException
+import com.crichere.backend.profile.BowlingStyleNotAllowedException
+import com.crichere.backend.profile.BowlingStyleRequiredException
+import com.crichere.backend.profile.PhotoUploadUnavailableException
+import com.crichere.backend.reference.MalformedStateCodeException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
@@ -140,6 +144,70 @@ class GlobalExceptionHandler {
             title = "Not found",
             code = "NOT_FOUND",
             detail = "No endpoint matches this request.",
+            instance = request.requestURI,
+        )
+
+    /**
+     * A `{state}` path segment that cannot possibly be a state code (see
+     * [com.crichere.backend.reference.ReferenceController]). Same shape as
+     * [handleNoResourceFound] -- from the caller's point of view this is exactly that: nothing
+     * matches this request.
+     */
+    @ExceptionHandler(MalformedStateCodeException::class)
+    fun handleMalformedStateCode(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No state matches this code.",
+            instance = request.requestURI,
+        )
+
+    /**
+     * `PUT /profiles/me` supplied a `playingRole`/`bowlingStyle` combination that violates the
+     * role-conditional rule (see `com.crichere.backend.profile.ProfileService`). Both
+     * directions share one `type`/`code` -- a client branching on `code` doesn't need to tell
+     * them apart -- but get their own fixed `detail` text rather than the exception's own
+     * message, for the same reason every other handler in this file does that.
+     */
+    @ExceptionHandler(BowlingStyleRequiredException::class)
+    fun handleBowlingStyleRequired(request: HttpServletRequest): ProblemDetail =
+        profileValidationProblem(
+            detail = "bowlingStyle is required when playingRole is BOWLER or ALL_ROUNDER.",
+            request = request,
+        )
+
+    @ExceptionHandler(BowlingStyleNotAllowedException::class)
+    fun handleBowlingStyleNotAllowed(request: HttpServletRequest): ProblemDetail =
+        profileValidationProblem(
+            detail = "bowlingStyle is only allowed when playingRole is BOWLER or ALL_ROUNDER.",
+            request = request,
+        )
+
+    private fun profileValidationProblem(detail: String, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "invalid-bowling-style",
+            title = "Invalid bowling style",
+            code = "INVALID_BOWLING_STYLE",
+            detail = detail,
+            instance = request.requestURI,
+        )
+
+    /**
+     * `POST /profiles/me/photo-upload-url` was called but S3 is not usable in this environment
+     * yet (see `com.crichere.backend.profile.PhotoUploadService`). `503`, not `500`: the
+     * request itself was fine, an external dependency is the one that is not ready.
+     */
+    @ExceptionHandler(PhotoUploadUnavailableException::class)
+    fun handlePhotoUploadUnavailable(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.SERVICE_UNAVAILABLE,
+            slug = "photo-upload-unavailable",
+            title = "Photo upload unavailable",
+            code = "PHOTO_UPLOAD_UNAVAILABLE",
+            detail = "Photo upload is temporarily unavailable. Please try again later.",
             instance = request.requestURI,
         )
 
