@@ -2,6 +2,7 @@ package com.crichere.app.auth
 
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
@@ -82,11 +83,22 @@ actual class FirebasePhoneAuthClient : PhoneAuthClient {
         }
     }
 
-    actual override suspend fun verifyCode(verificationId: String, code: String): Result<String> = runCatching {
+    actual override suspend fun verifyCode(verificationId: String, code: String): Result<String> {
         val credential = PhoneAuthProvider.getCredential(verificationId, code)
-        val authResult = FirebaseAuth.getInstance().signInWithCredential(credential).await()
-        authResult.user?.getIdToken(false)?.await()?.token
-            ?: throw IllegalStateException("Firebase sign-in succeeded but returned no ID token")
+        return try {
+            val authResult = FirebaseAuth.getInstance().signInWithCredential(credential).await()
+            val idToken = authResult.user?.getIdToken(false)?.await()?.token
+                ?: return Result.failure(IllegalStateException("Firebase sign-in succeeded but returned no ID token"))
+            Result.success(idToken)
+        } catch (wrongCode: FirebaseAuthInvalidCredentialsException) {
+            // The real, documented signal Firebase's Android SDK throws specifically for an
+            // incorrect SMS code -- translated to the platform-agnostic InvalidOtpCodeException
+            // so OtpVerifyViewModel can distinguish "wrong code" (burns an attempt) from every
+            // other failure below (network error, expired session, ...) which must not.
+            Result.failure(InvalidOtpCodeException())
+        } catch (other: Exception) {
+            Result.failure(other)
+        }
     }
 
     private companion object {

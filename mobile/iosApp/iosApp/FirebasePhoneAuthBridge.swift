@@ -10,8 +10,13 @@ import Shared
 /// there is no way to add the Firebase iOS SDK as a real dependency or run the Swift compiler at
 /// all (same status as every other Swift file in this repo -- see task-5-report.md /
 /// task-6-report.md). The exact spelling of a couple of Kotlin/Native <-> Swift interop details
-/// below (constructing a `KotlinThrowable` from Swift) is a best-effort guess at SKIE's generated
-/// API, not something verified against a real build.
+/// below (constructing a `KotlinThrowable`/`InvalidOtpCodeException` from Swift) is a best-effort
+/// guess at SKIE's generated API, not something verified against a real build.
+///
+/// `verifyCode`'s `mapVerifyError` distinguishes a real wrong-code error
+/// (`AuthErrorCode.invalidVerificationCode`) from every other failure, per
+/// `IosPhoneAuthBridge.kt`'s contract -- `OtpVerifyViewModel` only burns one of the 5 allowed
+/// wrong-code attempts for the former.
 final class FirebasePhoneAuthBridgeImpl: IosPhoneAuthBridge {
 
     func sendVerificationCode(
@@ -42,16 +47,32 @@ final class FirebasePhoneAuthBridgeImpl: IosPhoneAuthBridge {
         )
         Auth.auth().signIn(with: credential) { authResult, error in
             if let error = error {
-                onResult(nil, KotlinThrowable(message: error.localizedDescription, cause: nil))
+                onResult(nil, Self.mapVerifyError(error))
                 return
             }
             authResult?.user.getIDToken { idToken, tokenError in
                 if let tokenError = tokenError {
-                    onResult(nil, KotlinThrowable(message: tokenError.localizedDescription, cause: nil))
+                    onResult(nil, Self.mapVerifyError(tokenError))
                 } else {
                     onResult(idToken, nil)
                 }
             }
         }
+    }
+
+    /// Translates a `verifyCode` failure into the platform-agnostic shape
+    /// `OtpVerifyViewModel` (commonMain) needs: `InvalidOtpCodeException` specifically for "the
+    /// code was wrong" (Firebase iOS SDK's real `AuthErrorCode.invalidVerificationCode`), a plain
+    /// `KotlinThrowable` for everything else (network error, expired session, ...) -- mirrors
+    /// `FirebasePhoneAuthClient.android.kt`'s real `FirebaseAuthInvalidCredentialsException`
+    /// handling on the Android side. Unverified here (no Mac/Xcode/Firebase SDK to compile
+    /// against), but `AuthErrorCode.invalidVerificationCode` is the real, documented Firebase iOS
+    /// error code for this case.
+    private static func mapVerifyError(_ error: Error) -> KotlinThrowable {
+        let nsError = error as NSError
+        if nsError.domain == AuthErrorDomain, nsError.code == AuthErrorCode.invalidVerificationCode.rawValue {
+            return InvalidOtpCodeException(message: "The code you entered is incorrect.")
+        }
+        return KotlinThrowable(message: error.localizedDescription, cause: nil)
     }
 }

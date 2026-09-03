@@ -26,9 +26,24 @@ interface PhoneAuthClient {
      * Completes verification for [verificationId] using the user-entered [code]. Returns a real
      * Firebase ID token (a signed JWT) on success -- this is what gets exchanged for a Crichere
      * session via `POST /api/v1/auth/session`.
+     *
+     * On failure, implementations MUST fail with [InvalidOtpCodeException] specifically when the
+     * SDK's own signal means "the code itself was wrong" (Android: a real
+     * `com.google.firebase.auth.FirebaseAuthInvalidCredentialsException`) -- any other failure
+     * (network error, expired/unknown verification session, SDK/config error) must fail with a
+     * different exception. [OtpVerifyViewModel] relies on this distinction to decide whether a
+     * failure burns one of the 5 wrong-code attempts or surfaces as a distinct, retryable error.
      */
     suspend fun verifyCode(verificationId: String, code: String): Result<String>
 }
+
+/**
+ * Signals that [PhoneAuthClient.verifyCode] failed specifically because the entered code was
+ * wrong -- as opposed to a network/SDK/session error. This is the one failure shape that should
+ * burn one of the OTP Verify screen's 5 wrong-code attempts; see [PhoneAuthClient.verifyCode]'s
+ * doc and `OtpVerifyViewModel.handleVerifyFailure`.
+ */
+class InvalidOtpCodeException(message: String = "The code you entered is incorrect.") : Exception(message)
 
 /**
  * What a platform SDK hands back after successfully sending (or resending) an OTP.

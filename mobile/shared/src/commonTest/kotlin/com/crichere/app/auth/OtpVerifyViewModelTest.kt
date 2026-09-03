@@ -122,7 +122,7 @@ class OtpVerifyViewModelTest {
     @Test
     fun `the fifth wrong attempt forces navigation back to Phone Entry, not the sixth`() = viewModelTest {
         val phoneAuthClient = FakePhoneAuthClient().apply {
-            verifyCodeResult = Result.failure(IllegalStateException("wrong code"))
+            verifyCodeResult = Result.failure(InvalidOtpCodeException())
         }
         val (viewModel, _, _) = newViewModel(phoneAuthClient = phoneAuthClient)
 
@@ -202,5 +202,57 @@ class OtpVerifyViewModelTest {
 
         assertEquals(0, phoneAuthClient.verifyCallCount)
         assertTrue(viewModel.state.value.errorMessage != null)
+    }
+
+    @Test
+    fun `a network failure while verifying does not burn a wrong-code attempt, only an actual wrong code does`() =
+        viewModelTest {
+            val phoneAuthClient = FakePhoneAuthClient().apply {
+                verifyCodeResult = Result.failure(RuntimeException("network blip, please retry"))
+            }
+            val (viewModel, _, _) = newViewModel(phoneAuthClient = phoneAuthClient)
+
+            viewModel.onCodeChanged("123456")
+            viewModel.verifyCode()
+            advanceUntilIdle()
+
+            assertEquals(
+                OtpVerifyViewModel.MAX_WRONG_ATTEMPTS,
+                viewModel.state.value.attemptsRemaining,
+                "a transient/network failure must not consume a wrong-code attempt",
+            )
+            assertEquals("network blip, please retry", viewModel.state.value.errorMessage)
+
+            // Now an actual wrong code -- this one DOES burn an attempt.
+            phoneAuthClient.verifyCodeResult = Result.failure(InvalidOtpCodeException())
+            viewModel.onCodeChanged("000000")
+            viewModel.verifyCode()
+            advanceUntilIdle()
+
+            assertEquals(OtpVerifyViewModel.MAX_WRONG_ATTEMPTS - 1, viewModel.state.value.attemptsRemaining)
+        }
+
+    @Test
+    fun `once resends are exhausted, startOver offers a real path back to Phone Entry`() = viewModelTest {
+        val (viewModel, phoneAuthClient, _) = newViewModel()
+
+        repeat(3) {
+            advanceTimeBy(60_000)
+            runCurrent()
+            viewModel.resendCode()
+            advanceUntilIdle()
+        }
+        assertEquals(3, phoneAuthClient.sendCallCount)
+        assertTrue(viewModel.state.value.resendsExhausted, "resends must be exhausted after the 3rd")
+
+        val observedEvents = mutableListOf<AuthNavigationEvent>()
+        val collectorJob = launch { viewModel.navigationEvents.toList(observedEvents) }
+
+        viewModel.startOver()
+        advanceUntilIdle()
+
+        assertEquals(1, observedEvents.size)
+        assertEquals(AuthNavigationEvent.NavigateToPhoneEntry, observedEvents.single())
+        collectorJob.cancel()
     }
 }

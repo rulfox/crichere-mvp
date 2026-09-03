@@ -66,17 +66,31 @@ fun OtpVerifyScreen(viewModel: OtpVerifyViewModel) {
             }
         }
 
-        TextButton(
-            onClick = viewModel::resendCode,
-            enabled = state.canResend && !state.isResending,
-        ) {
+        if (state.resendsExhausted) {
+            // No further resend is ever possible again in this session (see
+            // OtpVerifyState.resendsExhausted) -- a permanently-disabled resend button with no
+            // other affordance would be a dead end, so this replaces it with a real, reachable
+            // path back to Phone Entry, same as the forced 5-wrong-attempts bounce-back.
             Text(
-                if (state.canResend) {
-                    "Resend code (${state.resendsUsed}/${state.maxResends} used)"
-                } else {
-                    "Resend in ${state.cooldownSecondsRemaining}s"
-                },
+                text = "No more codes available for this number.",
+                color = MaterialTheme.colorScheme.error,
             )
+            Button(onClick = viewModel::startOver, modifier = Modifier.fillMaxWidth()) {
+                Text("Request a new code")
+            }
+        } else {
+            TextButton(
+                onClick = viewModel::resendCode,
+                enabled = state.canResend && !state.isResending,
+            ) {
+                Text(
+                    if (state.canResend) {
+                        "Resend code (${state.resendsUsed}/${state.maxResends} used)"
+                    } else {
+                        "Resend in ${state.cooldownSecondsRemaining}s"
+                    },
+                )
+            }
         }
     }
 }

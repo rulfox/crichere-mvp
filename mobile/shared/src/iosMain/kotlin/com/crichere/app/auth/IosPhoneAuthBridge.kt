@@ -23,6 +23,14 @@ interface IosPhoneAuthBridge {
         onResult: (verificationId: String?, resendToken: Any?, error: Throwable?) -> Unit,
     )
 
+    /**
+     * [onResult]'s `error` MUST be [InvalidOtpCodeException] specifically when Firebase's real
+     * `AuthErrorCode.invalidVerificationCode` fires (the code was wrong) -- any other error must
+     * be a plain `KotlinThrowable`. `OtpVerifyViewModel` relies on this distinction to tell "the
+     * user typed a wrong digit" (burns one of 5 attempts) apart from "the call itself failed"
+     * (network/session error, does not burn an attempt) -- mirrors the real
+     * `FirebaseAuthInvalidCredentialsException` handling in `FirebasePhoneAuthClient.android.kt`.
+     */
     fun verifyCode(
         verificationId: String,
         code: String,

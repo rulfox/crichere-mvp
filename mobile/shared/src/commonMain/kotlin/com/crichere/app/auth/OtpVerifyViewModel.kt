@@ -23,7 +23,16 @@ data class OtpVerifyState(
     val maxResends: Int = OtpVerifyViewModel.MAX_RESENDS,
     val cooldownSecondsRemaining: Int = OtpVerifyViewModel.RESEND_COOLDOWN_SECONDS,
     val canResend: Boolean = false,
-)
+) {
+    /**
+     * True once the 3rd resend has been used -- no further resend is ever possible again for
+     * this verification session, regardless of [canResend]/[cooldownSecondsRemaining] (which
+     * both settle to "disabled"/`0` once this is true). The UI must show a real, reachable path
+     * back to Phone Entry here ([OtpVerifyViewModel.startOver]) rather than a permanently-disabled
+     * resend button with no way forward.
+     */
+    val resendsExhausted: Boolean get() = resendsUsed >= maxResends
+}
 
 /**
  * OTP Verify screen's ViewModel -- the OTP state machine: 60s resend cooldown (with visible
@@ -75,11 +84,28 @@ class OtpVerifyViewModel(
 
             authRepository.verifyOtp(verificationId, currentState.code)
                 .onSuccess { idToken -> completeSignIn(idToken) }
-                // Every verifyOtp failure counts as a wrong attempt, not just Firebase's specific
-                // "invalid code" exception type: this is a deliberate MVP-scope simplification
-                // (a genuine transient/network error while verifying will also burn an attempt),
-                // called out in task-6-report.md rather than hidden.
-                .onFailure { handleWrongCode() }
+                .onFailure { throwable -> handleVerifyFailure(throwable) }
+        }
+    }
+
+    /**
+     * Distinguishes "the code itself was wrong" ([InvalidOtpCodeException] specifically -- see
+     * [PhoneAuthClient.verifyCode]'s contract) from every other `verifyOtp` failure (network
+     * error, expired verification session, SDK/config error). Only the former burns one of the
+     * 5 wrong-code attempts; the latter surfaces as a distinct, retryable error that leaves
+     * [OtpVerifyState.attemptsRemaining] untouched -- a flaky network call must not bounce a user
+     * back to Phone Entry the way 5 genuinely wrong digits does.
+     */
+    private suspend fun handleVerifyFailure(throwable: Throwable) {
+        if (throwable is InvalidOtpCodeException) {
+            handleWrongCode()
+        } else {
+            _state.update {
+                it.copy(
+                    isVerifying = false,
+                    errorMessage = throwable.message ?: "Couldn't verify the code right now. Please try again.",
+                )
+            }
         }
     }
 
@@ -141,8 +167,12 @@ class OtpVerifyViewModel(
         val currentState = _state.value
         if (currentState.isResending || currentState.isVerifying) return
 
-        if (currentState.resendsUsed >= MAX_RESENDS) {
-            _state.update { it.copy(errorMessage = "No more resends available. Please go back and request a new code.") }
+        // Defense-in-depth: the real UI path once resends are exhausted is `startOver()` (a
+        // "Request a new code" affordance that navigates back to Phone Entry -- see
+        // OtpVerifyScreen.kt), reached via OtpVerifyState.resendsExhausted, not this method. This
+        // guard only protects against `resendCode()` being called directly with stale UI state.
+        if (currentState.resendsExhausted) {
+            _state.update { it.copy(errorMessage = "No more resends available. Please request a new code.") }
             return
         }
         if (!currentState.canResend) return
@@ -175,6 +205,20 @@ class OtpVerifyViewModel(
         }
     }
 
+    /**
+     * The user-facing way out once [OtpVerifyState.resendsExhausted] is true: "Request a new
+     * code" (or equivalent) on [OtpVerifyScreen] calls this, which -- like the forced 5-wrong-
+     * attempts bounce-back -- emits [AuthNavigationEvent.NavigateToPhoneEntry] via the same
+     * navigation channel. Unlike the wrong-attempts case this isn't auto-triggered: the brief's
+     * "no further resends allowed... user must go back to Phone Entry" only requires that the
+     * path be real and reachable, not that the user be yanked away without acting.
+     */
+    fun startOver() {
+        viewModelScope.launch {
+            _navigationEvents.send(AuthNavigationEvent.NavigateToPhoneEntry)
+        }
+    }
+
     private fun startCooldown() {
         cooldownJob?.cancel()
         _state.update { it.copy(cooldownSecondsRemaining = RESEND_COOLDOWN_SECONDS, canResend = false) }
@@ -185,8 +229,7 @@ class OtpVerifyViewModel(
                 remainingSeconds -= 1
                 _state.update { it.copy(cooldownSecondsRemaining = remainingSeconds) }
             }
-            val resendsExhausted = _state.value.resendsUsed >= MAX_RESENDS
-            _state.update { it.copy(canResend = !resendsExhausted) }
+            _state.update { it.copy(canResend = !it.resendsExhausted) }
         }
     }
 
