@@ -71,6 +71,10 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.tink.android)
+            // ContextCompat.checkSelfPermission for DeviceLocationProvider.android.kt's runtime
+            // permission check -- avoids adding the Play Services location dependency (see that
+            // file's doc for why FusedLocationProviderClient wasn't used).
+            implementation(libs.androidx.core.ktx)
 
             // Real Firebase Phone Auth SDK. The BOM/dependency resolve and compile against real
             // classes regardless of `google-services.json`'s presence -- that file only affects

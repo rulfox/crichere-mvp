@@ -1,9 +1,12 @@
 package com.crichere.app.di
 
+import com.crichere.app.profile.OwnProfileViewModel
+import com.crichere.app.profile.ProfileSetupViewModel
 import com.crichere.app.reference.ReferenceViewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import org.koin.core.context.startKoin
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.KoinAppDeclaration
 
 /**
@@ -35,4 +38,15 @@ fun initKoinIos() {
 class KoinHelper : KoinComponent {
     val referenceViewModel: ReferenceViewModel
         get() = get()
+
+    val ownProfileViewModel: OwnProfileViewModel
+        get() = get()
+
+    /**
+     * [isEditMode] mirrors the Android `koinViewModel(parameters = { parametersOf(isEditMode) })`
+     * call site (`AuthNavHost.kt`'s `ProfileSetupRoute`) -- a function, not a `val`, since this
+     * dependency is parameterized (see `ProfileSetupViewModel`'s own doc).
+     */
+    fun profileSetupViewModel(isEditMode: Boolean): ProfileSetupViewModel =
+        get { parametersOf(isEditMode) }
 }

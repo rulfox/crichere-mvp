@@ -104,7 +104,17 @@ internal class KtorAuthRepository(
             setBody(RefreshRequestBody(storedRefreshToken))
         }
 
-        if (response.status == HttpStatusCode.Unauthorized) return null
+        if (response.status == HttpStatusCode.Unauthorized) {
+            // The stored refresh token itself is invalid (unknown/revoked/expired) -- clear it
+            // (and any now-orphaned access token) rather than leave a dead token sitting in
+            // SecureStore. This is what Task 7's app-start routing relies on to distinguish "no
+            // session" (Phone Entry) without needing its own duplicate clearing logic; the
+            // `Auth` bearer plugin's own refresh path benefits the same way for a live request's
+            // 401 -- see AuthTokenProvider.refreshTokens.
+            secureStorage.remove(SecureStorageKeys.ACCESS_TOKEN)
+            secureStorage.remove(SecureStorageKeys.REFRESH_TOKEN)
+            return null
+        }
         if (!response.status.isSuccess()) {
             throw SessionRefreshFailedException("Refresh failed with status ${response.status}")
         }

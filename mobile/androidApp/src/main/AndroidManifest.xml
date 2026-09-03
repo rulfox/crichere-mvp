@@ -1,6 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+        Task 7's Profile Setup GPS auto-fill. Coarse, not fine: state/city-level precision is
+        all this feature needs (see DeviceLocationProvider.android.kt), and it's requested at
+        runtime just before the first "use my location" tap (ProfileSetupScreen.kt), never
+        unprompted at app start.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".CricherApplication"

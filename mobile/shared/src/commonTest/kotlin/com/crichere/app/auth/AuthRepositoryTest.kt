@@ -129,12 +129,18 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `refresh returns null on a 401 -- the stored refresh token itself is invalid`() = runTest {
-        val storage = FakeSecureStorage(mapOf(SecureStorageKeys.REFRESH_TOKEN to "revoked-refresh"))
+    fun `refresh returns null and clears storage on a 401 -- the stored refresh token itself is invalid`() = runTest {
+        val storage = FakeSecureStorage(
+            mapOf(SecureStorageKeys.ACCESS_TOKEN to "stale-access", SecureStorageKeys.REFRESH_TOKEN to "revoked-refresh"),
+        )
         val httpClient = mockHttpClient { respond(content = "{}", status = HttpStatusCode.Unauthorized) }
         val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage)
 
         assertNull(repository.refresh())
+        // Task 7's app-start routing relies on this clearing already happening here, rather than
+        // duplicating it at every refresh() call site.
+        assertNull(storage.snapshot()[SecureStorageKeys.ACCESS_TOKEN])
+        assertNull(storage.snapshot()[SecureStorageKeys.REFRESH_TOKEN])
     }
 
     @Test

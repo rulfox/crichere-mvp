@@ -65,6 +65,29 @@ internal object HttpClientFactory {
         applyBaseConfig()
     }
 
+    /**
+     * A third client, deliberately with **no** [applyBaseConfig] at all -- Task 7's
+     * `ProfileRepository.uploadPhoto` POSTs straight to an S3 presigned-POST `uploadUrl`
+     * (`https://<bucket>.s3.<region>.amazonaws.com/`), a fully-absolute URL on a different host
+     * and scheme than the backend entirely. [applyBaseConfig]'s `defaultRequest { url { takeFrom(backendBaseUrl) } }`
+     * would clobber that absolute URL's host/protocol (Ktor's `URLBuilder.takeFrom` overwrites
+     * every component unconditionally), and S3 needs no `Auth`/JSON-content-negotiation plugins
+     * this app's own backend calls do. Kept as its own client rather than a config flag on
+     * [create]/[createAuthClient] so those two stay simple, backend-only clients.
+     */
+    fun createUploadClient(): HttpClient = HttpClient {
+        expectSuccess = false
+
+        install(Logging) {
+            level = LogLevel.INFO
+        }
+
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
+            connectTimeoutMillis = 10_000
+        }
+    }
+
     private fun HttpClientConfig<*>.applyBaseConfig() {
         expectSuccess = false
 

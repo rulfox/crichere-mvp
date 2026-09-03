@@ -1,11 +1,16 @@
 package com.crichere.app.di
 
+import com.crichere.app.auth.AppStartViewModel
 import com.crichere.app.auth.AuthRepository
 import com.crichere.app.auth.AuthTokenProvider
 import com.crichere.app.auth.KtorAuthRepository
 import com.crichere.app.auth.OtpVerifyViewModel
 import com.crichere.app.auth.PhoneEntryViewModel
 import com.crichere.app.network.HttpClientFactory
+import com.crichere.app.profile.KtorProfileRepository
+import com.crichere.app.profile.OwnProfileViewModel
+import com.crichere.app.profile.ProfileRepository
+import com.crichere.app.profile.ProfileSetupViewModel
 import com.crichere.app.reference.KtorReferenceRepository
 import com.crichere.app.reference.ReferenceRepository
 import com.crichere.app.reference.ReferenceViewModel
@@ -15,6 +20,9 @@ import org.koin.dsl.module
 
 /** Qualifier for the un-authenticated client `AuthRepository` uses -- see `HttpClientFactory.createAuthClient()`. */
 private val AUTH_HTTP_CLIENT = named("authHttpClient")
+
+/** Qualifier for the raw, no-base-URL client `ProfileRepository.uploadPhoto` uses for the absolute-URL S3 POST -- see `HttpClientFactory.createUploadClient()`. */
+private val UPLOAD_HTTP_CLIENT = named("uploadHttpClient")
 
 /**
  * The one `commonMain` DI module (Koin, per ARCHITECTURE.md -- confirmed KMP-standard, Hilt has
@@ -33,6 +41,11 @@ val sharedModule: Module = module {
     // Un-authenticated client: AuthRepository's own calls to /auth/session|refresh|logout. Must
     // stay separate from the authenticated client below -- see HttpClientFactory.kt.
     single(AUTH_HTTP_CLIENT) { HttpClientFactory.createAuthClient() }
+
+    // The raw, no-defaultRequest-base-URL client: ProfileRepository.uploadPhoto's absolute-URL
+    // POST straight to S3's presigned uploadUrl -- see HttpClientFactory.createUploadClient()'s
+    // doc for why this must stay separate from both clients below.
+    single(UPLOAD_HTTP_CLIENT) { HttpClientFactory.createUploadClient() }
 
     // The shared, authenticated client used by every other repository. `loadTokens`/
     // `refreshTokens` defer to AuthTokenProvider, which is itself unit-tested directly
@@ -57,6 +70,8 @@ val sharedModule: Module = module {
 
     single<ReferenceRepository> { KtorReferenceRepository(get()) }
 
+    single<ProfileRepository> { KtorProfileRepository(httpClient = get(), uploadClient = get(UPLOAD_HTTP_CLIENT)) }
+
     factory { ReferenceViewModel(get()) }
     factory { PhoneEntryViewModel(get()) }
     factory { (phoneNumber: String, verificationId: String, resendToken: Any?) ->
@@ -67,6 +82,16 @@ val sharedModule: Module = module {
             authRepository = get(),
         )
     }
+    factory { AppStartViewModel(authRepository = get()) }
+    factory { (isEditMode: Boolean) ->
+        ProfileSetupViewModel(
+            isEditMode = isEditMode,
+            profileRepository = get(),
+            referenceRepository = get(),
+            locationProvider = get(),
+        )
+    }
+    factory { OwnProfileViewModel(profileRepository = get(), authRepository = get()) }
 }
 
 /**

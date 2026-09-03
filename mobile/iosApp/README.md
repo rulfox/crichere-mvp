@@ -47,3 +47,29 @@ neither this environment nor this repo has:
 Until both exist, `FirebaseApp.configure()` in `iosAppApp.swift` will crash at launch (as it
 should -- there is no real Firebase project connected client-side in this environment, same as
 the Android side). `FirebasePhoneAuthBridgeImpl` has never been compiled here.
+
+## Profile Setup / Own Profile View (Task 7)
+
+`ProfileSetupView.swift`/`ProfileSetupViewModelWrapper` and `OwnProfileView.swift`/
+`OwnProfileViewModelWrapper` are the iOS-side equivalents of `androidApp/.../ui/ProfileSetupScreen.kt`/
+`OwnProfileScreen.kt`, authored against the real, documented SwiftUI + `PhotosPicker` (iOS 16+)
+APIs and this repo's established `ViewModelWrapper: ObservableObject` + `KoinHelper` pattern
+(`ToolchainProofViewModelWrapper.swift`). `KoinInit.kt`'s `KoinHelper` gained `ownProfileViewModel`
+and `profileSetupViewModel(isEditMode:)` accessors for these to pull from. `DeviceLocationProvider.ios.kt`
+(`CLLocationManager`/`CLGeocoder`) is the platform actual their shared `ProfileSetupViewModel`
+depends on for "use my location".
+
+**Not wired into `iosAppApp.swift`'s navigation.** Task 6 never built iOS equivalents of
+`PhoneEntryScreen`/`OtpVerifyScreen` (`ContentView.swift` is still the Task 5 toolchain-proof
+screen) or an app-start-routing entry point -- that gap predates this task and reaches beyond its
+scope (this task owns Profile Setup + Own Profile View + app-start *routing logic*, not building
+the rest of iOS's missing auth UI). These two new views are therefore standalone, real Swift
+screens with no navigation host to plug into yet on this platform; a future iOS-UI task that
+builds `PhoneEntryView`/`OtpVerifyView`/an app-start router can wire all four (plus these two)
+together the way `AuthNavHost.kt` does on Android.
+
+Like every other Swift/`iosMain`-`actual` file in this repo, none of this has been compiled --
+no Mac/Xcode available here. What **is** compile-verified for real: the shared
+`ProfileSetupViewModel`/`OwnProfileViewModel`/`AppStartViewModel`/`DeviceLocationProvider.ios.kt`
+Kotlin all build successfully for all three iOS klib targets
+(`:shared:compileKotlinIosArm64`/`compileKotlinIosSimulatorArm64`/`compileKotlinIosX64`).
