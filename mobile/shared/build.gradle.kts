@@ -1,0 +1,120 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.skie)
+}
+
+kotlin {
+    // expect/actual classes (SecureStorage, FirebasePhoneAuthClient) are still formally "Beta"
+    // per KT-61573 despite being the standard, widely-used KMP pattern for this exact case
+    // (platform crypto/keystore access) -- silence the per-file warning rather than let it
+    // repeat for every actual declaration.
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    // iOS framework export: builds an `ios<Arch>` binary framework per architecture, named
+    // `Shared`, statically linked so iosApp doesn't need a separate dynamic-framework embed step.
+    // SKIE (applied above) hooks into this export to translate Flow -> AsyncSequence and
+    // suspend fun -> async/await for the generated Swift API surface. This target configuration
+    // is verifiable here (Gradle accepts and models it); the actual framework build/link only
+    // succeeds on macOS with Xcode's Apple SDKs, which this environment does not have -- see
+    // task-5-report.md for what is and isn't verified.
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { target ->
+        target.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.serialization.json)
+
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.auth)
+
+            implementation(libs.koin.core)
+
+            implementation(libs.androidx.lifecycle.viewmodel)
+        }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
+            implementation(libs.koin.test)
+        }
+
+        androidMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.koin.android)
+            implementation(libs.androidx.datastore.preferences)
+            implementation(libs.tink.android)
+        }
+
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.robolectric)
+                implementation(libs.junit4)
+                implementation(libs.androidx.test.core)
+                implementation(libs.androidx.core.ktx)
+            }
+        }
+
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
+    }
+}
+
+android {
+    // Namespace com.crichere.app everywhere per Task 5's brief -- shared has no Android
+    // resources of its own, so sharing the namespace with androidApp doesn't risk an R-class
+    // collision (there's no R class to collide).
+    namespace = "com.crichere.app"
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 26
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            it.systemProperty("robolectric.logging.enabled", "true")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+skie {
+    // Defaults (Flow -> AsyncSequence, suspend fun -> async/await, sealed class exhaustiveness)
+    // are exactly what Task 5 needs -- no per-declaration tuning required for a toolchain proof.
+}
