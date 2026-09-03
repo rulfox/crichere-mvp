@@ -128,6 +128,45 @@ class PhotoUploadServiceTest {
 
     // ---------------------------------------------------------------- the SigV4 signature
 
+    /**
+     * A fixed AWS SigV4 reference vector, computed OUTSIDE this codebase entirely -- via
+     * Python's standard-library `hmac`/`hashlib` (not this class's `hmac()` helper, and not
+     * [PhotoUploadService.sign]) -- so this test can catch a bug shared by both of this file's
+     * Kotlin HMAC implementations (production and the older self-consistency test below), which
+     * a same-algorithm-compared-to-itself test structurally cannot.
+     *
+     * Derivation, run once against the real POST base64 policy this fixed test setup (userId,
+     * clock, bucket, region, credentials) deterministically produces:
+     * ```python
+     * import hmac, hashlib
+     * def hmac_sha256(key, msg): return hmac.new(key, msg.encode(), hashlib.sha256).digest()
+     * k_date    = hmac_sha256(("AWS4" + secret).encode(), "20260902")
+     * k_region  = hmac_sha256(k_date, "ap-south-1")
+     * k_service = hmac_sha256(k_region, "s3")
+     * k_signing = hmac_sha256(k_service, "aws4_request")
+     * hmac.new(k_signing, policy_base64.encode(), hashlib.sha256).hexdigest()
+     * # -> "da6b101c338eeed2afd96f796214c41155a0360089a2fbead386d857e440e2c0"
+     * ```
+     * with `secret = "fakeSecretAccessKeyFakeSecretAccessKey12"` (this file's [secretAccessKey])
+     * and `policy_base64` equal to the exact string this test asserts `createUploadUrl` produced
+     * (captured from a real run against this class's fixed clock/userId/bucket/region/credentials,
+     * then independently re-derived by the Python snippet above -- the two agreed).
+     */
+    @Test
+    fun `the signature matches a fixed AWS SigV4 reference vector computed independently`() {
+        val result = service().createUploadUrl(userId)
+
+        val expectedPolicyBase64 =
+            "eyJleHBpcmF0aW9uIjoiMjAyNi0wOS0wMlQxMDoyMDozMC4wMDBaIiwiY29uZGl0aW9ucyI6W3siYnVja2V0IjoiY3JpY2hlcmUtbWVkaWEtZGV2In0seyJrZXkiOiJ1c2Vycy8xMTExMTExMS0yMjIyLTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUvcHJvZmlsZS5qcGcifSxbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwxLDEwNDg1NzYwXSxbInN0YXJ0cy13aXRoIiwiJENvbnRlbnQtVHlwZSIsImltYWdlLyJdLHsieC1hbXotYWxnb3JpdGhtIjoiQVdTNC1ITUFDLVNIQTI1NiJ9LHsieC1hbXotY3JlZGVudGlhbCI6IkFLSUFGQUtFQUNDRVNTS0VZLzIwMjYwOTAyL2FwLXNvdXRoLTEvczMvYXdzNF9yZXF1ZXN0In0seyJ4LWFtei1kYXRlIjoiMjAyNjA5MDJUMTAxNTMwWiJ9XX0="
+        // Sanity check that this test's fixture setup hasn't silently drifted from the vector's
+        // derivation -- if this fails, the reference vector above is stale and must be
+        // recomputed against the new policy string, not patched around.
+        assertEquals(expectedPolicyBase64, result.fields.getValue("policy"))
+
+        val expectedSignature = "da6b101c338eeed2afd96f796214c41155a0360089a2fbead386d857e440e2c0"
+        assertEquals(expectedSignature, result.fields["x-amz-signature"])
+    }
+
     @Test
     fun `the signature verifies against the SigV4 derivation computed independently`() {
         val result = service().createUploadUrl(userId)
