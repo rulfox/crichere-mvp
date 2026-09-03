@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.crichere.app.ui.ToolchainProofScreen
+import com.crichere.app.ui.AuthNavHost
 
 class MainActivity : ComponentActivity() {
 
@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ToolchainProofScreen()
+                    AuthNavHost()
                 }
             }
         }

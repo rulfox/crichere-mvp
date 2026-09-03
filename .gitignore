@@ -31,6 +31,12 @@ node_modules/
 application-local.yml
 application-local.yaml
 firebase-service-account*.json
+# Real Firebase project config (Task 6 mobile auth) -- same category as the backend's service
+# account file above: an external dependency this environment doesn't have, and, once a real one
+# exists, project-specific config that shouldn't be committed. See androidApp/build.gradle.kts
+# and iosApp/README.md for where each is expected to go and how the build tolerates its absence.
+google-services.json
+GoogleService-Info.plist
 
 # OS
 .DS_Store

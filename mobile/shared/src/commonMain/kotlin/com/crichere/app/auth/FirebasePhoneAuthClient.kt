@@ -1,21 +1,19 @@
 package com.crichere.app.auth
 
 /**
- * Interface-only stub for Task 6: the real phone-OTP screens will call this to send/verify an
- * OTP code via Firebase Phone Auth and hand the resulting Firebase ID token to the backend's
- * auth endpoints (`/api/v1/auth/...`). Task 5's job is only to prove the `expect`/`actual` shape compiles
- * on both platforms -- neither `actual` below calls a real Firebase SDK yet (that dependency,
- * and the credentials/config it needs, is explicitly deferred to Task 6 per this task's brief).
+ * Real, per-platform Firebase Phone Auth SDK wiring:
+ *  - **Android** (`FirebasePhoneAuthClient.android.kt`): real calls against
+ *    `com.google.firebase:firebase-auth`'s actual classes (`PhoneAuthOptions`,
+ *    `PhoneAuthProvider`, `FirebaseAuth`) -- genuinely compiles against the real SDK; see
+ *    task-6-report.md for exactly what could and couldn't be verified without a Firebase project
+ *    connected client-side (there is none in this environment).
+ *  - **iOS** (`FirebasePhoneAuthClient.ios.kt`): Kotlin/Native has no cinterop binding to the
+ *    Firebase iOS SDK available here (no CocoaPods/SPM/Xcode toolchain on this machine), so this
+ *    delegates to a Swift-implemented [IosPhoneAuthBridge] that real (but unverified/uncompiled)
+ *    Swift code wires up to the actual Firebase iOS Auth SDK -- authored but unverified, same
+ *    status as the rest of this repo's Swift files.
  */
-expect class FirebasePhoneAuthClient {
-    /**
-     * Starts phone-number verification. Returns an opaque verification-session ID the platform
-     * SDK issues, to be passed back into [verifyCode] alongside the user-entered OTP.
-     */
-    suspend fun sendVerificationCode(phoneNumber: String): Result<String>
-
-    /**
-     * Completes verification for a given session, returning a Firebase ID token on success.
-     */
-    suspend fun verifyCode(verificationId: String, code: String): Result<String>
+expect class FirebasePhoneAuthClient() : PhoneAuthClient {
+    override suspend fun sendVerificationCode(phoneNumber: String, resendToken: Any?): Result<PhoneVerificationHandle>
+    override suspend fun verifyCode(verificationId: String, code: String): Result<String>
 }

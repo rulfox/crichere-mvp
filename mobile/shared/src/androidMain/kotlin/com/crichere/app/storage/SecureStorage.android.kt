@@ -24,7 +24,7 @@ private val Context.secureStorageDataStore by preferencesDataStore(name = "crich
  * only ever sees ciphertext.
  */
 @OptIn(ExperimentalEncodingApi::class)
-actual class SecureStorage(private val context: Context) {
+actual class SecureStorage(private val context: Context) : SecureStore {
 
     private val initLock = Mutex()
     private var aead: Aead? = null
@@ -42,7 +42,7 @@ actual class SecureStorage(private val context: Context) {
         }
     }
 
-    actual suspend fun get(key: String): String? {
+    actual override suspend fun get(key: String): String? {
         val encoded = context.secureStorageDataStore.data.first()[stringPreferencesKey(key)]
             ?: return null
         val ciphertext = Base64.decode(encoded)
@@ -50,7 +50,7 @@ actual class SecureStorage(private val context: Context) {
         return plaintext.decodeToString()
     }
 
-    actual suspend fun set(key: String, value: String) {
+    actual override suspend fun set(key: String, value: String) {
         val ciphertext = aead().encrypt(value.encodeToByteArray(), key.encodeToByteArray())
         val encoded = Base64.encode(ciphertext)
         context.secureStorageDataStore.edit { prefs ->
@@ -58,7 +58,7 @@ actual class SecureStorage(private val context: Context) {
         }
     }
 
-    actual suspend fun remove(key: String) {
+    actual override suspend fun remove(key: String) {
         context.secureStorageDataStore.edit { prefs ->
             prefs.remove(stringPreferencesKey(key))
         }

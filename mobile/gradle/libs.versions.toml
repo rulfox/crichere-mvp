@@ -22,6 +22,15 @@ robolectric = "4.16"
 kotlinxCoroutinesTest = "1.10.2"
 junit4 = "4.13.2"
 androidxTestCore = "1.7.0"
+# Firebase BOM + google-services plugin, checked against live sources (mvnrepository.com,
+# firebase.google.com/support/release-notes/android) on 2026-09-03, same as Task 5's precedent.
+# Note: `firebase-auth-ktx` (named in this task's brief) no longer exists as of BOM 34.0.0
+# (July 2025) -- Google merged all KTX APIs into the main `firebase-auth` module and dropped the
+# KTX artifacts from the BOM entirely. `firebase-auth` is the correct, current dependency; using
+# the brief's literal artifact name would fail to resolve against this BOM version.
+firebaseBom = "34.17.0"
+googleServices = "4.4.4"
+kotlinxCoroutinesPlayServices = "1.10.2"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -57,6 +66,10 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
@@ -66,3 +79,4 @@ androidLibrary = { id = "com.android.library", version.ref = "agp" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
+googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }

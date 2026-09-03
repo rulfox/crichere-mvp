@@ -71,6 +71,21 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.tink.android)
+
+            // Real Firebase Phone Auth SDK. The BOM/dependency resolve and compile against real
+            // classes regardless of `google-services.json`'s presence -- that file only affects
+            // *runtime* initialization (FirebaseApp reads generated resources from it), not the
+            // compile classpath. See `androidApp/build.gradle.kts` for the conditional plugin
+            // application, and `FirebasePhoneAuthClient.android.kt` for what is/isn't verifiable
+            // without a connected Firebase project.
+            // KT-58759: the KMP source-set `DependencyHandler`'s own `platform()` overload is
+            // hard-deprecated (compile error, not just a warning) as of this Kotlin version --
+            // `project.dependencies.platform(...)` is the documented replacement.
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.auth)
+            // `Task<T>.await()` bridges Firebase's Play-Services-`Task`-based callback APIs
+            // (`signInWithCredential`, `getIdToken`) into plain suspend functions.
+            implementation(libs.kotlinx.coroutines.play.services)
         }
 
         val androidUnitTest by getting {

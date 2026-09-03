@@ -60,9 +60,9 @@ import platform.Security.kSecValueData
  * Mac available here) -- see task-5-report.md.
  */
 @OptIn(ExperimentalForeignApi::class)
-actual class SecureStorage {
+actual class SecureStorage : SecureStore {
 
-    actual suspend fun get(key: String): String? = memScoped {
+    actual override suspend fun get(key: String): String? = memScoped {
         val query = newQuery(key)
         CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne)
         CFDictionarySetValue(query, kSecReturnData, kCFBooleanTrue)
@@ -78,7 +78,7 @@ actual class SecureStorage {
         plaintext.decodeToString()
     }
 
-    actual suspend fun set(key: String, value: String) {
+    actual override suspend fun set(key: String, value: String) {
         val dataRef = value.encodeToByteArray().toCFData()
 
         val updateAttributes = newMutableDictionary()
@@ -96,7 +96,7 @@ actual class SecureStorage {
         CFRelease(dataRef)
     }
 
-    actual suspend fun remove(key: String) {
+    actual override suspend fun remove(key: String) {
         val query = newQuery(key)
         SecItemDelete(query)
         CFRelease(query)

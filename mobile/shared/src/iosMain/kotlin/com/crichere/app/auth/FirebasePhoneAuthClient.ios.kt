@@ -1,15 +1,59 @@
 package com.crichere.app.auth
 
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
 /**
- * iOS stub: no real Firebase SDK call yet. Task 6 replaces this body with calls into Firebase
- * iOS SDK's `PhoneAuthProvider`/`Auth.auth().signIn(with:)`, wired in via CocoaPods/SPM once
- * that task adds the dependency and `GoogleService-Info.plist` credentials this task doesn't have.
+ * iOS `actual`: delegates to a Swift-implemented [IosPhoneAuthBridge] rather than calling the
+ * Firebase iOS SDK directly from Kotlin/Native -- see [IosPhoneAuthBridge]'s doc for why. This
+ * file itself is pure Kotlin (no cinterop against third-party frameworks), so it compiles for
+ * real on this machine's Kotlin/Native cross-compiler; the real Firebase SDK usage it delegates
+ * to lives entirely in Swift and is unverified (no Mac/Xcode here).
  */
-actual class FirebasePhoneAuthClient {
+actual class FirebasePhoneAuthClient : PhoneAuthClient {
 
-    actual suspend fun sendVerificationCode(phoneNumber: String): Result<String> =
-        Result.failure(NotImplementedError("Firebase Phone Auth wiring lands in Task 6"))
+    actual override suspend fun sendVerificationCode(
+        phoneNumber: String,
+        resendToken: Any?,
+    ): Result<PhoneVerificationHandle> {
+        val bridge = IosPhoneAuthBridgeHolder.bridge
+            ?: return Result.failure(IllegalStateException("iOS Firebase Auth bridge is not installed"))
 
-    actual suspend fun verifyCode(verificationId: String, code: String): Result<String> =
-        Result.failure(NotImplementedError("Firebase Phone Auth wiring lands in Task 6"))
+        return runCatching {
+            suspendCancellableCoroutine { continuation ->
+                bridge.sendVerificationCode(phoneNumber, resendToken) { verificationId, newResendToken, error ->
+                    if (!continuation.isActive) return@sendVerificationCode
+                    when {
+                        error != null -> continuation.resumeWithException(error)
+                        verificationId != null ->
+                            continuation.resume(PhoneVerificationHandle(verificationId, newResendToken))
+                        else -> continuation.resumeWithException(
+                            IllegalStateException("Bridge returned neither a verification id nor an error"),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    actual override suspend fun verifyCode(verificationId: String, code: String): Result<String> {
+        val bridge = IosPhoneAuthBridgeHolder.bridge
+            ?: return Result.failure(IllegalStateException("iOS Firebase Auth bridge is not installed"))
+
+        return runCatching {
+            suspendCancellableCoroutine { continuation ->
+                bridge.verifyCode(verificationId, code) { idToken, error ->
+                    if (!continuation.isActive) return@verifyCode
+                    when {
+                        error != null -> continuation.resumeWithException(error)
+                        idToken != null -> continuation.resume(idToken)
+                        else -> continuation.resumeWithException(
+                            IllegalStateException("Bridge returned neither an ID token nor an error"),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

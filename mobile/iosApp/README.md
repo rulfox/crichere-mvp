@@ -31,3 +31,19 @@ which need Xcode's Apple SDKs.
 5. Build and run on an iOS Simulator. The backend must be reachable at `http://localhost:8080`
    from the simulator (see `ApiConfig.ios.kt` -- the simulator shares the host Mac's network
    namespace, so this is direct, unlike Android's `10.0.2.2` alias).
+
+## Firebase Phone Auth (Task 6)
+
+`FirebasePhoneAuthBridge.swift` calls the real Firebase iOS Auth SDK, but this needs two things
+neither this environment nor this repo has:
+
+1. **The Firebase iOS SDK itself**, added via Swift Package Manager (`https://github.com/firebase/firebase-ios-sdk`,
+   `FirebaseAuth` product) or CocoaPods (`pod 'FirebaseAuth'`) once the `.xcodeproj` from step 1
+   above exists.
+2. **A real `GoogleService-Info.plist`**, downloaded from the real Firebase project's console and
+   added to the Xcode project's target -- the iOS equivalent of Android's `google-services.json`
+   (also not present in this environment; see `androidApp/build.gradle.kts`).
+
+Until both exist, `FirebaseApp.configure()` in `iosAppApp.swift` will crash at launch (as it
+should -- there is no real Firebase project connected client-side in this environment, same as
+the Android side). `FirebasePhoneAuthBridgeImpl` has never been compiled here.

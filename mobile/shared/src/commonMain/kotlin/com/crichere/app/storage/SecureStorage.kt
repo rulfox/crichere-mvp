@@ -13,8 +13,8 @@ package com.crichere.app.storage
  *    decision in ARCHITECTURE.md).
  *  - `iosMain`: native Keychain Services (`SecItemAdd`/`SecItemCopyMatching`/`SecItemDelete`).
  */
-expect class SecureStorage {
-    suspend fun get(key: String): String?
-    suspend fun set(key: String, value: String)
-    suspend fun remove(key: String)
+expect class SecureStorage : SecureStore {
+    override suspend fun get(key: String): String?
+    override suspend fun set(key: String, value: String)
+    override suspend fun remove(key: String)
 }

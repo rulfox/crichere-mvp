@@ -7,6 +7,18 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// Task 6's Firebase Phone Auth wiring needs the real `com.google.gms.google-services` plugin to
+// process a real `google-services.json` into the resources FirebaseApp reads at startup -- but
+// that plugin fails the build hard (`File google-services.json is missing`) when the file isn't
+// present, and no real Firebase project is connected client-side in this environment (same
+// category of missing external dependency as the backend's still-absent Firebase Admin SDK
+// service account credentials). Applying it conditionally, only when the real file exists, keeps
+// the build green here while still doing the real thing the moment someone drops a real
+// `google-services.json` into this directory (the location Google's tooling expects it in).
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.crichere.app"
     compileSdk = 36

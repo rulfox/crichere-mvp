@@ -1,7 +1,9 @@
 package com.crichere.app.di
 
 import com.crichere.app.auth.FirebasePhoneAuthClient
+import com.crichere.app.auth.PhoneAuthClient
 import com.crichere.app.storage.SecureStorage
+import com.crichere.app.storage.SecureStore
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -11,6 +13,6 @@ import org.koin.dsl.module
  * to know how it got there.
  */
 actual val platformModule: Module = module {
-    single { SecureStorage(get()) }
-    single { FirebasePhoneAuthClient() }
+    single<SecureStore> { SecureStorage(get()) }
+    single<PhoneAuthClient> { FirebasePhoneAuthClient() }
 }
