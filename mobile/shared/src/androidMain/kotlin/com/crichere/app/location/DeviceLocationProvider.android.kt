@@ -8,7 +8,9 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.CancellationSignal
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
 
@@ -65,17 +67,31 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
             }
         }
 
+    /**
+     * `Geocoder.getFromLocation` (the overload used below) is a **synchronous, blocking** call --
+     * real network I/O that can take multiple seconds. Dispatched onto [Dispatchers.IO] so it
+     * never blocks the caller's thread: this is invoked from `ProfileSetupViewModel.useMyLocation`
+     * inside `viewModelScope.launch {}`, whose default dispatcher is `Dispatchers.Main.immediate`
+     * -- without this `withContext`, the call would block the UI thread for its duration, a real
+     * ANR risk on a physical device. (Caught by code review; this environment's emulator testing
+     * never actually reached this line, since `adb emu geo fix` never delivered a fix to
+     * `getCurrentLocation()` here -- see task-7-report.md.)
+     */
     override suspend fun reverseGeocode(point: GeoPoint): GeocodedLocation? {
         if (!Geocoder.isPresent()) return null
         val geocoder = Geocoder(context, Locale.getDefault())
-        return runCatching {
-            @Suppress("DEPRECATION") // The synchronous overload is deprecated (API 33+) but still functional; the async
-            // callback overload adds real complexity (another suspendCancellableCoroutine bridge) for a
-            // best-effort, non-latency-sensitive lookup this feature doesn't need.
-            val addresses = geocoder.getFromLocation(point.latitude, point.longitude, 1)
-            val address = addresses?.firstOrNull() ?: return null
-            GeocodedLocation(administrativeArea = address.adminArea, locality = address.locality)
-        }.getOrNull()
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                @Suppress("DEPRECATION") // The synchronous overload is deprecated (API 33+) but still functional; the async
+                // callback overload adds real complexity (another suspendCancellableCoroutine bridge) for a
+                // best-effort, non-latency-sensitive lookup this feature doesn't need. Running it on
+                // Dispatchers.IO (see this method's doc) is what keeps it safe to call synchronously.
+                val addresses = geocoder.getFromLocation(point.latitude, point.longitude, 1)
+                addresses?.firstOrNull()?.let { address ->
+                    GeocodedLocation(administrativeArea = address.adminArea, locality = address.locality)
+                }
+            }.getOrNull()
+        }
     }
 
     private fun bestAvailableProvider(locationManager: LocationManager): String? = when {
