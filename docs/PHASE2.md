@@ -86,6 +86,7 @@ Describing what belongs on each screen — not layout, spacing, or component cho
 | League Creation is one continuous scrollable form with grouped sections, not a multi-screen wizard | Mirrors Profile Setup's actual proven pattern exactly (which, despite PHASE1.md's "may be one screen or a short sequence" wording, shipped as one scrollable form, not separate step screens) — no new Next/Back navigation state machine needed. |
 | **New 2-tab bottom navigation (Dashboard, My Profile) replaces Own Profile View as the landing screen** | Standard minimal pattern for exactly two top-level destinations, once Dashboard became the landing screen (see the row above). Own Profile View's own screens/callbacks are unchanged — only what hosts them changes. |
 | No validation linking a league's own State/District/City to its attached Ground's location | Confirms the earlier "not hard-linked" data-model decision explicitly as a real behavior, not a silent gap: a league can (unusually) reference a ground in a different city than its declared location. Accepted as an edge case nobody is expected to hit in practice, not worth validating against. |
+| **`maps-compose` pinned to 6.4.1, not the latest 8.4.0** | Discovered on the first full `androidApp` compile after League Creation's map picker landed (2026-09-05): 8.4.0's transitive `androidx.core:core-ktx:1.19.0` requires `compileSdk 37` + AGP 9.1.0, and this project is on `compileSdk 36` / AGP 8.13.2 (see `libs.versions.toml`'s own `agp` comment on why that pairing was chosen). 6.4.1 exposes the identical `GoogleMap`/`Marker`/`rememberCameraPositionState` API this app uses, so no functional change, no AGP/compileSdk bump needed. Revisit alongside any future AGP upgrade. |
 
 ---
 
@@ -98,7 +99,7 @@ All forks surfaced during scoping and implementation planning (2026-09-04) were 
 - Whether the dashboard needs pagination/search beyond the filters (State/District/City/nearest) — not addressed yet, likely fine to defer until league volume is large enough to matter.
 - League delete/archive (beyond "mark completed") isn't decided — not needed for Phase 2's Screens as written, revisit if it comes up.
 - Who can register a new Ground — any logged-in user (same posture as league creation), or only while creating/editing a league (no standalone "add a ground" entry point)? Leaning toward the latter for Phase 2 (grounds are created as a byproduct of league creation, not their own directory feature yet), not yet confirmed.
-- Google Maps API key provisioning (Android map picker) — genuinely blocks real on-device verification of that one feature until someone provisions a key; everything else is unaffected.
+- Google Maps API key provisioning (Android map picker) — `GroundMapPicker` (the draggable-marker `GoogleMap` composable) is built and wired into League Creation's Ground section as of 2026-09-05, but genuinely blocks real on-device verification (does the pin actually render/drag correctly) until someone provisions a key; everything else is unaffected.
 
 ---
 
