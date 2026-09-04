@@ -2,7 +2,12 @@ package com.crichere.app.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,16 +29,17 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * The full navigation contract, real end to end as of Task 7:
- *  - [Starting] -> [PhoneEntry] / [ProfileSetup] / [OwnProfile]: the app-start routing check
- *    (`AppStartViewModel`) this task adds -- a silent `/auth/refresh`, routed by its
- *    `profileComplete`, replacing Task 5/6's hardcoded `PhoneEntry` initial value.
- *  - [PhoneEntry] -> [OtpVerify]: real (Task 6).
- *  - [OtpVerify] -> [ProfileSetup] / [OwnProfile]: real, driven by [AuthNavigationEvent] (Task 7
- *    wires up the two destinations Task 6 left as placeholders).
- *  - [OtpVerify] -> [PhoneEntry]: real (Task 6, the 5th-wrong-attempt forced bounce-back).
- *  - [ProfileSetup] -> [OwnProfile]: real (Task 7, on a save that completes the profile).
- *  - [OwnProfile] -> [ProfileSetup] (`isEditMode = true`) / [PhoneEntry] (logout): real (Task 7).
+ * The full navigation contract:
+ *  - [Starting] -> [PhoneEntry] / [ProfileSetup] / [Main]: the app-start routing check
+ *    (`AppStartViewModel`), routed by its `profileComplete`.
+ *  - [PhoneEntry] -> [OtpVerify]: real.
+ *  - [OtpVerify] -> [ProfileSetup] / [Main]: real, driven by [AuthNavigationEvent].
+ *  - [OtpVerify] -> [PhoneEntry]: real (the 5th-wrong-attempt forced bounce-back).
+ *  - [ProfileSetup] -> [Main]: real, on a save that completes the profile.
+ *  - [Main] (My Profile tab) -> [ProfileSetup] (`isEditMode = true`) / [PhoneEntry] (logout): real.
+ *
+ * [Main] replaced a top-level `OwnProfile` destination once Phase 2 gave the app a real landing
+ * screen (League Dashboard) to put alongside it -- see [MainRoute]'s own doc for that shell.
  *
  * Still a plain `remember { mutableStateOf(...) }` state switcher rather than Jetpack Navigation
  * Compose -- see Task 6's doc on this file for why; the destination count has grown but the shape
@@ -45,7 +51,7 @@ private sealed interface AuthDestination {
     data object PhoneEntry : AuthDestination
     data class OtpVerify(val phoneNumber: String, val verificationId: String, val resendToken: Any?) : AuthDestination
     data class ProfileSetup(val isEditMode: Boolean) : AuthDestination
-    data object OwnProfile : AuthDestination
+    data object Main : AuthDestination
 }
 
 @Composable
@@ -57,7 +63,7 @@ fun AuthNavHost() {
             destination = when (resolved) {
                 AppStartDestination.PhoneEntry -> AuthDestination.PhoneEntry
                 AppStartDestination.ProfileSetup -> AuthDestination.ProfileSetup(isEditMode = false)
-                AppStartDestination.OwnProfile -> AuthDestination.OwnProfile
+                AppStartDestination.Main -> AuthDestination.Main
             }
         }
 
@@ -80,16 +86,16 @@ fun AuthNavHost() {
         ) { event ->
             destination = when (event) {
                 AuthNavigationEvent.NavigateToProfileSetup -> AuthDestination.ProfileSetup(isEditMode = false)
-                AuthNavigationEvent.NavigateToOwnProfile -> AuthDestination.OwnProfile
+                AuthNavigationEvent.NavigateToOwnProfile -> AuthDestination.Main
                 AuthNavigationEvent.NavigateToPhoneEntry -> AuthDestination.PhoneEntry
             }
         }
 
         is AuthDestination.ProfileSetup -> ProfileSetupRoute(isEditMode = current.isEditMode) {
-            destination = AuthDestination.OwnProfile
+            destination = AuthDestination.Main
         }
 
-        AuthDestination.OwnProfile -> OwnProfileRoute(
+        AuthDestination.Main -> MainRoute(
             onNavigateToEditProfile = { destination = AuthDestination.ProfileSetup(isEditMode = true) },
             onNavigateToPhoneEntry = { destination = AuthDestination.PhoneEntry },
         )
@@ -144,6 +150,74 @@ private fun ProfileSetupRoute(isEditMode: Boolean, onNavigateToOwnProfile: () ->
         parameters = { parametersOf(isEditMode) },
     )
     ProfileSetupScreen(viewModel, onNavigateToOwnProfile)
+}
+
+/**
+ * The 2-tab bottom-nav shell (Dashboard, My Profile) that hosts everything reachable after a
+ * complete profile. League Detail/Creation are pushed as sibling states *above* the tab
+ * container -- same plain `sealed interface` + `remember { mutableStateOf(...) }` pattern
+ * [AuthNavHost] itself uses, not a new nav-library dependency -- so opening a league or creating
+ * one temporarily replaces the tab bar rather than nesting inside it, matching how
+ * [AuthDestination.OtpVerify]/[AuthDestination.ProfileSetup] already replace the whole screen
+ * rather than living inside some enclosing chrome.
+ *
+ * The My Profile tab reuses [OwnProfileRoute] completely unchanged from before Phase 2 -- only
+ * what hosts it changed, not the screen or its `ViewModel`.
+ */
+private sealed interface MainDestination {
+    data class Tabs(val tab: MainTab) : MainDestination
+    data class LeagueDetail(val leagueId: String) : MainDestination
+    data class LeagueCreation(val editingLeagueId: String?) : MainDestination
+}
+
+private enum class MainTab { DASHBOARD, MY_PROFILE }
+
+@Composable
+private fun MainRoute(onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit) {
+    var destination by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(MainTab.DASHBOARD)) }
+
+    when (val current = destination) {
+        is MainDestination.Tabs -> Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = current.tab == MainTab.DASHBOARD,
+                        onClick = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
+                        icon = {},
+                        label = { Text("Dashboard") },
+                    )
+                    NavigationBarItem(
+                        selected = current.tab == MainTab.MY_PROFILE,
+                        onClick = { destination = MainDestination.Tabs(MainTab.MY_PROFILE) },
+                        icon = {},
+                        label = { Text("My Profile") },
+                    )
+                }
+            },
+        ) { contentPadding ->
+            Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
+                when (current.tab) {
+                    MainTab.DASHBOARD -> LeagueDashboardRoute(
+                        onOpenLeague = { leagueId -> destination = MainDestination.LeagueDetail(leagueId) },
+                        onCreateLeague = { destination = MainDestination.LeagueCreation(editingLeagueId = null) },
+                    )
+                    MainTab.MY_PROFILE -> OwnProfileRoute(onNavigateToEditProfile, onNavigateToPhoneEntry)
+                }
+            }
+        }
+
+        is MainDestination.LeagueDetail -> LeagueDetailRoute(
+            leagueId = current.leagueId,
+            onBack = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
+            onEditLeague = { leagueId -> destination = MainDestination.LeagueCreation(editingLeagueId = leagueId) },
+        )
+
+        is MainDestination.LeagueCreation -> LeagueCreationRoute(
+            editingLeagueId = current.editingLeagueId,
+            onDone = { savedLeagueId -> destination = MainDestination.LeagueDetail(savedLeagueId) },
+            onCancel = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
+        )
+    }
 }
 
 @Composable

@@ -6,6 +6,11 @@ import com.crichere.app.auth.AuthTokenProvider
 import com.crichere.app.auth.KtorAuthRepository
 import com.crichere.app.auth.OtpVerifyViewModel
 import com.crichere.app.auth.PhoneEntryViewModel
+import com.crichere.app.ground.GroundRepository
+import com.crichere.app.ground.KtorGroundRepository
+import com.crichere.app.league.KtorLeagueRepository
+import com.crichere.app.league.LeagueDashboardViewModel
+import com.crichere.app.league.LeagueRepository
 import com.crichere.app.network.HttpClientFactory
 import com.crichere.app.profile.KtorProfileRepository
 import com.crichere.app.profile.OwnProfileViewModel
@@ -72,6 +77,10 @@ val sharedModule: Module = module {
 
     single<ProfileRepository> { KtorProfileRepository(httpClient = get(), uploadClient = get(UPLOAD_HTTP_CLIENT)) }
 
+    single<GroundRepository> { KtorGroundRepository(get()) }
+
+    single<LeagueRepository> { KtorLeagueRepository(httpClient = get(), uploadClient = get(UPLOAD_HTTP_CLIENT)) }
+
     factory { ReferenceViewModel(get()) }
     factory { PhoneEntryViewModel(get()) }
     factory { (phoneNumber: String, verificationId: String, resendToken: Any?) ->
@@ -92,6 +101,7 @@ val sharedModule: Module = module {
         )
     }
     factory { OwnProfileViewModel(profileRepository = get(), authRepository = get()) }
+    factory { LeagueDashboardViewModel(leagueRepository = get(), referenceRepository = get(), locationProvider = get()) }
 }
 
 /**

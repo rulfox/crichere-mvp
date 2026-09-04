@@ -7,11 +7,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Where [AppStartViewModel]'s silent startup check lands. `null` state means the check is still in flight. */
+/**
+ * Where [AppStartViewModel]'s silent startup check lands. `null` state means the check is still
+ * in flight. [Main] is the 2-tab bottom-nav shell (League Dashboard / My Profile) that replaced
+ * Own Profile View as the landing screen once Phase 2 gave the app something to land on besides
+ * a single profile (see docs/PHASE1.md Section 4's superseding note).
+ */
 sealed interface AppStartDestination {
     data object PhoneEntry : AppStartDestination
     data object ProfileSetup : AppStartDestination
-    data object OwnProfile : AppStartDestination
+    data object Main : AppStartDestination
 }
 
 /**
@@ -25,7 +30,7 @@ sealed interface AppStartDestination {
  *     but only *after* clearing `SecureStore` itself (see `AuthRepository.refresh`'s 401 branch --
  *     this class does not duplicate that clearing) -> [AppStartDestination.PhoneEntry].
  *  3. Refresh token present and valid -> `refresh()` returns a real [AuthResult] -> routes
- *     directly via its `profileComplete` to [AppStartDestination.ProfileSetup]/[AppStartDestination.OwnProfile],
+ *     directly via its `profileComplete` to [AppStartDestination.ProfileSetup]/[AppStartDestination.Main],
  *     with **no extra `/profiles/me` call** -- the refresh response already carries what's needed.
  *
  * A [SessionRefreshFailedException] (network error, 5xx -- a transient problem, not "log the user
@@ -48,7 +53,7 @@ class AppStartViewModel(
             val result = runCatching { authRepository.refresh() }.getOrNull()
             _destination.value = when {
                 result == null -> AppStartDestination.PhoneEntry
-                result.profileComplete -> AppStartDestination.OwnProfile
+                result.profileComplete -> AppStartDestination.Main
                 else -> AppStartDestination.ProfileSetup
             }
         }
