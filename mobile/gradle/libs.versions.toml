@@ -31,6 +31,12 @@ androidxTestCore = "1.7.0"
 firebaseBom = "34.17.0"
 googleServices = "4.4.4"
 kotlinxCoroutinesPlayServices = "1.10.2"
+# Ground location picker (Phase 2). Checked against live sources (mvnrepository.com,
+# developers.google.com/android/guides/releases) on 2026-09-04, same precedent as the
+# Firebase BOM above. No Maps API key exists in this environment -- see androidApp's
+# build.gradle.kts for the same conditional-config pattern google-services.json already uses.
+playServicesMaps = "20.0.0"
+mapsCompose = "8.4.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
@@ -69,6 +75,9 @@ androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTes
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

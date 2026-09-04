@@ -32,6 +32,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Ground location picker (Phase 2). ${MAPS_API_KEY} resolves via the manifest
+            placeholder androidApp/build.gradle.kts sets from local.properties -- blank in this
+            environment (no key provisioned yet), which lets the Maps SDK initialize and degrade
+            gracefully (a blank/watermarked map) rather than fail the build. See that file's
+            comment for the full reasoning.
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
     </application>
 
 </manifest>

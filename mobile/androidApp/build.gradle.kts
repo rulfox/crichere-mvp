@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -19,6 +20,17 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+// Ground location picker (Phase 2) needs a Google Maps API key, which -- like
+// google-services.json above and the backend's Firebase/AWS credentials -- doesn't exist in
+// this environment. Read from local.properties (gitignored, per-machine, same file
+// `sdk.dir` already lives in) rather than committing a real key; blank means the manifest
+// placeholder resolves to an empty string, which lets Maps SDK initialize (and fail
+// gracefully at runtime -- a blank/watermarked map, not a crash) instead of failing the build.
+val mapsApiKey: String = Properties().apply {
+    val localProperties = rootProject.file("local.properties")
+    if (localProperties.exists()) localProperties.inputStream().use { load(it) }
+}.getProperty("MAPS_API_KEY", "")
+
 android {
     namespace = "com.crichere.app"
     compileSdk = 36
@@ -29,6 +41,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0-toolchain-proof"
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildFeatures {
@@ -69,4 +82,7 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.viewmodel)
+
+    implementation(libs.play.services.maps)
+    implementation(libs.maps.compose)
 }
