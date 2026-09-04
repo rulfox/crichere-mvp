@@ -82,17 +82,3 @@ data class ProfileUpdateRequestDto(
     val battingStyle: BattingStyle? = null,
     val bowlingStyle: BowlingStyle? = null,
 )
-
-/**
- * Mirrors the backend's `PhotoUploadUrlResponse`
- * (`backend/src/main/kotlin/com/crichere/backend/profile/dto/PhotoUploadUrlResponse.kt`) -- an
- * S3 presigned-POST contract. [expiresAt] stays a plain `String` (same reasoning `AuthResult`
- * documents for its own `Instant`-shaped fields: nothing here needs to do arithmetic on it).
- */
-@Serializable
-data class PhotoUploadInfoDto(
-    val uploadUrl: String,
-    val fields: Map<String, String>,
-    val key: String,
-    val expiresAt: String,
-)

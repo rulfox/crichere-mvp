@@ -1,5 +1,7 @@
 package com.crichere.app.profile
 
+import com.crichere.app.upload.PhotoUploadInfoDto
+
 /** In-memory [ProfileRepository] test double -- `commonTest` has no real backend/S3 to hit. */
 class FakeProfileRepository(
     var profile: ProfileDto = ProfileDto(userId = "11111111-1111-1111-1111-111111111111"),
@@ -41,6 +43,7 @@ class FakeProfileRepository(
             photoUrl = snapshot.photoUrl,
             country = profile.country,
             state = snapshot.state,
+            district = snapshot.district,
             city = snapshot.city,
             playingRole = snapshot.playingRole,
             battingStyle = snapshot.battingStyle,

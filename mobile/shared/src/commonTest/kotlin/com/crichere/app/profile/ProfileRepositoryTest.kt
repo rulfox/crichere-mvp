@@ -1,5 +1,7 @@
 package com.crichere.app.profile
 
+import com.crichere.app.upload.PhotoUploadFailedException
+import com.crichere.app.upload.PhotoUploadInfoDto
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
