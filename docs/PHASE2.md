@@ -100,6 +100,7 @@ All forks surfaced during scoping and implementation planning (2026-09-04) were 
 - League delete/archive (beyond "mark completed") isn't decided — not needed for Phase 2's Screens as written, revisit if it comes up.
 - Who can register a new Ground — any logged-in user (same posture as league creation), or only while creating/editing a league (no standalone "add a ground" entry point)? Leaning toward the latter for Phase 2 (grounds are created as a byproduct of league creation, not their own directory feature yet), not yet confirmed.
 - Google Maps API key provisioning (Android map picker) — `GroundMapPicker` (the draggable-marker `GoogleMap` composable) is built and wired into League Creation's Ground section as of 2026-09-05, but genuinely blocks real on-device verification (does the pin actually render/drag correctly) until someone provisions a key; everything else is unaffected.
+- **iOS Phase 2 screens deliberately skipped for now (explicit user decision, 2026-09-05)**: discovered mid-Phase-2 that iOS never got Phase 1's own auth nav shell built either — `ContentView.swift` is still the pre-Phase-1 toolchain-proof screen, `PhoneEntryView`/`OtpVerifyView`/a root nav switcher don't exist, and `ProfileSetupView`/`OwnProfileView` are authored but never wired to anything. Building League Dashboard/Creation/Detail SwiftUI screens on top of that gap wouldn't be usable. Android Phase 2 continues to completion; iOS (Phase 1's nav shell and Phase 2's screens together) is deferred to its own dedicated pass.
 
 ---
 
