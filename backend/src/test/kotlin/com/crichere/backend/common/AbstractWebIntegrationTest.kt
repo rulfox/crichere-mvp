@@ -1,5 +1,6 @@
 package com.crichere.backend.common
 
+import com.crichere.backend.auth.AuthRateLimiter
 import com.crichere.backend.auth.FirebaseTokenVerifier
 import io.mockk.clearMocks
 import io.mockk.mockk
@@ -57,10 +58,27 @@ abstract class AbstractWebIntegrationTest {
     @Autowired
     protected lateinit var firebaseTokenVerifier: FirebaseTokenVerifier
 
-    /** The mock is a context-scoped singleton, so stubbing must not leak between tests. */
+    @Autowired
+    private lateinit var authRateLimiter: AuthRateLimiter
+
+    @Autowired
+    private lateinit var contentRateLimiter: ContentRateLimiter
+
+    /**
+     * The mock is a context-scoped singleton, so stubbing must not leak between tests. Same
+     * reasoning for the two rate limiters: both are context-scoped singletons (in-memory token
+     * buckets, see `AuthRateLimiter`/`ContentRateLimiter`), so every subclass across the whole
+     * test run shares one IP/user bucket unless it's reset here -- a subclass with enough
+     * `/auth/session` calls (or league/ground/award creates) of its own could otherwise trip a
+     * bucket a completely unrelated test class already spent most of, depending on execution
+     * order. `AuthFlowIntegrationTest` also resets `AuthRateLimiter` itself (to control its own
+     * rate-limit-tripping tests precisely) -- redundant with this, but harmless.
+     */
     @BeforeEach
-    fun resetFirebaseVerifierStubbing() {
+    fun resetSharedContextState() {
         clearMocks(firebaseTokenVerifier)
+        authRateLimiter.reset()
+        contentRateLimiter.reset()
     }
 
     companion object {

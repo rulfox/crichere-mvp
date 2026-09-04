@@ -2,6 +2,9 @@ package com.crichere.backend.common
 
 import com.crichere.backend.auth.AuthenticationFailedException
 import com.crichere.backend.auth.RateLimitExceededException
+import com.crichere.backend.league.GroundNotFoundException
+import com.crichere.backend.league.LeagueNotFoundException
+import com.crichere.backend.league.NotOrganizerException
 import com.crichere.backend.profile.BowlingStyleNotAllowedException
 import com.crichere.backend.profile.BowlingStyleRequiredException
 import com.crichere.backend.reference.MalformedDistrictIdException
@@ -241,6 +244,45 @@ class GlobalExceptionHandler {
             title = "Photo upload unavailable",
             code = "PHOTO_UPLOAD_UNAVAILABLE",
             detail = "Photo upload is temporarily unavailable. Please try again later.",
+            instance = request.requestURI,
+        )
+
+    /** No league matches the id in the path -- `GET`/`PUT`/`PATCH`/awards-CRUD on a nonexistent league. */
+    @ExceptionHandler(LeagueNotFoundException::class)
+    fun handleLeagueNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No league matches this id.",
+            instance = request.requestURI,
+        )
+
+    /** A league create/edit request referenced a `groundId` that doesn't exist (see `com.crichere.backend.league.LeagueService`). */
+    @ExceptionHandler(GroundNotFoundException::class)
+    fun handleGroundNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No ground matches this id.",
+            instance = request.requestURI,
+        )
+
+    /**
+     * The caller is authenticated but is not this league's organizer -- Phase 2's first genuinely
+     * new authorization surface (see `com.crichere.backend.league.LeagueExceptions`).
+     */
+    @ExceptionHandler(NotOrganizerException::class)
+    fun handleNotOrganizer(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.FORBIDDEN,
+            slug = "access-denied",
+            title = "Access denied",
+            code = "ACCESS_DENIED",
+            detail = "You do not have permission to modify this league.",
             instance = request.requestURI,
         )
 
