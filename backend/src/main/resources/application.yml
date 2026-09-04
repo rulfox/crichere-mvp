@@ -47,7 +47,9 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:postgresql://localhost:5432/crichere_dev
+    # Host port 55432, matching backend/docker-compose.yml -- not 5432, which collides with a
+    # locally-running native Postgres service on some dev machines (confirmed during Task 8).
+    url: jdbc:postgresql://localhost:55432/crichere_dev
     username: ${DB_USERNAME:crichere}
     password: ${DB_PASSWORD:crichere}
 

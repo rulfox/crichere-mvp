@@ -6,9 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * Constraint tests for the `users` table (V1__create_users_table.sql) via [UserEntity] /
@@ -53,6 +55,7 @@ class UsersConstraintTest : AbstractIntegrationTest() {
 
     @Test
     fun `created_at defaults to now() at the database level when omitted`() {
+        val beforeInsert = Instant.now()
         val id = UUID.randomUUID()
         jdbcTemplate.update(
             "INSERT INTO users (id, phone_lookup_hash, phone_encrypted) VALUES (?, ?, ?)",
@@ -60,13 +63,22 @@ class UsersConstraintTest : AbstractIntegrationTest() {
             "hash-db-default-created-at",
             "enc",
         )
+        val afterInsert = Instant.now()
 
-        val createdAt = jdbcTemplate.queryForObject(
-            "SELECT created_at FROM users WHERE id = ?",
-            java.sql.Timestamp::class.java,
-            id,
+        val createdAt = requireNotNull(
+            jdbcTemplate.queryForObject(
+                "SELECT created_at FROM users WHERE id = ?",
+                java.sql.Timestamp::class.java,
+                id,
+            ),
+        ) { "created_at should never be null for a row that was just inserted" }.toInstant()
+
+        // A non-null-but-wrong default (e.g. an epoch/sentinel timestamp) would satisfy a plain
+        // assertNotNull just as well as a real `DEFAULT now()` -- bracket against the actual insert
+        // window instead, so this test can only pass if the DEFAULT genuinely evaluated now().
+        assertTrue(
+            !createdAt.isBefore(beforeInsert) && !createdAt.isAfter(afterInsert.plus(Duration.ofSeconds(5))),
+            "created_at ($createdAt) should fall within the insert's own time window ($beforeInsert..$afterInsert)",
         )
-
-        assertNotNull(createdAt)
     }
 }
