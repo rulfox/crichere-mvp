@@ -2,8 +2,8 @@
 
 Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infra decisions that apply here.
 
-**Last updated:** 2026-09-04
-**Status:** scoped via interactive discussion (research-grounded against CricHeroes/PlayBid/CricBid/CricAuction conventions) — deliberately narrow: discovery + creation only, no auction mechanics yet. Ready to move into implementation planning.
+**Last updated:** 2026-09-05
+**Status:** implementation complete for backend + Android (District retrofit, Grounds, Leagues, Awards, bottom-nav shell, League Dashboard/Creation/Detail screens, ground map picker). `androidApp:assembleDebug` and `:shared` tests (Android + all 3 iOS test-compile targets) are green. Still open: real on-device Android walkthrough (no emulator in this environment), a provisioned Google Maps API key, and iOS screens (deliberately deferred — see Section 5).
 
 ---
 
