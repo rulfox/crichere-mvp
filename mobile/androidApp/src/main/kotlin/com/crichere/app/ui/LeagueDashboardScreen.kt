@@ -132,8 +132,9 @@ private fun LeagueDashboardScreen(
             }
         }
 
-        if (state.errorMessage != null) {
-            Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
+        val errorMessage = state.errorMessage
+        if (errorMessage != null) {
+            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
         }
 
         if (state.isLoading) {

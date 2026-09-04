@@ -35,8 +35,11 @@ kotlinxCoroutinesPlayServices = "1.10.2"
 # developers.google.com/android/guides/releases) on 2026-09-04, same precedent as the
 # Firebase BOM above. No Maps API key exists in this environment -- see androidApp's
 # build.gradle.kts for the same conditional-config pattern google-services.json already uses.
+# mapsCompose pinned below 6.7.0 deliberately -- 8.4.0's transitive core-ktx 1.19.0 needs
+# compileSdk 37 + AGP 9.1.0, which this project isn't on (see libs.versions.toml's agp comment).
+# 6.4.1 exposes the identical GoogleMap/Marker/rememberCameraPositionState API this app uses.
 playServicesMaps = "20.0.0"
-mapsCompose = "8.4.0"
+mapsCompose = "6.4.1"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
