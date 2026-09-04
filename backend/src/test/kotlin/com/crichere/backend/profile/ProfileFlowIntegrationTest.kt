@@ -68,7 +68,7 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
             .body()
 
         assertEquals(userId.toString(), body["userId"])
-        for (field in listOf("name", "photoUrl", "country", "state", "city", "playingRole", "battingStyle", "bowlingStyle")) {
+        for (field in listOf("name", "photoUrl", "country", "state", "district", "city", "playingRole", "battingStyle", "bowlingStyle")) {
             assertNull(body[field], "$field should be null for a user with no profile row yet")
         }
         assertEquals(false, body["profileComplete"])
@@ -80,6 +80,7 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
             "name" to "Virat Kohli",
             "photoUrl" to "https://cdn.crichere.app/photos/virat.jpg",
             "state" to "Delhi",
+            "district" to "New Delhi",
             "city" to "New Delhi",
             "playingRole" to "BATSMAN",
             "battingStyle" to "RIGHT_HAND",
@@ -108,6 +109,7 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
             "name" to "Jasprit Bumrah",
             "photoUrl" to "https://cdn.crichere.app/photos/jasprit.jpg",
             "state" to "Gujarat",
+            "district" to "Ahmedabad",
             "city" to "Ahmedabad",
             "playingRole" to "BOWLER",
             "battingStyle" to "RIGHT_HAND",
@@ -131,6 +133,7 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
                 "name" to "First Save",
                 "photoUrl" to "https://cdn.crichere.app/photos/x.jpg",
                 "state" to "Karnataka",
+                "district" to "Bengaluru Urban",
                 "city" to "Bengaluru",
                 "playingRole" to "BATSMAN",
                 "battingStyle" to "RIGHT_HAND",
@@ -145,6 +148,7 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
         assertEquals("Second Save", second["name"])
         assertNull(second["photoUrl"])
         assertNull(second["state"])
+        assertNull(second["district"])
         assertNull(second["playingRole"])
         assertEquals(false, second["profileComplete"])
     }
@@ -192,6 +196,7 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
                 "name" to "MS Dhoni",
                 "photoUrl" to "https://cdn.crichere.app/photos/dhoni.jpg",
                 "state" to "Jharkhand",
+                "district" to "Ranchi",
                 "city" to "Ranchi",
                 "playingRole" to "WICKETKEEPER",
                 "battingStyle" to "RIGHT_HAND",

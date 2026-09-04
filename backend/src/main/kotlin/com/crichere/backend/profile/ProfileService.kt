@@ -48,6 +48,7 @@ class ProfileService(
         profile.name = request.name
         profile.photoUrl = request.photoUrl
         profile.state = request.state
+        profile.district = request.district
         profile.city = request.city
         profile.playingRole = request.playingRole
         profile.battingStyle = request.battingStyle
@@ -77,6 +78,7 @@ class ProfileService(
             photoUrl = profile?.photoUrl,
             country = profile?.country,
             state = profile?.state,
+            district = profile?.district,
             city = profile?.city,
             playingRole = profile?.playingRole,
             battingStyle = profile?.battingStyle,

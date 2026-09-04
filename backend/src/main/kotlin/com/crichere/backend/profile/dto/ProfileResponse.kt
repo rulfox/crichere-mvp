@@ -24,6 +24,7 @@ data class ProfileResponse(
     val photoUrl: String?,
     val country: String?,
     val state: String?,
+    val district: String?,
     val city: String?,
     val playingRole: PlayingRole?,
     val battingStyle: BattingStyle?,

@@ -43,6 +43,9 @@ class ProfileEntity(
     @Column(name = "state")
     var state: String? = null,
 
+    @Column(name = "district")
+    var district: String? = null,
+
     @Column(name = "city")
     var city: String? = null,
 

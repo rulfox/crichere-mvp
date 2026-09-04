@@ -206,6 +206,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
                 photoUrl = "https://cdn.crichere.app/photos/jasprit.jpg",
                 country = "IN",
                 state = "Gujarat",
+                district = "Ahmedabad",
                 city = "Ahmedabad",
                 playingRole = PlayingRole.BOWLER,
                 battingStyle = BattingStyle.RIGHT_HAND,

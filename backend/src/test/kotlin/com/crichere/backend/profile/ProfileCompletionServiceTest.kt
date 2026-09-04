@@ -150,6 +150,7 @@ class ProfileCompletionServiceTest {
             photoUrl = "https://cdn.crichere.app/photos/rohit.jpg",
             country = "IN",
             state = "Maharashtra",
+            district = "Mumbai City",
             city = "Mumbai",
             playingRole = role,
             battingStyle = BattingStyle.RIGHT_HAND,
@@ -166,6 +167,7 @@ class ProfileCompletionServiceTest {
                 "name" to { p -> p.name = null },
                 "photoUrl" to { p -> p.photoUrl = null },
                 "state" to { p -> p.state = null },
+                "district" to { p -> p.district = null },
                 "city" to { p -> p.city = null },
                 "playingRole" to { p -> p.playingRole = null },
                 "battingStyle" to { p -> p.battingStyle = null },
@@ -184,6 +186,7 @@ class ProfileCompletionServiceTest {
                 "name" to { p -> p.name = "   " },
                 "photoUrl" to { p -> p.photoUrl = "" },
                 "state" to { p -> p.state = " " },
+                "district" to { p -> p.district = " " },
                 "city" to { p -> p.city = "\t" },
             )
             return PlayingRole.entries.flatMap { role ->

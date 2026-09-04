@@ -13,10 +13,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * `/reference/states` and `/reference/states/{state}/cities` over real HTTP -- with no
- * `Authorization` header sent at all, proving `SecurityConfig`'s `permitAll()` on every path
- * under `/api/v1/reference/` actually covers this exact path shape (including the
- * path-variable one) rather than assuming Task 3's wiring is correct for it.
+ * `/reference/states`, `/reference/states/{state}/districts`, and
+ * `/reference/districts/{district}/cities` over real HTTP -- with no `Authorization` header
+ * sent at all, proving `SecurityConfig`'s `permitAll()` on every path under
+ * `/api/v1/reference/` actually covers this exact path shape (including both path-variable
+ * ones) rather than assuming the wiring is correct for it.
  */
 class ReferenceIntegrationTest : AbstractWebIntegrationTest {
 
@@ -37,8 +38,19 @@ class ReferenceIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
-    fun `cities for a real state code are public and include the real seeded data`() {
-        val result = mockMvc.perform(get("/api/v1/reference/states/KA/cities"))
+    fun `districts for a real state code are public and include the real seeded data`() {
+        val result = mockMvc.perform(get("/api/v1/reference/states/KA/districts"))
+            .andExpect(status().isOk)
+            .andReturn()
+
+        assertTrue(readList(result.response.contentAsString).any { it["name"] == "Bengaluru Urban" })
+    }
+
+    @Test
+    fun `cities for a real district are public and include the real seeded data`() {
+        val districtId = bengaluruUrbanDistrictId()
+
+        val result = mockMvc.perform(get("/api/v1/reference/districts/$districtId/cities"))
             .andExpect(status().isOk)
             .andReturn()
 
@@ -47,38 +59,60 @@ class ReferenceIntegrationTest : AbstractWebIntegrationTest {
 
     @Test
     fun `the state code lookup is case-insensitive`() {
-        val result = mockMvc.perform(get("/api/v1/reference/states/ka/cities"))
+        val result = mockMvc.perform(get("/api/v1/reference/states/ka/districts"))
             .andExpect(status().isOk)
             .andReturn()
 
-        assertTrue(readList(result.response.contentAsString).any { it["name"] == "Bengaluru" })
+        assertTrue(readList(result.response.contentAsString).any { it["name"] == "Bengaluru Urban" })
     }
 
     @Test
     fun `a syntactically valid but unknown state code returns an empty list, not an error`() {
-        mockMvc.perform(get("/api/v1/reference/states/ZZ/cities"))
+        mockMvc.perform(get("/api/v1/reference/states/ZZ/districts"))
             .andExpect(status().isOk)
             .andExpect(content().json("[]"))
     }
 
     @Test
     fun `a malformed state code returns a 404 problem detail`() {
-        mockMvc.perform(get("/api/v1/reference/states/not-a-code/cities"))
+        mockMvc.perform(get("/api/v1/reference/states/not-a-code/districts"))
             .andExpect(status().isNotFound)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(jsonPath("$.type").value("https://api.crichere.app/problems/not-found"))
             .andExpect(jsonPath("$.title").value("Not found"))
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.code").value("NOT_FOUND"))
-            .andExpect(jsonPath("$.instance").value("/api/v1/reference/states/not-a-code/cities"))
+            .andExpect(jsonPath("$.instance").value("/api/v1/reference/states/not-a-code/districts"))
             .andExpect(jsonPath("$.timestamp").isNotEmpty)
     }
 
     @Test
     fun `a numeric state code is also treated as malformed`() {
-        mockMvc.perform(get("/api/v1/reference/states/12/cities"))
+        mockMvc.perform(get("/api/v1/reference/states/12/districts"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+    }
+
+    @Test
+    fun `a syntactically valid but unknown district id returns an empty list, not an error`() {
+        mockMvc.perform(get("/api/v1/reference/districts/${java.util.UUID.randomUUID()}/cities"))
+            .andExpect(status().isOk)
+            .andExpect(content().json("[]"))
+    }
+
+    @Test
+    fun `a malformed district id returns a 404 problem detail`() {
+        mockMvc.perform(get("/api/v1/reference/districts/not-a-uuid/cities"))
+            .andExpect(status().isNotFound)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+            .andExpect(jsonPath("$.instance").value("/api/v1/reference/districts/not-a-uuid/cities"))
+    }
+
+    private fun bengaluruUrbanDistrictId(): String {
+        val result = mockMvc.perform(get("/api/v1/reference/states/KA/districts")).andReturn()
+        val district = readList(result.response.contentAsString).first { it["name"] == "Bengaluru Urban" }
+        return district["id"] as String
     }
 
     @Suppress("UNCHECKED_CAST")

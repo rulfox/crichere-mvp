@@ -43,6 +43,7 @@ class ProfileServiceTest {
         assertNull(response.photoUrl)
         assertNull(response.country)
         assertNull(response.state)
+        assertNull(response.district)
         assertNull(response.city)
         assertNull(response.playingRole)
         assertNull(response.battingStyle)
@@ -138,6 +139,7 @@ class ProfileServiceTest {
             name = "Old Name",
             photoUrl = "https://cdn.crichere.app/old.jpg",
             state = "Karnataka",
+            district = "Bengaluru Urban",
             city = "Bengaluru",
             playingRole = PlayingRole.BATSMAN,
             battingStyle = BattingStyle.RIGHT_HAND,
@@ -153,6 +155,7 @@ class ProfileServiceTest {
         assertEquals("New Name", saved.captured.name)
         assertNull(saved.captured.photoUrl)
         assertNull(saved.captured.state)
+        assertNull(saved.captured.district)
         assertNull(saved.captured.city)
         assertNull(saved.captured.playingRole)
         assertNull(saved.captured.battingStyle)
