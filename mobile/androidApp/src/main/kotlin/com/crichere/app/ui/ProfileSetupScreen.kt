@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -38,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crichere.app.profile.BattingStyle
 import com.crichere.app.profile.BowlingStyle
 import com.crichere.app.profile.PlayingRole
+import com.crichere.app.profile.ProfileField
 import com.crichere.app.profile.ProfileSetupState
 import com.crichere.app.profile.ProfileSetupViewModel
 import com.crichere.app.reference.CityDto
@@ -88,6 +91,15 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
         return
     }
 
+    // One requester per resumable field, so the screen can scroll the first-missing (or, in edit
+    // mode, the top) field into view on load -- see ProfileSetupState.initialFocusField's KDoc
+    // ("purely advisory ... e.g. auto-scroll"). Fresh instances per (re-)entry into this
+    // composable, matching initialFocusField's own "computed once, on load" lifetime.
+    val fieldBringIntoViewRequesters = remember { ProfileField.entries.associateWith { BringIntoViewRequester() } }
+    LaunchedEffect(Unit) {
+        fieldBringIntoViewRequesters.getValue(state.initialFocusField).bringIntoView()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -102,7 +114,9 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             onValueChange = viewModel::onNameChanged,
             label = { Text("Full name") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.NAME)),
         )
 
         PhotoSection(
@@ -110,6 +124,7 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             onPickPhoto = {
                 photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             },
+            modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.PHOTO)),
         )
 
         OutlinedButton(
@@ -134,6 +149,7 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             selected = state.states.firstOrNull { it.name == state.state },
             optionLabel = StateDto::name,
             onSelected = viewModel::onStateSelected,
+            modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.STATE)),
         )
 
         DropdownSelector(
@@ -143,6 +159,7 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             optionLabel = CityDto::name,
             onSelected = viewModel::onCitySelected,
             enabled = state.state != null,
+            modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.CITY)),
         )
 
         DropdownSelector(
@@ -151,6 +168,7 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             selected = state.playingRole,
             optionLabel = PlayingRole::displayName,
             onSelected = viewModel::onRoleSelected,
+            modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.ROLE)),
         )
 
         DropdownSelector(
@@ -159,6 +177,7 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             selected = state.battingStyle,
             optionLabel = BattingStyle::displayName,
             onSelected = viewModel::onBattingStyleSelected,
+            modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.BATTING)),
         )
 
         if (state.isBowlingStyleApplicable) {
@@ -168,6 +187,7 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
                 selected = state.bowlingStyle,
                 optionLabel = BowlingStyle::displayName,
                 onSelected = viewModel::onBowlingStyleSelected,
+                modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.BOWLING)),
             )
         }
 
@@ -190,8 +210,8 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
 }
 
 @Composable
-private fun PhotoSection(state: ProfileSetupState, onPickPhoto: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun PhotoSection(state: ProfileSetupState, onPickPhoto: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TextButton(onClick = onPickPhoto, enabled = !state.isUploadingPhoto) {
             Text(
                 when {
@@ -217,12 +237,14 @@ private fun <T> DropdownSelector(
     optionLabel: (T) -> String,
     onSelected: (T) -> Unit,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
         expanded = expanded && enabled,
         onExpandedChange = { if (enabled) expanded = it },
+        modifier = modifier,
     ) {
         OutlinedTextField(
             value = selected?.let(optionLabel).orEmpty(),
