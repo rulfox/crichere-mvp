@@ -1,0 +1,66 @@
+# Crichere — Full Rewrite Overview
+
+Living document. Updated continuously as decisions are made — check `Last updated` per section, not just the top.
+
+**Last updated:** 2026-08-31
+
+## What This Is
+
+Cricket league auction platform. Full ground-up rewrite decided 2026-08-31. This is a clean design — no reference to any prior Crichere codebase, specs, or patterns during design/build. A prior app exists but is out of bounds as a design input; it's only brought back in for a side-by-side comparison after a given feature is fully finalized here.
+
+## Stack Decisions (project-wide, apply to every phase)
+
+| Layer | Choice | Why |
+|---|---|---|
+| Mobile app | **KMP (Kotlin Multiplatform)** — shared business logic/data layer, native UI per platform: Jetpack Compose on Android, SwiftUI on iOS | Superseded an earlier Flutter decision (2026-08-31, same day) — user chose the highest per-platform quality ceiling over Flutter's faster single-UI-codebase tradeoff. Costs more UI build/maintenance effort (two UI layers to build and keep in sync) in exchange for fully native rendering on both platforms. |
+| Backend | **Spring Boot Kotlin**, from scratch | Typed, mature, well-suited to an event-sourced domain like an auction ladder. Local-only during dev/testing, Railway at go-live — see Deployment Strategy below. |
+| Public web viewer (realtime auction link, spectators) | **Next.js**, separate app | Thin SSE-consuming broadcast view — doesn't need to share code with the mobile app regardless of app stack. |
+| Auth / OTP | **Firebase Phone Auth** | Reuses the existing Firebase project (no new provisioning), avoids owning India DLT SMS-template compliance that AWS SNS/Cognito would require. **Not free** — requires the Blaze (pay-as-you-go) plan (already enabled), billed per SMS sent (~$0.01–$0.07/SMS in India, confirm exact current rate before launch). |
+| Media storage | **AWS S3**, bucket `crichere-media-dev` (us-east-1) | Existing bucket, already provisioned — reused, not reprovisioned. |
+| Hosting | **Railway** (backend, at go-live) — local-only during dev/testing | Existing account/setup, reused at go-live. See Deployment Strategy below. |
+
+## Deployment Strategy (updated 2026-08-31)
+
+**Local-first, Railway at go-live.** Backend is developed and tested entirely locally for now — run via `./gradlew bootRun` (or IDE) against a local/Dockerized Postgres, exercised through local API testing (Testcontainers for automated integration tests, manual tools like curl/Postman/HTTP-client for exploratory testing).
+
+**Go-live only after local confirmation.** Once the API is confirmed fully working locally, it deploys to **Railway** (existing account, reused, as originally planned) — AWS and Firebase remain in use for media storage and auth respectively, but they are not backend hosting candidates; Railway is the settled hosting target, just not used until local testing is done.
+
+## Infra Reuse Rule
+
+No new cloud provisioning for this rewrite. Reuse: AWS (S3 `crichere-media-dev`), Firebase (Auth + FCM project), Railway (hosting, at go-live). Confirm against current state before assuming any of these still match — this doc is a snapshot, not live state.
+
+## Repository Plan (updated 2026-08-31, supersedes the earlier branch-based plan)
+
+**New directory, fresh repo — not a branch in `E:\crichere`.** Reversed from an earlier same-project plan (archive `master`, clean the tree, work in-place) once the "zero reference to old code" rule was weighed against it: a branch strategy still leaves old code reachable via `git log`/history search in the same repo, relying on discipline to not look; a physically separate directory makes that impossible by construction. There's also no code continuity worth preserving via shared git history — the mobile stack changed completely (Flutter → KMP) and the backend is rewritten from scratch, so nothing carries over line-by-line. KMP's and Spring Boot's own project-root conventions (Gradle multi-module layouts) also want a clean root, not old Flutter/Spring directories sitting nearby.
+
+- `E:\crichere` (this repo) stays **untouched** — it remains the reference target for the later post-hoc feature comparisons (see "What This Is" above), and nothing else.
+- **New repo location: `E:\crichere-mvp`** — created and git-initialized 2026-08-31, skeleton committed (`.gitignore`, `README.md`, empty `backend/`, `mobile/`, `web-viewer/` top-level folders each with a placeholder README). No remote/CI wired up yet. No actual project scaffolding yet (no Gradle/KMP template, no Spring Initializr, no `create-next-app`) — that's a separate, larger step.
+- `E:\Documentation\Crichere\` (this docs folder's original location) was unaffected by the repo split, since it was external to any repo either way. **Superseded 2026-09-04**: these docs now live in-repo at `E:\crichere-mvp\docs\` instead, so decisions and code stay versioned together — see the note in the repo's root `README.md`.
+
+**Status:** skeleton set up. Next: actual project scaffolding for each of the three subprojects, and remote/CI setup, both still pending.
+
+## Phase Doc Template
+
+Every `PHASEn.md` follows this structure, in order:
+
+1. **Overview** — plain language, non-technical, explains what the phase delivers
+2. **Features** — plain-language feature list
+3. **Screens** — what content lives on each screen, not layout/placement
+4. **Decisions Made** — locked choices with rationale
+5. **Open Questions and Gaps** — unresolved items
+6. **Pure Technical Things** — implementation detail, security, data model
+7. **Design Prompts** *(optional, added when ready to generate screens)* — derived from Section 3's Screens content, one prompt per screen, written to feed directly into Claude Design. Keep in sync with Section 3 — if Screens content changes, update the prompts too.
+
+## Related Docs
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — backend (Spring Boot Kotlin) and frontend (KMP) coding patterns/architecture, applies project-wide. Status: locked.
+
+## Phase Index
+
+- [Phase 1](PHASE1.md) — OTP login (Firebase Phone Auth, India-only for now) + profile setup (Name, Photo, State, City, cricket attributes). **Status: implemented, merged to master 2026-09-04.**
+- [Phase 2](PHASE2.md) — league dashboard (list/filter by state, city, nearest-GPS) + league creation, discovery-only (no auction mechanics yet — deferred to a later phase). **Status: scoped, ready for implementation planning.**
+
+## Open Questions
+
+- Whether `E:\crichere-mvp` gets its own GitHub remote/CI now, or stays local-only until closer to go-live.
+- When to run actual project scaffolding (Gradle/KMP template for `mobile/`, Spring Initializr for `backend/`, `create-next-app` for `web-viewer/`) — not yet done, skeleton-only so far.
