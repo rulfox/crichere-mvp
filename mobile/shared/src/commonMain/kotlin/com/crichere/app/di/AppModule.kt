@@ -11,6 +11,7 @@ import com.crichere.app.ground.KtorGroundRepository
 import com.crichere.app.league.KtorLeagueRepository
 import com.crichere.app.league.LeagueCreationViewModel
 import com.crichere.app.league.LeagueDashboardViewModel
+import com.crichere.app.league.LeagueDetailViewModel
 import com.crichere.app.league.LeagueRepository
 import com.crichere.app.network.HttpClientFactory
 import com.crichere.app.profile.KtorProfileRepository
@@ -103,6 +104,7 @@ val sharedModule: Module = module {
     }
     factory { OwnProfileViewModel(profileRepository = get(), authRepository = get()) }
     factory { LeagueDashboardViewModel(leagueRepository = get(), referenceRepository = get(), locationProvider = get()) }
+    factory { (leagueId: String) -> LeagueDetailViewModel(leagueId = leagueId, leagueRepository = get(), authRepository = get()) }
     factory { (editingLeagueId: String?) ->
         LeagueCreationViewModel(
             editingLeagueId = editingLeagueId,
