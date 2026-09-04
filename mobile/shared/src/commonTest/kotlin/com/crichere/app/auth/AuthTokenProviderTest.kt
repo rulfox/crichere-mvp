@@ -22,6 +22,7 @@ class AuthTokenProviderTest {
         override suspend fun verifyOtp(verificationId: String, code: String) = error("not used in this test")
         override suspend fun exchangeSession(idToken: String) = error("not used in this test")
         override suspend fun logout() = error("not used in this test")
+        override suspend fun getCurrentUserId(): String? = error("not used in this test")
 
         override suspend fun refresh(): AuthResult? {
             refreshCallCount++

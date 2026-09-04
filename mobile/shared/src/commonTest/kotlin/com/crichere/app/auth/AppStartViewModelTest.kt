@@ -22,6 +22,7 @@ class AppStartViewModelTest {
         override suspend fun verifyOtp(verificationId: String, code: String) = error("not used in this test")
         override suspend fun exchangeSession(idToken: String) = error("not used in this test")
         override suspend fun logout() = error("not used in this test")
+        override suspend fun getCurrentUserId(): String? = error("not used in this test")
 
         override suspend fun refresh(): AuthResult? {
             refreshCallCount++
@@ -79,7 +80,7 @@ class AppStartViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(AppStartDestination.OwnProfile, viewModel.destination.value)
+        assertEquals(AppStartDestination.Main, viewModel.destination.value)
     }
 
     @Test
@@ -91,7 +92,7 @@ class AppStartViewModelTest {
         assertEquals(null, viewModel.destination.value)
 
         advanceUntilIdle()
-        assertEquals(AppStartDestination.OwnProfile, viewModel.destination.value)
+        assertEquals(AppStartDestination.Main, viewModel.destination.value)
     }
 
     @Test

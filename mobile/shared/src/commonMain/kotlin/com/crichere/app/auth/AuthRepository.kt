@@ -15,6 +15,14 @@ import kotlinx.serialization.Serializable
 object SecureStorageKeys {
     const val ACCESS_TOKEN = "auth_access_token"
     const val REFRESH_TOKEN = "auth_refresh_token"
+
+    /**
+     * Added for Phase 2: League Detail needs to know the signed-in user's own id to decide
+     * whether to show organizer-only actions (edit/complete/awards) -- Phase 1 never needed this
+     * since every profile mutation was already implicitly self-scoped. Persisted alongside the
+     * tokens on every session exchange/refresh, cleared on logout.
+     */
+    const val USER_ID = "auth_user_id"
 }
 
 /** Thrown by [AuthRepository.exchangeSession] when `/auth/session` doesn't return 2xx. */
@@ -54,6 +62,9 @@ interface AuthRepository {
 
     /** Revokes the stored refresh token backend-side (best-effort) and clears local storage regardless. */
     suspend fun logout()
+
+    /** The signed-in user's own id, read from local storage (no network call) -- `null` if nobody is signed in. See [SecureStorageKeys.USER_ID]. */
+    suspend fun getCurrentUserId(): String?
 }
 
 @Serializable
@@ -139,10 +150,14 @@ internal class KtorAuthRepository(
         }
         secureStorage.remove(SecureStorageKeys.ACCESS_TOKEN)
         secureStorage.remove(SecureStorageKeys.REFRESH_TOKEN)
+        secureStorage.remove(SecureStorageKeys.USER_ID)
     }
+
+    override suspend fun getCurrentUserId(): String? = secureStorage.get(SecureStorageKeys.USER_ID)
 
     private suspend fun persistTokens(result: AuthResult) {
         secureStorage.set(SecureStorageKeys.ACCESS_TOKEN, result.accessToken)
         secureStorage.set(SecureStorageKeys.REFRESH_TOKEN, result.refreshToken)
+        secureStorage.set(SecureStorageKeys.USER_ID, result.userId)
     }
 }
