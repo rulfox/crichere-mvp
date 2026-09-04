@@ -93,7 +93,11 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
                 // Dispatchers.IO (see this method's doc) is what keeps it safe to call synchronously.
                 val addresses = geocoder.getFromLocation(point.latitude, point.longitude, 1)
                 addresses?.firstOrNull()?.let { address ->
-                    GeocodedLocation(administrativeArea = address.adminArea, locality = address.locality)
+                    GeocodedLocation(
+                        administrativeArea = address.adminArea,
+                        subAdministrativeArea = address.subAdminArea,
+                        locality = address.locality,
+                    )
                 }
             }.getOrNull()
         }

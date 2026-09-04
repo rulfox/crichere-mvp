@@ -36,6 +36,7 @@ final class ProfileSetupViewModelWrapper: ObservableObject {
 
     func onNameChanged(_ value: String) { viewModel.onNameChanged(value: value) }
     func onStateSelected(_ stateDto: StateDto) { viewModel.onStateSelected(stateDto: stateDto) }
+    func onDistrictSelected(_ districtDto: DistrictDto) { viewModel.onDistrictSelected(districtDto: districtDto) }
     func onCitySelected(_ cityDto: CityDto) { viewModel.onCitySelected(cityDto: cityDto) }
     func onRoleSelected(_ role: PlayingRole) { viewModel.onRoleSelected(role: role) }
     func onBattingStyleSelected(_ style: BattingStyle) { viewModel.onBattingStyleSelected(style: style) }
@@ -101,6 +102,16 @@ struct ProfileSetupView: View {
                             }
                         }
 
+                        Picker("District", selection: Binding(
+                            get: { wrapper.state.districts.first { $0.name == wrapper.state.district } },
+                            set: { newValue in if let newValue { wrapper.onDistrictSelected(newValue) } }
+                        )) {
+                            ForEach(wrapper.state.districts, id: \.id) { districtDto in
+                                Text(districtDto.name).tag(Optional(districtDto))
+                            }
+                        }
+                        .disabled(wrapper.state.state == nil)
+
                         Picker("City", selection: Binding(
                             get: { wrapper.state.cities.first { $0.name == wrapper.state.city } },
                             set: { newValue in if let newValue { wrapper.onCitySelected(newValue) } }
@@ -109,7 +120,7 @@ struct ProfileSetupView: View {
                                 Text(cityDto.name).tag(Optional(cityDto))
                             }
                         }
-                        .disabled(wrapper.state.state == nil)
+                        .disabled(wrapper.state.district == nil)
                     }
 
                     Section("Playing") {

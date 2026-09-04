@@ -44,11 +44,12 @@ import com.crichere.app.profile.ProfileField
 import com.crichere.app.profile.ProfileSetupState
 import com.crichere.app.profile.ProfileSetupViewModel
 import com.crichere.app.reference.CityDto
+import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.StateDto
 
 /**
  * Profile Setup screen: first-time cricket-player onboarding (resumable, per the field order
- * name -> photo -> state -> city -> role -> batting -> bowling-if-applicable) and the "edit"
+ * name -> photo -> state -> district -> city -> role -> batting -> bowling-if-applicable) and the "edit"
  * entry point from Own Profile View, both driven by the same [ProfileSetupViewModel] (see its
  * `isEditMode` constructor parameter). Navigation on completion is handled by the caller
  * (`AuthNavHost`) via [ProfileSetupViewModel.navigationEvents].
@@ -153,12 +154,22 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
         )
 
         DropdownSelector(
+            label = "District",
+            options = state.districts,
+            selected = state.districts.firstOrNull { it.name == state.district },
+            optionLabel = DistrictDto::name,
+            onSelected = viewModel::onDistrictSelected,
+            enabled = state.state != null,
+            modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.DISTRICT)),
+        )
+
+        DropdownSelector(
             label = "City",
             options = state.cities,
             selected = state.cities.firstOrNull { it.name == state.city },
             optionLabel = CityDto::name,
             onSelected = viewModel::onCitySelected,
-            enabled = state.state != null,
+            enabled = state.district != null,
             modifier = Modifier.bringIntoViewRequester(fieldBringIntoViewRequesters.getValue(ProfileField.CITY)),
         )
 

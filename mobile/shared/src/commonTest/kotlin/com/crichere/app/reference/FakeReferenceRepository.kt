@@ -3,15 +3,22 @@ package com.crichere.app.reference
 /** In-memory [ReferenceRepository] test double -- `commonTest` has no real backend to hit. */
 class FakeReferenceRepository(
     var states: List<StateDto> = emptyList(),
-    var citiesByStateCode: Map<String, List<CityDto>> = emptyMap(),
+    var districtsByStateCode: Map<String, List<DistrictDto>> = emptyMap(),
+    var citiesByDistrictId: Map<String, List<CityDto>> = emptyMap(),
 ) : ReferenceRepository {
 
-    val getCitiesForStateCalls = mutableListOf<String>()
+    val getDistrictsForStateCalls = mutableListOf<String>()
+    val getCitiesForDistrictCalls = mutableListOf<String>()
 
     override suspend fun getStates(): List<StateDto> = states
 
-    override suspend fun getCitiesForState(stateCode: String): List<CityDto> {
-        getCitiesForStateCalls += stateCode
-        return citiesByStateCode[stateCode] ?: emptyList()
+    override suspend fun getDistrictsForState(stateCode: String): List<DistrictDto> {
+        getDistrictsForStateCalls += stateCode
+        return districtsByStateCode[stateCode] ?: emptyList()
+    }
+
+    override suspend fun getCitiesForDistrict(districtId: String): List<CityDto> {
+        getCitiesForDistrictCalls += districtId
+        return citiesByDistrictId[districtId] ?: emptyList()
     }
 }

@@ -18,6 +18,7 @@ class ProfileSetupStateIsSaveEnabledTest {
         name = "Rahul Sharma",
         photoUrl = "https://bucket.s3.ap-south-1.amazonaws.com/users/u1/profile.jpg",
         state = "Karnataka",
+        district = "Bengaluru Urban",
         city = "Bengaluru",
         playingRole = role,
         battingStyle = BattingStyle.RIGHT_HAND,
@@ -98,6 +99,14 @@ class ProfileSetupStateIsSaveEnabledTest {
         for (role in allRoles) {
             val bowling = if (role == PlayingRole.BOWLER || role == PlayingRole.ALL_ROUNDER) BowlingStyle.RIGHT_ARM_FAST else null
             assertFalse(completeState(role, bowling).copy(state = null).isSaveEnabled, "role=$role")
+        }
+    }
+
+    @Test
+    fun `missing district disables save for every role`() {
+        for (role in allRoles) {
+            val bowling = if (role == PlayingRole.BOWLER || role == PlayingRole.ALL_ROUNDER) BowlingStyle.RIGHT_ARM_FAST else null
+            assertFalse(completeState(role, bowling).copy(district = null).isSaveEnabled, "role=$role")
         }
     }
 

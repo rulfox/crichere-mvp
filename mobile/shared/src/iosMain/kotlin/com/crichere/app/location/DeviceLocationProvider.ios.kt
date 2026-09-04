@@ -75,7 +75,11 @@ class DeviceLocationProvider : LocationProvider {
                 val placemark = (placemarks?.firstOrNull() as? platform.CoreLocation.CLPlacemark)
                 continuation.resume(
                     placemark?.let {
-                        GeocodedLocation(administrativeArea = it.administrativeArea, locality = it.locality)
+                        GeocodedLocation(
+                            administrativeArea = it.administrativeArea,
+                            subAdministrativeArea = it.subAdministrativeArea,
+                            locality = it.locality,
+                        )
                     },
                 )
             }

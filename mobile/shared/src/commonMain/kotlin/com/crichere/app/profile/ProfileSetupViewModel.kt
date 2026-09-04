@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crichere.app.location.LocationProvider
 import com.crichere.app.reference.CityDto
+import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.ReferenceRepository
 import com.crichere.app.reference.StateDto
 import kotlinx.coroutines.channels.Channel
@@ -17,11 +18,12 @@ import kotlinx.coroutines.launch
 
 /**
  * The exact resumability field order this task's brief locks down (non-negotiable): name -> photo
- * -> state -> city -> role -> batting -> bowling-if-applicable. Also doubles as the set of fields
+ * -> state -> district -> city -> role -> batting -> bowling-if-applicable (District retrofit
+ * inserted between state and city). Also doubles as the set of fields
  * [ProfileSetupState.isSaveEnabled] checks.
  */
 enum class ProfileField {
-    NAME, PHOTO, STATE, CITY, ROLE, BATTING, BOWLING
+    NAME, PHOTO, STATE, DISTRICT, CITY, ROLE, BATTING, BOWLING
 }
 
 data class ProfileSetupState(
@@ -29,11 +31,13 @@ data class ProfileSetupState(
     val name: String = "",
     val photoUrl: String? = null,
     val state: String? = null,
+    val district: String? = null,
     val city: String? = null,
     val playingRole: PlayingRole? = null,
     val battingStyle: BattingStyle? = null,
     val bowlingStyle: BowlingStyle? = null,
     val states: List<StateDto> = emptyList(),
+    val districts: List<DistrictDto> = emptyList(),
     val cities: List<CityDto> = emptyList(),
     val isUploadingPhoto: Boolean = false,
     val isLocating: Boolean = false,
@@ -62,6 +66,7 @@ data class ProfileSetupState(
             if (name.isBlank()) return false
             if (photoUrl.isNullOrBlank()) return false
             if (state.isNullOrBlank()) return false
+            if (district.isNullOrBlank()) return false
             if (city.isNullOrBlank()) return false
             if (playingRole == null) return false
             if (battingStyle == null) return false
@@ -117,6 +122,7 @@ class ProfileSetupViewModel(
                     name = profile?.name.orEmpty(),
                     photoUrl = profile?.photoUrl,
                     state = profile?.state,
+                    district = profile?.district,
                     city = profile?.city,
                     playingRole = profile?.playingRole,
                     battingStyle = profile?.battingStyle,
@@ -124,7 +130,7 @@ class ProfileSetupViewModel(
                     initialFocusField = initialFocus,
                 )
             }
-            loadStatesAndPreselectedCities()
+            loadStatesAndPreselectedDistrictsAndCities()
         }
     }
 
@@ -132,10 +138,25 @@ class ProfileSetupViewModel(
         _state.update { it.copy(name = value, errorMessage = null) }
     }
 
-    /** [stateDto] comes from [ProfileSetupState.states] -- selecting a state clears the city and re-fetches its cities. */
+    /** [stateDto] comes from [ProfileSetupState.states] -- selecting a state clears the district/city and re-fetches its districts. */
     fun onStateSelected(stateDto: StateDto) {
-        _state.update { it.copy(state = stateDto.name, city = null, cities = emptyList(), errorMessage = null) }
-        viewModelScope.launch { loadCities(stateDto.code) }
+        _state.update {
+            it.copy(
+                state = stateDto.name,
+                district = null,
+                districts = emptyList(),
+                city = null,
+                cities = emptyList(),
+                errorMessage = null,
+            )
+        }
+        viewModelScope.launch { loadDistricts(stateDto.code) }
+    }
+
+    /** [districtDto] comes from [ProfileSetupState.districts] -- selecting a district clears the city and re-fetches its cities. */
+    fun onDistrictSelected(districtDto: DistrictDto) {
+        _state.update { it.copy(district = districtDto.name, city = null, cities = emptyList(), errorMessage = null) }
+        viewModelScope.launch { loadCities(districtDto.id) }
     }
 
     fun onCitySelected(cityDto: CityDto) {
@@ -192,8 +213,8 @@ class ProfileSetupViewModel(
     /**
      * User-initiated "use my location" -- never auto-triggered on screen load (that would fire an
      * unprompted permission dialog). Best-effort per this task's ruling: any failure at any step
-     * (permission denied, no fix, geocoder miss, no matching seeded state/city) is a silent no-op,
-     * never a blocking error -- the selectors remain hand-editable regardless.
+     * (permission denied, no fix, geocoder miss, no matching seeded state/district/city) is a
+     * silent no-op, never a blocking error -- the selectors remain hand-editable regardless.
      */
     fun useMyLocation() {
         if (_state.value.isLocating) return
@@ -213,7 +234,17 @@ class ProfileSetupViewModel(
                 return@launch
             }
 
-            val cities = runCatching { referenceRepository.getCitiesForState(matchedState.code) }.getOrDefault(emptyList())
+            val districts = runCatching { referenceRepository.getDistrictsForState(matchedState.code) }.getOrDefault(emptyList())
+            val matchedDistrict = geocoded.subAdministrativeArea?.let { area ->
+                districts.firstOrNull { it.name.equals(area, ignoreCase = true) }
+            }
+
+            if (matchedDistrict == null) {
+                _state.update { it.copy(isLocating = false, state = matchedState.name, districts = districts) }
+                return@launch
+            }
+
+            val cities = runCatching { referenceRepository.getCitiesForDistrict(matchedDistrict.id) }.getOrDefault(emptyList())
             val matchedCity = geocoded.locality?.let { locality ->
                 cities.firstOrNull { it.name.equals(locality, ignoreCase = true) }
             }
@@ -222,6 +253,8 @@ class ProfileSetupViewModel(
                 it.copy(
                     isLocating = false,
                     state = matchedState.name,
+                    districts = districts,
+                    district = matchedDistrict.name,
                     city = matchedCity?.name,
                     cities = cities,
                 )
@@ -239,6 +272,7 @@ class ProfileSetupViewModel(
                 name = current.name,
                 photoUrl = current.photoUrl,
                 state = current.state,
+                district = current.district,
                 city = current.city,
                 playingRole = current.playingRole,
                 battingStyle = current.battingStyle,
@@ -262,30 +296,42 @@ class ProfileSetupViewModel(
         }
     }
 
-    private suspend fun loadStatesAndPreselectedCities() {
+    private suspend fun loadStatesAndPreselectedDistrictsAndCities() {
         val states = runCatching { referenceRepository.getStates() }.getOrDefault(emptyList())
         _state.update { it.copy(states = states) }
 
         // If the loaded profile already has a state saved (resumed onboarding, or edit mode),
-        // pre-load that state's cities too, so the city selector isn't empty on redisplay.
+        // pre-load that state's districts too, so the district selector isn't empty on redisplay.
         val savedStateName = _state.value.state ?: return
         val matchedState = states.firstOrNull { it.name.equals(savedStateName, ignoreCase = true) } ?: return
-        loadCities(matchedState.code)
+        loadDistricts(matchedState.code)
+
+        // Same for a saved district's cities.
+        val savedDistrictName = _state.value.district ?: return
+        val matchedDistrict = _state.value.districts.firstOrNull { it.name.equals(savedDistrictName, ignoreCase = true) } ?: return
+        loadCities(matchedDistrict.id)
     }
 
-    private suspend fun loadCities(stateCode: String) {
-        val cities = runCatching { referenceRepository.getCitiesForState(stateCode) }.getOrDefault(emptyList())
+    private suspend fun loadDistricts(stateCode: String) {
+        val districts = runCatching { referenceRepository.getDistrictsForState(stateCode) }.getOrDefault(emptyList())
+        _state.update { it.copy(districts = districts) }
+    }
+
+    private suspend fun loadCities(districtId: String) {
+        val cities = runCatching { referenceRepository.getCitiesForDistrict(districtId) }.getOrDefault(emptyList())
         _state.update { it.copy(cities = cities) }
     }
 
     /**
-     * The resumability field order, exact: name -> photo -> state -> city -> role -> batting ->
-     * bowling-if-applicable. `null` means every field this profile needs is already filled.
+     * The resumability field order, exact: name -> photo -> state -> district -> city -> role ->
+     * batting -> bowling-if-applicable. `null` means every field this profile needs is already
+     * filled.
      */
     private fun firstMissingField(profile: ProfileDto): ProfileField? {
         if (profile.name.isNullOrBlank()) return ProfileField.NAME
         if (profile.photoUrl.isNullOrBlank()) return ProfileField.PHOTO
         if (profile.state.isNullOrBlank()) return ProfileField.STATE
+        if (profile.district.isNullOrBlank()) return ProfileField.DISTRICT
         if (profile.city.isNullOrBlank()) return ProfileField.CITY
         val role = profile.playingRole ?: return ProfileField.ROLE
         if (profile.battingStyle == null) return ProfileField.BATTING

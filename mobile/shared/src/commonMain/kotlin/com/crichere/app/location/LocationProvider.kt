@@ -12,11 +12,14 @@ data class GeoPoint(
  *
  * @property administrativeArea The state/province-level name (Android: `Address.adminArea`; iOS:
  *   `CLPlacemark.administrativeArea`), matched against the fetched states list's display name.
+ * @property subAdministrativeArea The district-level name (Android: `Address.subAdminArea`; iOS:
+ *   `CLPlacemark.subAdministrativeArea`), matched against the matched state's fetched districts list.
  * @property locality The city-level name (Android: `Address.locality`; iOS: `CLPlacemark.locality`),
- *   matched against the matched state's fetched cities list.
+ *   matched against the matched district's fetched cities list.
  */
 data class GeocodedLocation(
     val administrativeArea: String?,
+    val subAdministrativeArea: String?,
     val locality: String?,
 )
 

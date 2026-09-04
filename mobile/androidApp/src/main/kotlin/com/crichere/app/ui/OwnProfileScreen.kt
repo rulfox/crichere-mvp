@@ -60,6 +60,7 @@ fun OwnProfileScreen(
 
         ProfileRow("Name", state.name)
         ProfileRow("State", state.state)
+        ProfileRow("District", state.district)
         ProfileRow("City", state.city)
         ProfileRow("Role", state.playingRole?.name)
         ProfileRow("Batting style", state.battingStyle?.name)
