@@ -77,7 +77,7 @@ Describing what belongs on each screen — not layout, spacing, or component cho
 | Onboarding is resumable | Partial profile progress is saved; a user who quits mid-signup resumes at the first missing field, not from scratch, next time they log in. |
 | Account creation is idempotent on Firebase UID | Re-verifying the same phone number always resolves to the same account — never creates a duplicate. |
 | Profile is editable after completion | Users will make entry mistakes (wrong city, bad photo) — basic edit capability ships in Phase 1, not deferred. |
-| Terminal screen = Own Profile View | Both a first-time completer and a returning already-complete user land here. Serves as Phase 1's defined "done" state since there's no dashboard yet (that's Phase 2), and doubles as the edit-profile screen. |
+| Terminal screen = Own Profile View | Both a first-time completer and a returning already-complete user land here. Serves as Phase 1's defined "done" state since there's no dashboard yet (that's Phase 2), and doubles as the edit-profile screen. **Superseded 2026-09-04 (Phase 2 scoping): once Phase 2 ships, League Dashboard becomes the post-login landing screen instead — Own Profile View becomes reachable via a nav tab/menu, not the first screen after login.** See PHASE2.md's Decisions Made. |
 | Logout included | Missing from the initial draft — added as a basic, expected capability. |
 | State/City backed by a fixed dataset, dependent dropdowns | Clean, consistent data for Phase 2's location filters — avoids free-text mismatches (e.g. spelling variants of the same city). |
 | GPS auto-fill for State/City via device's native reverse-geocoder | Free (no third-party geocoding API), works on both platforms, always overridable by hand. |
