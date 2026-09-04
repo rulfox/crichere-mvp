@@ -1,10 +1,13 @@
 package com.crichere.backend.league
 
 import com.crichere.backend.common.PhotoUploadUrlResponse
+import com.crichere.backend.league.dto.LeagueAwardResponse
+import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
 import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -79,4 +82,26 @@ class LeagueController(
         @PathVariable id: UUID,
         @AuthenticationPrincipal userId: UUID,
     ): PhotoUploadUrlResponse = leagueService.createBannerUploadUrl(id, userId)
+
+    @PostMapping("/{id}/awards")
+    fun addAward(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+        @Valid @RequestBody request: LeagueAwardSaveRequest,
+    ): LeagueAwardResponse = leagueService.addAward(id, userId, request)
+
+    @PutMapping("/{id}/awards/{awardId}")
+    fun updateAward(
+        @PathVariable id: UUID,
+        @PathVariable awardId: UUID,
+        @AuthenticationPrincipal userId: UUID,
+        @Valid @RequestBody request: LeagueAwardSaveRequest,
+    ): LeagueAwardResponse = leagueService.updateAward(id, awardId, userId, request)
+
+    @DeleteMapping("/{id}/awards/{awardId}")
+    fun deleteAward(
+        @PathVariable id: UUID,
+        @PathVariable awardId: UUID,
+        @AuthenticationPrincipal userId: UUID,
+    ) = leagueService.deleteAward(id, awardId, userId)
 }

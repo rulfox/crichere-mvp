@@ -3,6 +3,7 @@ package com.crichere.backend.common
 import com.crichere.backend.auth.AuthenticationFailedException
 import com.crichere.backend.auth.RateLimitExceededException
 import com.crichere.backend.league.GroundNotFoundException
+import com.crichere.backend.league.LeagueAwardNotFoundException
 import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.NotOrganizerException
 import com.crichere.backend.profile.BowlingStyleNotAllowedException
@@ -268,6 +269,18 @@ class GlobalExceptionHandler {
             title = "Not found",
             code = "NOT_FOUND",
             detail = "No ground matches this id.",
+            instance = request.requestURI,
+        )
+
+    /** No award matches the id under the given league (see `com.crichere.backend.league.LeagueExceptions`). */
+    @ExceptionHandler(LeagueAwardNotFoundException::class)
+    fun handleLeagueAwardNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No award matches this id.",
             instance = request.requestURI,
         )
 

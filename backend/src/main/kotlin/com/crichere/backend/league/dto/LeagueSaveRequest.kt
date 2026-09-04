@@ -1,5 +1,6 @@
 package com.crichere.backend.league.dto
 
+import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -58,4 +59,13 @@ data class LeagueSaveRequest(
 
     @field:DecimalMin(value = "0.0", message = "playerFee cannot be negative")
     val playerFee: BigDecimal? = null,
+
+    /**
+     * Optional initial awards, create-only (ignored by `PUT` -- once a league exists, awards are
+     * managed through their own `POST`/`PUT`/`DELETE /api/v1/leagues/{id}/awards[/{awardId}]`
+     * endpoints). Lets the mobile client's three pre-suggested rows ("First Prize" etc.) land in
+     * the same call as the league itself, not three follow-up requests.
+     */
+    @field:Valid
+    val awards: List<LeagueAwardSaveRequest>? = null,
 )

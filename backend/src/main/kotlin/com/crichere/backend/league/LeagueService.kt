@@ -5,6 +5,8 @@ import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.league.dto.LeagueAwardResponse
+import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
 import org.springframework.stereotype.Service
@@ -15,6 +17,7 @@ import java.util.UUID
 @Service
 class LeagueService(
     private val leagueRepository: LeagueRepository,
+    private val leagueAwardRepository: LeagueAwardRepository,
     private val groundRepository: GroundRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val photoUploadService: PhotoUploadService,
@@ -44,7 +47,9 @@ class LeagueService(
     /**
      * `POST /api/v1/leagues`. Rate-limited per caller (see [ContentRateLimiter]) -- an open,
      * unrestricted-volume endpoint (any logged-in user, no approval gate, per docs/PHASE2.md's
-     * Decisions Made) with no other abuse control.
+     * Decisions Made) with no other abuse control. [LeagueSaveRequest.awards], if present,
+     * are created in the same transaction so the mobile client's three pre-suggested rows land
+     * in one call, not three follow-ups.
      *
      * @throws ContentRateLimitExceededException the caller has created too many leagues recently.
      * @throws GroundNotFoundException [request]'s `groundId` doesn't reference a real ground.
@@ -73,13 +78,28 @@ class LeagueService(
             franchiseFee = request.franchiseFee,
             playerFee = request.playerFee,
         )
-        return leagueRepository.save(league).toResponse()
+        val saved = leagueRepository.save(league)
+
+        val initialAwards = request.awards.orEmpty().mapIndexed { index, awardRequest ->
+            LeagueAwardEntity(
+                leagueId = requireNotNull(saved.id),
+                name = awardRequest.name,
+                cashAmount = awardRequest.cashAmount,
+                hasTrophy = awardRequest.hasTrophy,
+                displayOrder = index,
+            )
+        }
+        if (initialAwards.isNotEmpty()) leagueAwardRepository.saveAll(initialAwards)
+
+        return saved.toResponse()
     }
 
     /**
      * `PUT /api/v1/leagues/{id}`. Full-replace, organizer-only (see [LeagueExceptions]) --
      * mirrors Phase 1's `PUT /profiles/me` full-replace semantics for the same
-     * validation-simplicity reason (see docs/PHASE2.md).
+     * validation-simplicity reason (see docs/PHASE2.md). [request.awards] is ignored here --
+     * awards are managed through their own endpoints once a league exists (see
+     * [LeagueSaveRequest.awards]'s own doc).
      *
      * @throws NotOrganizerException [callerId] is not this league's organizer.
      * @throws GroundNotFoundException [request]'s `groundId` doesn't reference a real ground.
@@ -136,6 +156,65 @@ class LeagueService(
         return photoUploadService.createLeagueBannerUploadUrl(leagueId)
     }
 
+    /**
+     * `POST /api/v1/leagues/{id}/awards`. Organizer-only, rate-limited per caller. Appended at
+     * the end of the list (`displayOrder` = current award count) -- no reordering support in
+     * Phase 2.
+     *
+     * @throws NotOrganizerException [callerId] is not this league's organizer.
+     * @throws ContentRateLimitExceededException the caller has added too many awards recently.
+     */
+    @Transactional
+    fun addAward(leagueId: UUID, callerId: UUID, request: LeagueAwardSaveRequest): LeagueAwardResponse {
+        val league = findLeagueOrThrow(leagueId)
+        requireOrganizer(league, callerId)
+        contentRateLimiter.tryConsumeForAwardCreate(callerId)?.let { retryAfter ->
+            throw ContentRateLimitExceededException(retryAfter)
+        }
+
+        val award = LeagueAwardEntity(
+            leagueId = leagueId,
+            name = request.name,
+            cashAmount = request.cashAmount,
+            hasTrophy = request.hasTrophy,
+            displayOrder = leagueAwardRepository.countByLeagueId(leagueId).toInt(),
+        )
+        return leagueAwardRepository.save(award).toResponse()
+    }
+
+    /**
+     * `PUT /api/v1/leagues/{id}/awards/{awardId}`. Organizer-only, full-replace of name/cash
+     * amount/trophy flag -- `displayOrder` is untouched (no reordering support in Phase 2).
+     *
+     * @throws NotOrganizerException [callerId] is not this league's organizer.
+     * @throws LeagueAwardNotFoundException [awardId] doesn't exist under this league.
+     */
+    @Transactional
+    fun updateAward(leagueId: UUID, awardId: UUID, callerId: UUID, request: LeagueAwardSaveRequest): LeagueAwardResponse {
+        val league = findLeagueOrThrow(leagueId)
+        requireOrganizer(league, callerId)
+        val award = findAwardOrThrow(leagueId, awardId)
+
+        award.name = request.name
+        award.cashAmount = request.cashAmount
+        award.hasTrophy = request.hasTrophy
+        return leagueAwardRepository.save(award).toResponse()
+    }
+
+    /**
+     * `DELETE /api/v1/leagues/{id}/awards/{awardId}`. Organizer-only.
+     *
+     * @throws NotOrganizerException [callerId] is not this league's organizer.
+     * @throws LeagueAwardNotFoundException [awardId] doesn't exist under this league.
+     */
+    @Transactional
+    fun deleteAward(leagueId: UUID, awardId: UUID, callerId: UUID) {
+        val league = findLeagueOrThrow(leagueId)
+        requireOrganizer(league, callerId)
+        val award = findAwardOrThrow(leagueId, awardId)
+        leagueAwardRepository.delete(award)
+    }
+
     /** Full-replace: every mutable field on [league] becomes exactly what [request] carries. Used only by [update]. */
     private fun applyFullReplace(league: LeagueEntity, request: LeagueSaveRequest) {
         league.name = request.name
@@ -165,24 +244,43 @@ class LeagueService(
     private fun findLeagueOrThrow(leagueId: UUID): LeagueEntity =
         leagueRepository.findById(leagueId).orElseThrow { LeagueNotFoundException() }
 
-    private fun LeagueEntity.toResponse() = LeagueResponse(
+    /** Also rejects an award id that's real but belongs to a *different* league -- see [LeagueAwardNotFoundException]. */
+    private fun findAwardOrThrow(leagueId: UUID, awardId: UUID): LeagueAwardEntity {
+        val award = leagueAwardRepository.findById(awardId).orElseThrow { LeagueAwardNotFoundException() }
+        if (award.leagueId != leagueId) throw LeagueAwardNotFoundException()
+        return award
+    }
+
+    private fun LeagueEntity.toResponse(): LeagueResponse {
+        val awards = leagueAwardRepository.findByLeagueIdOrderByDisplayOrder(requireNotNull(id)).map { it.toResponse() }
+        return LeagueResponse(
+            id = requireNotNull(id),
+            organizerUserId = organizerUserId,
+            name = name,
+            description = description,
+            logoUrl = logoUrl,
+            bannerUrl = bannerUrl,
+            country = country,
+            state = state,
+            district = district,
+            city = city,
+            groundId = groundId,
+            startsOn = startsOn,
+            format = format,
+            franchisesRequired = franchisesRequired,
+            playersRequired = playersRequired,
+            franchiseFee = franchiseFee,
+            playerFee = playerFee,
+            status = status,
+            awards = awards,
+        )
+    }
+
+    private fun LeagueAwardEntity.toResponse() = LeagueAwardResponse(
         id = requireNotNull(id),
-        organizerUserId = organizerUserId,
         name = name,
-        description = description,
-        logoUrl = logoUrl,
-        bannerUrl = bannerUrl,
-        country = country,
-        state = state,
-        district = district,
-        city = city,
-        groundId = groundId,
-        startsOn = startsOn,
-        format = format,
-        franchisesRequired = franchisesRequired,
-        playersRequired = playersRequired,
-        franchiseFee = franchiseFee,
-        playerFee = playerFee,
-        status = status,
+        cashAmount = cashAmount,
+        hasTrophy = hasTrophy,
+        displayOrder = displayOrder,
     )
 }

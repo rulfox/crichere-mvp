@@ -35,6 +35,9 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
     private lateinit var leagueRepository: LeagueRepository
 
     @Autowired
+    private lateinit var leagueAwardRepository: LeagueAwardRepository
+
+    @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
@@ -137,5 +140,32 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
 
         val reloaded = leagueRepository.findById(league.id!!).orElseThrow()
         assertNull(reloaded.groundId)
+    }
+
+    @Test
+    fun `deleting a league cascades to its awards`() {
+        val user = persistedUser("award-cascade")
+        val league = leagueRepository.saveAndFlush(validLeague(user.id!!))
+        val award = leagueAwardRepository.saveAndFlush(
+            LeagueAwardEntity(leagueId = league.id!!, name = "First Prize", displayOrder = 0),
+        )
+
+        leagueRepository.delete(league)
+        leagueRepository.flush()
+        entityManager.clear()
+
+        assertTrue(leagueAwardRepository.findById(award.id!!).isEmpty)
+    }
+
+    @Test
+    fun `a null award name is rejected`() {
+        val user = persistedUser("award-null-name")
+        val league = leagueRepository.saveAndFlush(validLeague(user.id!!))
+        assertFailsWith<DataIntegrityViolationException> {
+            jdbcTemplate.update(
+                "INSERT INTO league_awards (id, league_id, name, display_order) VALUES (?, ?, NULL, 0)",
+                UUID.randomUUID(), league.id,
+            )
+        }
     }
 }

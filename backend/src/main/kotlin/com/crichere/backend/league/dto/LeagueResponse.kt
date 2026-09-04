@@ -25,4 +25,5 @@ data class LeagueResponse(
     val franchiseFee: BigDecimal?,
     val playerFee: BigDecimal?,
     val status: LeagueStatus,
+    val awards: List<LeagueAwardResponse>,
 )

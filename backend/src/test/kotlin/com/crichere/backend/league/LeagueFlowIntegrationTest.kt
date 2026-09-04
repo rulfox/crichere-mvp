@@ -183,6 +183,70 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `initial awards submitted at creation land in the same call`() {
+        val body = validLeagueBody() + ("awards" to listOf(
+            mapOf("name" to "First Prize", "cashAmount" to 5000, "hasTrophy" to true),
+            mapOf("name" to "Second Prize", "hasTrophy" to false),
+        ))
+
+        val created = authedPost(organizerToken, "/api/v1/leagues", body)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.awards.length()").value(2))
+            .andExpect(jsonPath("$.awards[0].name").value("First Prize"))
+            .andExpect(jsonPath("$.awards[0].displayOrder").value(0))
+            .andExpect(jsonPath("$.awards[1].name").value("Second Prize"))
+            .andExpect(jsonPath("$.awards[1].displayOrder").value(1))
+            .andReturn()
+            .body()
+
+        authedGet(organizerToken, "/api/v1/leagues/${created["id"]}")
+            .andExpect(jsonPath("$.awards.length()").value(2))
+    }
+
+    @Test
+    fun `only the organizer can add an award`() {
+        val leagueId = createLeague()
+        val otherToken = signInOther()
+
+        authedPost(otherToken, "/api/v1/leagues/$leagueId/awards", mapOf("name" to "Man of the Match"))
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `awards can be added, edited, and removed independently of the league's own edit call`() {
+        val leagueId = createLeague()
+
+        val added = authedPost(organizerToken, "/api/v1/leagues/$leagueId/awards", mapOf("name" to "Man of the Match", "hasTrophy" to false))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("Man of the Match"))
+            .andReturn()
+            .body()
+        val awardId = added["id"] as String
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/awards/$awardId", mapOf("name" to "Man of the Match (Final)", "hasTrophy" to true))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("Man of the Match (Final)"))
+            .andExpect(jsonPath("$.hasTrophy").value(true))
+
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/leagues/$leagueId/awards/$awardId")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $organizerToken"),
+        ).andExpect(status().isOk)
+
+        authedGet(organizerToken, "/api/v1/leagues/$leagueId")
+            .andExpect(jsonPath("$.awards.length()").value(0))
+    }
+
+    @Test
+    fun `awards remain addable after the league is marked completed -- no freeze`() {
+        val leagueId = createLeague()
+        authedPatch(organizerToken, "/api/v1/leagues/$leagueId/complete").andExpect(status().isOk)
+
+        authedPost(organizerToken, "/api/v1/leagues/$leagueId/awards", mapOf("name" to "Man of the Match"))
+            .andExpect(status().isOk)
+    }
+
+    @Test
     fun `a nonexistent league id is a clean 404`() {
         authedGet(organizerToken, "/api/v1/leagues/${UUID.randomUUID()}")
             .andExpect(status().isNotFound)

@@ -4,6 +4,13 @@ package com.crichere.backend.league
 class LeagueNotFoundException : RuntimeException("League not found")
 
 /**
+ * No award matches the given id under the given league -- also thrown (not a different error)
+ * when the award id is real but belongs to a *different* league, so a client can never learn
+ * "that award id exists, just not here" by probing.
+ */
+class LeagueAwardNotFoundException : RuntimeException("Award not found")
+
+/**
  * A create/edit request referenced a `groundId` that doesn't exist. Checked explicitly
  * (`GroundRepository.existsById`) rather than left to surface as a raw FK-violation `500` --
  * this is the one part of a league request a client could plausibly get wrong (a stale id from

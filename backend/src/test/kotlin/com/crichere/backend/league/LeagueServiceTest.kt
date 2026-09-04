@@ -29,10 +29,15 @@ import kotlin.test.assertNull
 class LeagueServiceTest {
 
     private val leagueRepository = mockk<LeagueRepository>()
+    private val leagueAwardRepository = mockk<LeagueAwardRepository>().also {
+        // Every toResponse() call loads the awards list -- default to "no awards yet" so tests
+        // that don't care about awards specifically don't each need their own stub.
+        every { it.findByLeagueIdOrderByDisplayOrder(any()) } returns emptyList()
+    }
     private val groundRepository = mockk<GroundRepository>()
     private val contentRateLimiter = mockk<ContentRateLimiter>()
     private val photoUploadService = mockk<PhotoUploadService>()
-    private val service = LeagueService(leagueRepository, groundRepository, contentRateLimiter, photoUploadService)
+    private val service = LeagueService(leagueRepository, leagueAwardRepository, groundRepository, contentRateLimiter, photoUploadService)
 
     private val organizerId: UUID = UUID.randomUUID()
     private val otherUserId: UUID = UUID.randomUUID()
@@ -175,5 +180,67 @@ class LeagueServiceTest {
         every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague(completedAt = java.time.Instant.now()))
         val editResponse = service.update(leagueId, organizerId, validRequest())
         assertNotNull(editResponse)
+    }
+
+    // ---------------------------------------------------------------- awards
+
+    @Test
+    fun `addAward by someone other than the organizer is rejected before touching the rate limiter`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+
+        assertFailsWith<NotOrganizerException> {
+            service.addAward(leagueId, otherUserId, com.crichere.backend.league.dto.LeagueAwardSaveRequest(name = "First Prize"))
+        }
+        verify(exactly = 0) { contentRateLimiter.tryConsumeForAwardCreate(any()) }
+    }
+
+    @Test
+    fun `addAward is rejected when the award rate limit is tripped`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { contentRateLimiter.tryConsumeForAwardCreate(organizerId) } returns Duration.ofMinutes(1)
+
+        assertFailsWith<ContentRateLimitExceededException> {
+            service.addAward(leagueId, organizerId, com.crichere.backend.league.dto.LeagueAwardSaveRequest(name = "First Prize"))
+        }
+    }
+
+    @Test
+    fun `addAward appends at the end of the existing list`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { contentRateLimiter.tryConsumeForAwardCreate(organizerId) } returns null
+        every { leagueAwardRepository.countByLeagueId(leagueId) } returns 2L
+        val saved = slot<LeagueAwardEntity>()
+        every { leagueAwardRepository.save(capture(saved)) } answers { firstArg<LeagueAwardEntity>().apply { id = UUID.randomUUID() } }
+
+        service.addAward(leagueId, organizerId, com.crichere.backend.league.dto.LeagueAwardSaveRequest(name = "Third Prize"))
+
+        assertEquals(2, saved.captured.displayOrder)
+        assertEquals(leagueId, saved.captured.leagueId)
+    }
+
+    @Test
+    fun `an award id belonging to a different league is treated as not found`() {
+        val otherLeagueId = UUID.randomUUID()
+        val awardId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { leagueAwardRepository.findById(awardId) } returns
+            Optional.of(LeagueAwardEntity(id = awardId, leagueId = otherLeagueId, name = "Someone else's award"))
+
+        assertFailsWith<LeagueAwardNotFoundException> {
+            service.updateAward(leagueId, awardId, organizerId, com.crichere.backend.league.dto.LeagueAwardSaveRequest(name = "Hijacked"))
+        }
+    }
+
+    @Test
+    fun `deleteAward by the real organizer removes the award`() {
+        val awardId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { leagueAwardRepository.findById(awardId) } returns
+            Optional.of(LeagueAwardEntity(id = awardId, leagueId = leagueId, name = "First Prize"))
+        every { leagueAwardRepository.delete(any()) } returns Unit
+
+        service.deleteAward(leagueId, awardId, organizerId)
+
+        verify(exactly = 1) { leagueAwardRepository.delete(any()) }
     }
 }
