@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: crichere_dev
+      POSTGRES_USER: crichere
+      POSTGRES_PASSWORD: crichere
+    ports:
+      # Host port 5432 collides with a locally-running native Postgres service on some dev
+      # machines (hit during Task 8's manual verification) -- 55432 avoided that collision and
+      # any other project on this machine using 5433. See backend/README.md.
+      - "55432:5432"
+    volumes:
+      - crichere-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  crichere-postgres-data:

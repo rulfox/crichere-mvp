@@ -1,0 +1,37 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+        Task 7's Profile Setup GPS auto-fill. Coarse, not fine: state/city-level precision is
+        all this feature needs (see DeviceLocationProvider.android.kt), and it's requested at
+        runtime just before the first "use my location" tap (ProfileSetupScreen.kt), never
+        unprompted at app start.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <application
+        android:name=".CricherApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Crichere"
+        android:usesCleartextTraffic="true">
+        <!--
+            Cleartext (plain HTTP) traffic is required for this toolchain-proof task: the local
+            dev backend serves plain http://10.0.2.2:8080, not https. Task 6+ should revisit this
+            once the app talks to a deployed (TLS) backend. This flag has no bearing on that
+            future change, since it only affects local development builds against the local
+            backend.
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Crichere">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

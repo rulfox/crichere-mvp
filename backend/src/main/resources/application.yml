@@ -1,0 +1,84 @@
+# Default configuration, always applied. Profile-specific documents below override/add to this.
+spring:
+  application:
+    name: crichere-backend
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+crichere:
+  jwt:
+    # HS256 signing secret. Must decode to >= 32 bytes; the app refuses to start otherwise, so
+    # a production deployment with JWT_SECRET unset fails loudly instead of running insecurely.
+    secret: ${JWT_SECRET:}
+    issuer: crichere
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+  phone-crypto:
+    # Master secret for the phone-number lookup HMAC and at-rest AES-GCM encryption. Two
+    # independent sub-keys are derived from it; see PhoneCryptoService. Must decode to >= 32
+    # bytes. Rotating this invalidates every existing phone_lookup_hash, so it is not something
+    # to change casually once there are accounts.
+    secret: ${PHONE_CRYPTO_SECRET:}
+  firebase:
+    # Blank in dev/CI, where no service account exists yet. The Admin SDK is initialised lazily,
+    # so a blank value does not stop the application from starting -- only ID-token
+    # verification fails, and only when it is actually attempted.
+    service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET:}
+      region: ${AWS_REGION:}
+  rate-limit:
+    # See AuthRateLimiter for the reasoning behind these numbers.
+    enabled: true
+    phone-capacity: 10
+    ip-capacity: 20
+    window: 1h
+
+---
+# local profile: developer machine, Postgres via backend/docker-compose.yml
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    # Host port 55432, matching backend/docker-compose.yml -- not 5432, which collides with a
+    # locally-running native Postgres service on some dev machines (confirmed during Task 8).
+    url: jdbc:postgresql://localhost:55432/crichere_dev
+    username: ${DB_USERNAME:crichere}
+    password: ${DB_PASSWORD:crichere}
+
+crichere:
+  jwt:
+    # Development fallbacks so `bootRun --args='--spring.profiles.active=local'` works out of
+    # the box. NOT SECRET and NOT FOR DEPLOYMENT -- these values are in version control. A real
+    # environment variable always wins over them, and no non-local profile has a fallback.
+    secret: ${JWT_SECRET:bG9jYWwtZGV2LWp3dC1zZWNyZXQtbm90LWZvci1kZXBsb3ltZW50IQ==}
+  phone-crypto:
+    secret: ${PHONE_CRYPTO_SECRET:bG9jYWwtZGV2LXBob25lLWNyeXB0by1zZWNyZXQtbm90LXJlYWwhIQ==}
+
+---
+# test profile: used by Testcontainers-backed integration tests. Datasource is normally
+# supplied dynamically via @ServiceConnection against a Testcontainers Postgres instance.
+spring:
+  config:
+    activate:
+      on-profile: test
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+crichere:
+  jwt:
+    # Fixed throwaway keys so the context boots in CI with no environment set up. Both are
+    # 32 bytes of base64. They exist only to satisfy the >= 32 byte requirement.
+    secret: dGVzdC1vbmx5LWp3dC1zaWduaW5nLXNlY3JldC0hISE=
+  phone-crypto:
+    secret: dGVzdC1vbmx5LXBob25lLWNyeXB0by1zZWNyZXQtISE=

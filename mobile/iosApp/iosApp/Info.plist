@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>Crichere</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.crichere.app</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <!--
+            Toolchain-proof-only exception: the local dev backend serves plain
+            http://localhost:8080, not https. NSAllowsLocalNetworking scopes this to
+            localhost/.local/IP-literal hosts only (not a blanket NSAllowsArbitraryLoads), and
+            should be revisited once the app talks to a deployed (TLS) backend in a later task.
+        -->
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+</dict>
+</plist>
