@@ -92,7 +92,7 @@ class OtpVerifyViewModelTest {
     }
 
     @Test
-    fun `a third resend succeeds, a fourth is blocked without ever calling Firebase again`() = viewModelTest {
+    fun `a third resend succeeds - a fourth is blocked without ever calling Firebase again`() = viewModelTest {
         val (viewModel, phoneAuthClient, _) = newViewModel()
 
         repeat(3) { index ->
@@ -120,7 +120,7 @@ class OtpVerifyViewModelTest {
     }
 
     @Test
-    fun `the fifth wrong attempt forces navigation back to Phone Entry, not the sixth`() = viewModelTest {
+    fun `the fifth wrong attempt forces navigation back to Phone Entry not the sixth`() = viewModelTest {
         val phoneAuthClient = FakePhoneAuthClient().apply {
             verifyCodeResult = Result.failure(InvalidOtpCodeException())
         }
@@ -205,7 +205,7 @@ class OtpVerifyViewModelTest {
     }
 
     @Test
-    fun `a network failure while verifying does not burn a wrong-code attempt, only an actual wrong code does`() =
+    fun `a network failure while verifying does not burn a wrong-code attempt - only an actual wrong code does`() =
         viewModelTest {
             val phoneAuthClient = FakePhoneAuthClient().apply {
                 verifyCodeResult = Result.failure(RuntimeException("network blip, please retry"))
@@ -233,7 +233,7 @@ class OtpVerifyViewModelTest {
         }
 
     @Test
-    fun `once resends are exhausted, startOver offers a real path back to Phone Entry`() = viewModelTest {
+    fun `once resends are exhausted startOver offers a real path back to Phone Entry`() = viewModelTest {
         val (viewModel, phoneAuthClient, _) = newViewModel()
 
         repeat(3) {

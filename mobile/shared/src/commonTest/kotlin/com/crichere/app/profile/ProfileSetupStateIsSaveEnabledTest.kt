@@ -55,7 +55,7 @@ class ProfileSetupStateIsSaveEnabledTest {
     }
 
     @Test
-    fun `BATSMAN -- a bowling style present when not applicable is disabled, mirrors the backend's reject direction`() {
+    fun `BATSMAN - a bowling style present when not applicable is disabled - mirrors the backend's reject direction`() {
         assertFalse(completeState(PlayingRole.BATSMAN, BowlingStyle.RIGHT_ARM_FAST).isSaveEnabled)
     }
 

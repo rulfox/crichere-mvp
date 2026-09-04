@@ -82,7 +82,7 @@ class ProfileRepositoryTest {
     }
 
     @Test
-    fun `saveProfile PUTs the full accumulated snapshot, not just the changed field`() = runTest {
+    fun `saveProfile PUTs the full accumulated snapshot not just the changed field`() = runTest {
         val httpClient = mockHttpClient { request ->
             assertEquals(HttpMethod.Put, request.method)
             assertEquals("/api/v1/profiles/me", request.url.encodedPath)
@@ -162,7 +162,7 @@ class ProfileRepositoryTest {
     }
 
     @Test
-    fun `uploadPhoto posts multipart with fields in order and file last, then computes photoUrl`() = runTest {
+    fun `uploadPhoto posts multipart with fields in order and file last then computes photoUrl`() = runTest {
         val uploadInfo = PhotoUploadInfoDto(
             uploadUrl = "https://crichere-media-dev.s3.ap-south-1.amazonaws.com/",
             fields = linkedMapOf(

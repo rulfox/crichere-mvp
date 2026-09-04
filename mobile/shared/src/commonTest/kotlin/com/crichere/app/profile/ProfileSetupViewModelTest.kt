@@ -72,7 +72,7 @@ class ProfileSetupViewModelTest {
     }
 
     @Test
-    fun `first missing field CITY once name, photo, and state are set`() = viewModelTest {
+    fun `first missing field CITY once name photo and state are set`() = viewModelTest {
         val profile = emptyProfile().copy(name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka")
         val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
         advanceUntilIdle()
@@ -80,7 +80,7 @@ class ProfileSetupViewModelTest {
     }
 
     @Test
-    fun `first missing field ROLE once name, photo, state, and city are set`() = viewModelTest {
+    fun `first missing field ROLE once name photo state and city are set`() = viewModelTest {
         val profile = emptyProfile().copy(name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", city = "Bengaluru")
         val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
         advanceUntilIdle()
@@ -110,7 +110,7 @@ class ProfileSetupViewModelTest {
     }
 
     @Test
-    fun `bowling is skipped for a BATSMAN -- nothing missing, defaults to NAME`() = viewModelTest {
+    fun `bowling is skipped for a BATSMAN - nothing missing - defaults to NAME`() = viewModelTest {
         val profile = emptyProfile().copy(
             name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", city = "Bengaluru",
             playingRole = PlayingRole.BATSMAN, battingStyle = BattingStyle.RIGHT_HAND,
@@ -336,7 +336,7 @@ class ProfileSetupViewModelTest {
     }
 
     @Test
-    fun `uploadPhoto surfaces a clear, non-crashing error on the real 503 photo-upload-unavailable response`() = viewModelTest {
+    fun `uploadPhoto surfaces a clear non-crashing error on the real 503 photo-upload-unavailable response`() = viewModelTest {
         val profileRepository = FakeProfileRepository().apply {
             requestPhotoUploadUrlError = PhotoUploadUnavailableException()
         }

@@ -83,7 +83,7 @@ class AppStartViewModelTest {
     }
 
     @Test
-    fun `destination stays null (loading) until the silent check completes`() = viewModelTest {
+    fun `destination stays null loading until the silent check completes`() = viewModelTest {
         val repository = StubAuthRepository { authResult(profileComplete = true) }
         val viewModel = AppStartViewModel(repository)
 
@@ -95,7 +95,7 @@ class AppStartViewModelTest {
     }
 
     @Test
-    fun `a transient refresh failure (5xx, network) falls back to Phone Entry rather than getting stuck`() = viewModelTest {
+    fun `a transient refresh failure - 5xx or network - falls back to Phone Entry rather than getting stuck`() = viewModelTest {
         val repository = StubAuthRepository { throw SessionRefreshFailedException("503") }
         val viewModel = AppStartViewModel(repository)
 

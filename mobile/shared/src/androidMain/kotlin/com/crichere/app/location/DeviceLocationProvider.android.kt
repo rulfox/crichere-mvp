@@ -1,6 +1,7 @@
 package com.crichere.app.location
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
@@ -47,6 +48,10 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
         return runCatching { requestLocation(locationManager, provider) }.getOrNull()
     }
 
+    // Lint's MissingPermission check can't trace the ACCESS_COARSE_LOCATION guard in
+    // getCurrentLocation() (above) across this private helper's call boundary -- the guard
+    // already runs on every path that reaches here.
+    @SuppressLint("MissingPermission")
     private suspend fun requestLocation(locationManager: LocationManager, provider: String): GeoPoint? =
         suspendCancellableCoroutine { continuation ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
