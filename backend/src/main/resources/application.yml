@@ -39,6 +39,13 @@ crichere:
     phone-capacity: 10
     ip-capacity: 20
     window: 1h
+  content-rate-limit:
+    # See ContentRateLimiter for the reasoning behind these numbers.
+    enabled: true
+    league-create-capacity: 20
+    ground-create-capacity: 20
+    award-create-capacity: 100
+    window: 1h
 
 ---
 # local profile: developer machine, Postgres via backend/docker-compose.yml

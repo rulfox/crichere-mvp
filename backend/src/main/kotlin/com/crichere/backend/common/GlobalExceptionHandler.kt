@@ -136,6 +136,27 @@ class GlobalExceptionHandler {
             .body(body)
     }
 
+    /** Same shape as [handleRateLimitExceeded], for the content-creation endpoints (league/ground/award). */
+    @ExceptionHandler(ContentRateLimitExceededException::class)
+    fun handleContentRateLimitExceeded(
+        exception: ContentRateLimitExceededException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ProblemDetail> {
+        val retryAfterSeconds = max(1L, exception.retryAfter.seconds)
+        val body = ProblemDetails.of(
+            status = HttpStatus.TOO_MANY_REQUESTS,
+            slug = "rate-limit-exceeded",
+            title = "Too many requests",
+            code = "RATE_LIMIT_EXCEEDED",
+            detail = "Too many requests. Please try again later.",
+            instance = request.requestURI,
+            extensions = mapOf("retryAfterSeconds" to retryAfterSeconds),
+        )
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header(HttpHeaders.RETRY_AFTER, retryAfterSeconds.toString())
+            .body(body)
+    }
+
     /** An unknown path under a public prefix, e.g. `POST /api/v1/auth/nope`. */
     @ExceptionHandler(NoResourceFoundException::class)
     fun handleNoResourceFound(request: HttpServletRequest): ProblemDetail =
