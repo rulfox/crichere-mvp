@@ -120,6 +120,14 @@ android {
         minSdk = 26
     }
 
+    buildFeatures {
+        // Generates BuildConfig.DEBUG, which PlatformModule.android.kt reads to decide between
+        // the real FirebasePhoneAuthClient and the debug-only DebugFakePhoneAuthClient -- see
+        // that file's doc (task-8-brief.md's "debug-only toggle" for on-device verification
+        // without a connected Firebase project).
+        buildConfig = true
+    }
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {

@@ -1,5 +1,7 @@
 package com.crichere.app.di
 
+import com.crichere.app.BuildConfig
+import com.crichere.app.auth.DebugFakePhoneAuthClient
 import com.crichere.app.auth.FirebasePhoneAuthClient
 import com.crichere.app.auth.PhoneAuthClient
 import com.crichere.app.location.DeviceLocationProvider
@@ -16,6 +18,12 @@ import org.koin.dsl.module
  */
 actual val platformModule: Module = module {
     single<SecureStore> { SecureStorage(get()) }
-    single<PhoneAuthClient> { FirebasePhoneAuthClient() }
+    // Debug builds substitute DebugFakePhoneAuthClient -- this environment has no real Firebase
+    // project connected client-side (no google-services.json), so the real FirebasePhoneAuthClient
+    // can't complete a verification round-trip here; see that class's doc and task-8-brief.md's
+    // ruling. BuildConfig.DEBUG is false for a release build, so this never reaches a shipped APK.
+    single<PhoneAuthClient> {
+        if (BuildConfig.DEBUG) DebugFakePhoneAuthClient() else FirebasePhoneAuthClient()
+    }
     single<LocationProvider> { DeviceLocationProvider(get()) }
 }
