@@ -1,6 +1,7 @@
 package com.crichere.backend.profile
 
-import com.crichere.backend.profile.dto.PhotoUploadUrlResponse
+import com.crichere.backend.common.PhotoUploadService
+import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.profile.dto.ProfileResponse
 import com.crichere.backend.profile.dto.ProfileUpdateRequest
 import jakarta.validation.Valid

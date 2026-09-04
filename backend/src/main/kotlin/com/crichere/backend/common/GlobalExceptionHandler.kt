@@ -4,7 +4,6 @@ import com.crichere.backend.auth.AuthenticationFailedException
 import com.crichere.backend.auth.RateLimitExceededException
 import com.crichere.backend.profile.BowlingStyleNotAllowedException
 import com.crichere.backend.profile.BowlingStyleRequiredException
-import com.crichere.backend.profile.PhotoUploadUnavailableException
 import com.crichere.backend.reference.MalformedDistrictIdException
 import com.crichere.backend.reference.MalformedStateCodeException
 import jakarta.servlet.http.HttpServletRequest
@@ -230,9 +229,9 @@ class GlobalExceptionHandler {
         )
 
     /**
-     * `POST /profiles/me/photo-upload-url` was called but S3 is not usable in this environment
-     * yet (see `com.crichere.backend.profile.PhotoUploadService`). `503`, not `500`: the
-     * request itself was fine, an external dependency is the one that is not ready.
+     * A presigned-upload endpoint was called but S3 is not usable in this environment yet (see
+     * [PhotoUploadService]). `503`, not `500`: the request itself was fine, an external
+     * dependency is the one that is not ready.
      */
     @ExceptionHandler(PhotoUploadUnavailableException::class)
     fun handlePhotoUploadUnavailable(request: HttpServletRequest): ProblemDetail =

@@ -1,6 +1,5 @@
-package com.crichere.backend.profile
+package com.crichere.backend.common
 
-import com.crichere.backend.profile.dto.PhotoUploadUrlResponse
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Test

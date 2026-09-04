@@ -27,7 +27,8 @@ import java.util.UUID
  * configured and a fake [AwsCredentialsProvider] bean, which would otherwise make every other
  * profile test implicitly depend on AWS being "configured". [AwsCredentialsProvider] is faked
  * the same way [com.crichere.backend.auth.FirebaseTokenVerifier] is faked in
- * [AbstractWebIntegrationTest] -- real routing, real JWT auth, real [PhotoUploadService] logic,
+ * [AbstractWebIntegrationTest] -- real routing, real JWT auth, real
+ * [com.crichere.backend.common.PhotoUploadService] logic,
  * only the actual credential source (and, implicitly, the eventual call to S3 itself, which
  * this test never makes) is substituted.
  */

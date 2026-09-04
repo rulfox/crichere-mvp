@@ -1,6 +1,5 @@
-package com.crichere.backend.profile
+package com.crichere.backend.common
 
-import com.crichere.backend.profile.dto.PhotoUploadUrlResponse
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -15,7 +14,6 @@ import tools.jackson.databind.ObjectMapper
 import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -55,7 +53,12 @@ class AwsConfiguration {
 }
 
 /**
- * Generates S3 presigned POST requests for profile photo uploads.
+ * Generates S3 presigned POST requests -- profile photo uploads (`users/{userId}/profile.jpg`),
+ * and (since Phase 2) league logos/banners (`leagues/{leagueId}/logo.jpg` /
+ * `leagues/{leagueId}/banner.jpg`). Originally profile-only (Phase 1); moved to `common` and
+ * given league-specific methods once a second feature needed the exact same S3 presigned-POST
+ * mechanism -- the SigV4 signing logic itself is untouched by that move, only its package and
+ * the set of key-building methods around it changed.
  *
  * ## Why this is hand-built instead of calling one AWS SDK method
  *
@@ -78,9 +81,13 @@ class AwsConfiguration {
  *
  * ## The security boundary
  *
- * [key] is always derived from the *caller's own* [userId] as resolved from their JWT
- * (`@AuthenticationPrincipal` in [ProfileController], never a client-supplied value) -- a
- * client can never obtain a presigned POST for any prefix but its own.
+ * [key] is always derived from an id the caller cannot forge -- [createUploadUrl] takes it from
+ * the caller's own JWT-resolved `userId` (never a client-supplied value), so a client can never
+ * obtain a presigned POST for any prefix but its own. [createLeagueLogoUploadUrl]/
+ * [createLeagueBannerUploadUrl] have no such implicit self-scoping (a league's id is not the
+ * caller's own id) -- **the organizer-ownership check is the caller's responsibility**
+ * (`LeagueService`, before it ever calls these), not this class's; this class only knows how to
+ * presign a POST for whatever key it's given.
  */
 @Service
 class PhotoUploadService(
@@ -99,7 +106,15 @@ class PhotoUploadService(
      *   credentials could be resolved -- both expected in this environment until AWS setup
      *   happens (see [AwsConfiguration]).
      */
-    fun createUploadUrl(userId: UUID): PhotoUploadUrlResponse {
+    fun createUploadUrl(userId: UUID): PhotoUploadUrlResponse = presign("users/$userId/profile.jpg")
+
+    /** Builds a presigned POST for `leagues/{leagueId}/logo.jpg`. See the class doc's security-boundary note. */
+    fun createLeagueLogoUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/logo.jpg")
+
+    /** Builds a presigned POST for `leagues/{leagueId}/banner.jpg`. See the class doc's security-boundary note. */
+    fun createLeagueBannerUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/banner.jpg")
+
+    private fun presign(key: String): PhotoUploadUrlResponse {
         val bucket = properties.s3.bucket
         val region = properties.s3.region
         if (bucket.isBlank() || region.isBlank()) {
@@ -115,7 +130,6 @@ class PhotoUploadService(
                 throw PhotoUploadUnavailableException()
             }
 
-        val key = "users/$userId/profile.jpg"
         val now = clock.instant().truncatedTo(ChronoUnit.MILLIS)
         val expiresAt = now.plus(EXPIRY)
         val dateStamp = DATE_STAMP_FORMAT.format(now.atZone(ZoneOffset.UTC))
@@ -189,10 +203,10 @@ class PhotoUploadService(
         const val ALGORITHM = "AWS4-HMAC-SHA256"
 
         /**
-         * Upper bound on a profile photo: generous enough for an unedited phone-camera JPEG
+         * Upper bound on an uploaded image: generous enough for an unedited phone-camera JPEG
          * (a modern phone's default JPEG is typically 2-8MB) while still bounding the cost of
-         * an abusive upload -- an object this feature will resize/serve as an avatar has no
-         * legitimate need to be larger. Enforced by S3 itself via the policy's
+         * an abusive upload -- an object this feature will resize/serve as an avatar/logo/banner
+         * has no legitimate need to be larger. Enforced by S3 itself via the policy's
          * `content-length-range` condition, not by this server (which never sees the file).
          */
         const val MAX_PHOTO_BYTES: Long = 10L * 1024 * 1024
