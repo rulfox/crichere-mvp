@@ -127,22 +127,27 @@ class LeagueCreationViewModel(
     private var pendingBannerContentType: String? = null
 
     init {
+        // States load first and loadExistingLeague runs only after -- sequential, not two
+        // independent launches -- because loadExistingLeague matches the league's state/district
+        // names against _state.value.states synchronously; running them in parallel raced on
+        // which finished first, silently dropping the district/city preselect in edit mode.
         viewModelScope.launch {
             val states = runCatching { referenceRepository.getStates() }.getOrDefault(emptyList())
             _state.update { it.copy(states = states) }
-        }
-        if (editingLeagueId != null) {
-            viewModelScope.launch { loadExistingLeague(editingLeagueId) }
-        } else {
-            // Pre-suggest the three starter awards -- editable/removable, not mandatory to fill (see docs/PHASE2.md's Decisions Made).
-            _state.update {
-                it.copy(
-                    awards = listOf(
-                        AwardDraft(name = "First Prize"),
-                        AwardDraft(name = "Second Prize"),
-                        AwardDraft(name = "Third Prize"),
-                    ),
-                )
+
+            if (editingLeagueId != null) {
+                loadExistingLeague(editingLeagueId)
+            } else {
+                // Pre-suggest the three starter awards -- editable/removable, not mandatory to fill (see docs/PHASE2.md's Decisions Made).
+                _state.update {
+                    it.copy(
+                        awards = listOf(
+                            AwardDraft(name = "First Prize"),
+                            AwardDraft(name = "Second Prize"),
+                            AwardDraft(name = "Third Prize"),
+                        ),
+                    )
+                }
             }
         }
     }
@@ -378,7 +383,18 @@ class LeagueCreationViewModel(
                     _navigationEvents.send(LeagueCreationNavigationEvent.Saved(leagueId))
                 }
                 .onFailure { throwable ->
-                    _state.update { it.copy(isSaving = false, errorMessage = throwable.message ?: "Couldn't save this league. Please try again.") }
+                    _state.update {
+                        it.copy(
+                            isSaving = false,
+                            // A failure partway through uploadPendingImagesIfAny() (e.g. the
+                            // photo-upload 503 this environment returns by design) would otherwise
+                            // leave whichever upload flag it set stuck true forever, since the only
+                            // place that clears it is that same function's success path.
+                            isUploadingLogo = false,
+                            isUploadingBanner = false,
+                            errorMessage = throwable.message ?: "Couldn't save this league. Please try again.",
+                        )
+                    }
                 }
         }
     }
@@ -390,6 +406,11 @@ class LeagueCreationViewModel(
         for (award in current) {
             if (award.id == null) {
                 if (award.name.isNotBlank()) leagueRepository.addAward(leagueId, award.toRequest())
+            } else if (award.name.isBlank()) {
+                // Blanking an existing award's name reads as "remove this," same as the create
+                // path's blank-name-is-dropped rule -- the backend rejects a blank name outright,
+                // so silently forwarding it as an update would fail past already-committed edits.
+                leagueRepository.deleteAward(leagueId, award.id)
             } else {
                 val original = originalById[award.id]
                 if (original != null && original != award) leagueRepository.updateAward(leagueId, award.id, award.toRequest())

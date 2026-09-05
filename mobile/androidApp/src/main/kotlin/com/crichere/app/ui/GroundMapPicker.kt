@@ -59,7 +59,17 @@ internal fun GroundMapPicker(
         }
     }
 
+    // The very first emission fires on initial composition, before the user has done anything --
+    // if there's no real seed yet (initialLatLng null), that first position is just
+    // DEFAULT_CAMERA_POSITION's placeholder, not a location anyone chose. Reporting it would let
+    // "register" silently save that placeholder if the user never drags the pin at all. Once a
+    // real seed exists, or after the first emission, every change (drag, or a GPS fix arriving
+    // later) is real and gets reported.
+    var hasEmittedInitialPosition by remember { mutableStateOf(false) }
     LaunchedEffect(markerState.position) {
+        val isFirstEmission = !hasEmittedInitialPosition
+        hasEmittedInitialPosition = true
+        if (isFirstEmission && initialLatLng == null) return@LaunchedEffect
         onPositionChanged(markerState.position.latitude, markerState.position.longitude)
     }
 

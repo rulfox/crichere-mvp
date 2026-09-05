@@ -23,7 +23,8 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
     @Query(
         """
         SELECT l FROM LeagueEntity l
-        WHERE (:state IS NULL OR l.state = :state)
+        WHERE l.completedAt IS NULL
+          AND (:state IS NULL OR l.state = :state)
           AND (:district IS NULL OR l.district = :district)
           AND (:city IS NULL OR l.city = :city)
         ORDER BY l.startsOn
@@ -39,7 +40,7 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
         value = """
             SELECT l.* FROM leagues l
             JOIN grounds g ON g.id = l.ground_id
-            WHERE l.ground_id IS NOT NULL
+            WHERE l.ground_id IS NOT NULL AND l.completed_at IS NULL
             ORDER BY (
                 6371 * acos(
                     cos(radians(:latitude)) * cos(radians(g.latitude)) * cos(radians(g.longitude) - radians(:longitude))

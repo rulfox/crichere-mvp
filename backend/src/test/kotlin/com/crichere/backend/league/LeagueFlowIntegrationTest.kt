@@ -247,6 +247,22 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `a completed league drops out of the area-filter listing`() {
+        val leagueId = createLeague()
+        authedPatch(organizerToken, "/api/v1/leagues/$leagueId/complete").andExpect(status().isOk)
+
+        val list = mockMvc.perform(
+            get("/api/v1/leagues").param("state", "Karnataka").param("district", "Bengaluru Urban"),
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        kotlin.test.assertFalse(readList(list).any { it["id"] == leagueId })
+    }
+
+    @Test
     fun `a nonexistent league id is a clean 404`() {
         authedGet(organizerToken, "/api/v1/leagues/${UUID.randomUUID()}")
             .andExpect(status().isNotFound)
