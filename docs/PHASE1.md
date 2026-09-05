@@ -92,6 +92,8 @@ Describing what belongs on each screen — not layout, spacing, or component cho
 
 (None currently open — all resolved into Decisions Made above.)
 
+- **Firebase Admin SDK credential provisioned (2026-09-05).** The environment gap noted since initial implementation — `crichere.firebase.service-account-path` blank, so ID-token verification always failed (confirmed via real-device testing on 2026-09-04/05: debug fake token correctly got a 401) — is resolved. Generated a real key for `firebase-adminsdk-fbsvc@crichere.iam.gserviceaccount.com` via `gcloud iam service-accounts keys create`, saved at `backend/secrets/firebase-adminsdk.json` (gitignored, `backend/secrets/` added to `.gitignore`). Not wired into `application.yml` as a default — set `FIREBASE_SERVICE_ACCOUNT_PATH` to that file's path as an environment variable when running the backend locally, same as `PHONE_CRYPTO_SECRET`/`JWT_SECRET` follow the "real values are env vars, never committed" rule. Real end-to-end OTP verification (a real phone number, real Firebase-issued ID token) still hasn't been exercised — only the negative case (fake token → 401) has been confirmed on real hardware so far.
+
 ---
 
 ## 6. Pure Technical Things
