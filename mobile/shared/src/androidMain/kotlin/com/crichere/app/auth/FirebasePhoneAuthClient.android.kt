@@ -13,15 +13,12 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * Real Android Firebase Phone Auth wiring. This genuinely compiles against
- * `com.google.firebase:firebase-auth`'s real classes (`PhoneAuthOptions`, `PhoneAuthProvider`,
- * `FirebaseAuth`) -- see task-6-report.md for the `:shared:compileDebugKotlinAndroid` run that
- * proves it. What it cannot do in this environment is actually run against a real project: there
- * is no `google-services.json` (see `androidApp/build.gradle.kts`), so `FirebaseAuth.getInstance()`
- * would throw `IllegalStateException("Default FirebaseApp is not initialized")` the first time a
- * real device reached this code. The vertical slice's real-device verification therefore
- * substitutes a fake [PhoneAuthClient] in place of this class rather than exercising this one
- * (see task-6-report.md).
+ * Real Android Firebase Phone Auth wiring, backed by `com.google.firebase:firebase-auth`
+ * (`PhoneAuthOptions`, `PhoneAuthProvider`, `FirebaseAuth`). Wired unconditionally in
+ * `PlatformModule.android.kt` since `google-services.json` was provisioned (2026-09-05) --
+ * see docs/PHASE1.md's Open Questions and Gaps. Firebase-console test phone numbers (fixed
+ * SMS code, no real SMS sent, no Play Integrity check) are the normal way to exercise this
+ * without incurring per-SMS cost; see docs/PHASE1.md for how those are configured.
  */
 actual class FirebasePhoneAuthClient : PhoneAuthClient {
 

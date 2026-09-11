@@ -17,9 +17,11 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * [LeagueDashboardViewModel] coverage: initial list load, State/District/City filter cascade
- * (mirrors `ProfileSetupViewModel`'s pattern), and "near me" being mutually exclusive with the
- * area filters (see docs/PHASE2.md's Decisions Made).
+ * [LeagueDashboardViewModel] coverage: [LeagueDashboardViewModel.refresh]-driven list load
+ * (deliberately not auto-loaded from `init` -- see that class's doc on why the route composable
+ * calls `refresh()` on every visit instead), State/District/City filter cascade (mirrors
+ * `ProfileSetupViewModel`'s pattern), and "near me" being mutually exclusive with the area filters
+ * (see docs/PHASE2.md's Decisions Made).
  */
 class LeagueDashboardViewModelTest {
 
@@ -49,14 +51,30 @@ class LeagueDashboardViewModelTest {
     ) = LeagueDashboardViewModel(leagueRepository, referenceRepository, locationProvider)
 
     @Test
-    fun `loads announced leagues with no filters on init`() = viewModelTest {
+    fun `refresh loads announced leagues with no filters`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val viewModel = newViewModel(leagueRepository = leagueRepository)
+        advanceUntilIdle()
+
+        viewModel.refresh()
         advanceUntilIdle()
 
         assertEquals(1, viewModel.state.value.leagues.size)
         assertEquals(listOf(Triple<String?, String?, String?>(null, null, null)), leagueRepository.listByAreaCalls)
         assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `constructing the ViewModel alone does not load leagues -- the route calls refresh on each visit`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        newViewModel(leagueRepository = leagueRepository)
+        advanceUntilIdle()
+
+        assertTrue(
+            leagueRepository.listByAreaCalls.isEmpty(),
+            "init must not call refresh() -- a stale list from a one-time init load is exactly the bug " +
+                "this contract avoids (e.g. a just-created league not appearing until a manual Refresh tap)",
+        )
     }
 
     @Test

@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +39,12 @@ internal fun LeagueDashboardRoute(onOpenLeague: (String) -> Unit, onCreateLeague
     val viewModel: LeagueDashboardViewModel = koinViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // The ViewModel survives leaving and re-entering this tab (see its doc), so a fresh fetch on
+    // every visit -- not just the ViewModel's own one-time init -- is what keeps a just-created or
+    // just-completed league from looking like it never happened until the user notices and taps
+    // Refresh themselves.
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) viewModel.onToggleNearMe()

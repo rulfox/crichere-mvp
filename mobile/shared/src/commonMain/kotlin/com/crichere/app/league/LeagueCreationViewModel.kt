@@ -43,6 +43,11 @@ data class LeagueCreationState(
     val bannerUrl: String? = null,
     val isUploadingLogo: Boolean = false,
     val isUploadingBanner: Boolean = false,
+    // True the instant a logo/banner is picked, before there's a leagueId to upload against --
+    // see onLogoPicked/onBannerPicked's doc. Lets the button reflect the pick immediately instead
+    // of staying on "Choose a logo" until Save (the actual upload's only trigger point).
+    val hasPendingLogo: Boolean = false,
+    val hasPendingBanner: Boolean = false,
     // Location
     val state: String? = null,
     val district: String? = null,
@@ -170,6 +175,7 @@ class LeagueCreationViewModel(
                         district = league.district,
                         city = league.city,
                         groundId = league.groundId,
+                        groundDisplayName = league.groundName,
                         startsOn = league.startsOn,
                         format = league.format.orEmpty(),
                         franchisesRequired = league.franchisesRequired?.toString().orEmpty(),
@@ -198,14 +204,24 @@ class LeagueCreationViewModel(
     fun onNameChanged(value: String) = _state.update { it.copy(name = value, errorMessage = null) }
     fun onDescriptionChanged(value: String) = _state.update { it.copy(description = value) }
 
+    /**
+     * Unlike Profile Setup's photo (uploaded immediately -- the caller's own `userId` is already
+     * known), a league logo/banner can't be uploaded yet: the presign endpoint needs a real
+     * `leagueId`, which doesn't exist until the league itself is created. The bytes are staged
+     * here and actually uploaded by [uploadPendingImagesIfAny], called from [save]. [hasPendingLogo]
+     * only exists so the button can say "Logo selected" right away instead of looking like the tap
+     * did nothing until Save.
+     */
     fun onLogoPicked(bytes: ByteArray, contentType: String) {
         pendingLogoBytes = bytes
         pendingLogoContentType = contentType
+        _state.update { it.copy(hasPendingLogo = true) }
     }
 
     fun onBannerPicked(bytes: ByteArray, contentType: String) {
         pendingBannerBytes = bytes
         pendingBannerContentType = contentType
+        _state.update { it.copy(hasPendingBanner = true) }
     }
 
     // ---- Location ----
@@ -283,8 +299,8 @@ class LeagueCreationViewModel(
 
     fun onClearGround() = _state.update { it.copy(groundId = null, groundDisplayName = null) }
 
-    fun onStartRegisteringNewGround() = _state.update { it.copy(isRegisteringNewGround = true, groundSearchResults = emptyList()) }
-    fun onCancelRegisteringNewGround() = _state.update { it.copy(isRegisteringNewGround = false) }
+    fun onStartRegisteringNewGround() = _state.update { it.copy(isRegisteringNewGround = true, groundSearchResults = emptyList(), errorMessage = null) }
+    fun onCancelRegisteringNewGround() = _state.update { it.copy(isRegisteringNewGround = false, errorMessage = null) }
     fun onNewGroundNameChanged(value: String) = _state.update { it.copy(newGroundName = value) }
     fun onNewGroundPositionChanged(latitude: Double, longitude: Double) = _state.update { it.copy(newGroundLatitude = latitude, newGroundLongitude = longitude) }
 
@@ -295,7 +311,19 @@ class LeagueCreationViewModel(
         val city = current.city
         val latitude = current.newGroundLatitude
         val longitude = current.newGroundLongitude
-        if (current.newGroundName.isBlank() || state == null || district == null || city == null || latitude == null || longitude == null) return
+        if (current.newGroundName.isBlank()) return
+
+        // Each of these can be missing independently of the enabled check on the Register
+        // button (name-only) -- surfacing which one is missing beats a silent no-op, which is
+        // indistinguishable from the tap simply not registering at all.
+        if (state == null || district == null || city == null) {
+            _state.update { it.copy(errorMessage = "Set the league's State/District/City before registering a ground.") }
+            return
+        }
+        if (latitude == null || longitude == null) {
+            _state.update { it.copy(errorMessage = "Drag the pin to the ground's location before registering.") }
+            return
+        }
 
         viewModelScope.launch {
             _state.update { it.copy(isRegisteringGround = true, errorMessage = null) }

@@ -51,8 +51,15 @@ private sealed interface AuthDestination {
     data object PhoneEntry : AuthDestination
     data class OtpVerify(val phoneNumber: String, val verificationId: String, val resendToken: Any?) : AuthDestination
     data class ProfileSetup(val isEditMode: Boolean) : AuthDestination
-    data object Main : AuthDestination
+    // initialTab exists so that returning from an edit-mode ProfileSetup (always reached from
+    // MainRoute's own My Profile tab) lands back on My Profile, not the default Dashboard --
+    // MainRoute's own tab state is destroyed and recreated every time this destination is
+    // re-entered (this `when` only keeps one branch composed at a time), so without this the tab
+    // selection couldn't survive the round trip through ProfileSetup.
+    data class Main(val initialTab: MainTab = MainTab.DASHBOARD) : AuthDestination
 }
+
+private enum class MainTab { DASHBOARD, MY_PROFILE }
 
 @Composable
 fun AuthNavHost() {
@@ -63,7 +70,7 @@ fun AuthNavHost() {
             destination = when (resolved) {
                 AppStartDestination.PhoneEntry -> AuthDestination.PhoneEntry
                 AppStartDestination.ProfileSetup -> AuthDestination.ProfileSetup(isEditMode = false)
-                AppStartDestination.Main -> AuthDestination.Main
+                AppStartDestination.Main -> AuthDestination.Main()
             }
         }
 
@@ -86,16 +93,19 @@ fun AuthNavHost() {
         ) { event ->
             destination = when (event) {
                 AuthNavigationEvent.NavigateToProfileSetup -> AuthDestination.ProfileSetup(isEditMode = false)
-                AuthNavigationEvent.NavigateToOwnProfile -> AuthDestination.Main
+                AuthNavigationEvent.NavigateToOwnProfile -> AuthDestination.Main()
                 AuthNavigationEvent.NavigateToPhoneEntry -> AuthDestination.PhoneEntry
             }
         }
 
         is AuthDestination.ProfileSetup -> ProfileSetupRoute(isEditMode = current.isEditMode) {
-            destination = AuthDestination.Main
+            // Only an edit (reached from My Profile) returns there -- first-time setup completion
+            // has no prior tab to return to, so it lands on the default Dashboard.
+            destination = AuthDestination.Main(initialTab = if (current.isEditMode) MainTab.MY_PROFILE else MainTab.DASHBOARD)
         }
 
-        AuthDestination.Main -> MainRoute(
+        is AuthDestination.Main -> MainRoute(
+            initialTab = current.initialTab,
             onNavigateToEditProfile = { destination = AuthDestination.ProfileSetup(isEditMode = true) },
             onNavigateToPhoneEntry = { destination = AuthDestination.PhoneEntry },
         )
@@ -170,11 +180,9 @@ private sealed interface MainDestination {
     data class LeagueCreation(val editingLeagueId: String?) : MainDestination
 }
 
-private enum class MainTab { DASHBOARD, MY_PROFILE }
-
 @Composable
-private fun MainRoute(onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit) {
-    var destination by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(MainTab.DASHBOARD)) }
+private fun MainRoute(initialTab: MainTab, onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit) {
+    var destination by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(initialTab)) }
 
     when (val current = destination) {
         is MainDestination.Tabs -> Scaffold(

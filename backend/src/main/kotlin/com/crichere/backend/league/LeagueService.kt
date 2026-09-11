@@ -253,6 +253,10 @@ class LeagueService(
 
     private fun LeagueEntity.toResponse(): LeagueResponse {
         val awards = leagueAwardRepository.findByLeagueIdOrderByDisplayOrder(requireNotNull(id)).map { it.toResponse() }
+        // Same per-row lookup shape as the awards fetch just above -- an accepted N+1 for Phase 2's
+        // data volume (see docs/PHASE2.md's Decisions Made / the code review that flagged this same
+        // tradeoff for awards).
+        val groundName = groundId?.let { groundRepository.findById(it).orElse(null)?.name }
         return LeagueResponse(
             id = requireNotNull(id),
             organizerUserId = organizerUserId,
@@ -265,6 +269,7 @@ class LeagueService(
             district = district,
             city = city,
             groundId = groundId,
+            groundName = groundName,
             startsOn = startsOn,
             format = format,
             franchisesRequired = franchisesRequired,

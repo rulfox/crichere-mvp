@@ -115,6 +115,30 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `a league's response includes its ground's name, not just the raw id`() {
+        val ground = authedPost(
+            organizerToken,
+            "/api/v1/grounds",
+            mapOf("name" to "Chinnaswamy Stadium", "state" to "Karnataka", "district" to "Bengaluru Urban", "city" to "Bengaluru", "latitude" to 12.9788, "longitude" to 77.5996),
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .body()
+        val groundId = ground["id"] as String
+
+        val created = authedPost(organizerToken, "/api/v1/leagues", validLeagueBody() + ("groundId" to groundId))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.groundId").value(groundId))
+            .andExpect(jsonPath("$.groundName").value("Chinnaswamy Stadium"))
+            .andReturn()
+            .body()
+
+        authedGet(organizerToken, "/api/v1/leagues/${created["id"]}")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.groundName").value("Chinnaswamy Stadium"))
+    }
+
+    @Test
     fun `creating a league with a nonexistent groundId is a clean 404, not a 500`() {
         authedPost(organizerToken, "/api/v1/leagues", validLeagueBody() + ("groundId" to UUID.randomUUID().toString()))
             .andExpect(status().isNotFound)

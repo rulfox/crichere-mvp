@@ -51,7 +51,11 @@ class LeagueDashboardViewModel(
             val states = runCatching { referenceRepository.getStates() }.getOrDefault(emptyList())
             _state.update { it.copy(states = states) }
         }
-        refresh()
+        // Deliberately not calling refresh() here -- this ViewModel outlives a single dashboard
+        // visit (Koin's koinViewModel() with no key returns the same instance every time the
+        // Dashboard tab is re-entered, e.g. after creating or completing a league), so a one-time
+        // init load would go stale the moment the underlying list changes elsewhere. The route
+        // composable calls refresh() itself on every entry instead -- see LeagueDashboardRoute.
     }
 
     /** Re-runs whichever list (area filters or nearest) is currently active. Also the pull-to-refresh entry point. */

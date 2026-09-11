@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +34,11 @@ import org.koin.core.parameter.parametersOf
 internal fun LeagueDetailRoute(leagueId: String, onBack: () -> Unit, onEditLeague: (String) -> Unit) {
     val viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // The ViewModel survives leaving and re-entering this screen for the same leagueId (see its
+    // doc), so a fresh fetch on every visit is what makes an edit just saved (e.g. this session's
+    // real bug: a removed/renamed award still showing here) actually show up.
+    LaunchedEffect(Unit) { viewModel.retry() }
 
     LeagueDetailScreen(
         state = state,
@@ -99,6 +105,7 @@ private fun LeagueDetailContent(
                 Text(text = "${league.city}, ${league.district}, ${league.state}")
                 Text(text = "Starts ${league.startsOn}" + (league.format?.let { " -- $it" } ?: ""))
                 Text(text = if (league.status == LeagueStatus.COMPLETED) "Completed" else "Announced")
+                league.groundName?.let { Text("Ground: $it") }
                 league.description?.let { Text(it) }
             }
         }

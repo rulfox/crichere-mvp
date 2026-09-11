@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -127,13 +125,29 @@ private fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCr
                 onClick = { logoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 enabled = !state.isUploadingLogo,
             ) {
-                Text(if (state.isUploadingLogo) "Uploading logo..." else if (state.logoUrl != null) "Logo selected" else "Choose a logo")
+                Text(
+                    if (state.isUploadingLogo) {
+                        "Uploading logo..."
+                    } else if (state.logoUrl != null || state.hasPendingLogo) {
+                        "Logo selected"
+                    } else {
+                        "Choose a logo"
+                    },
+                )
             }
             TextButton(
                 onClick = { bannerPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 enabled = !state.isUploadingBanner,
             ) {
-                Text(if (state.isUploadingBanner) "Uploading banner..." else if (state.bannerUrl != null) "Banner selected" else "Choose a banner")
+                Text(
+                    if (state.isUploadingBanner) {
+                        "Uploading banner..."
+                    } else if (state.bannerUrl != null || state.hasPendingBanner) {
+                        "Banner selected"
+                    } else {
+                        "Choose a banner"
+                    },
+                )
             }
         }
 
@@ -273,6 +287,13 @@ private fun GroundSection(state: LeagueCreationState, viewModel: LeagueCreationV
                     if (state.isRegisteringGround) CircularProgressIndicator(modifier = Modifier.padding(2.dp)) else Text("Register ground")
                 }
             }
+            // Also shown at the very bottom of the whole form (see LeagueCreationScreen), which
+            // is scrolled far out of view from here -- repeating it next to the action that
+            // actually caused it (e.g. "drag the pin first") is what makes it visible at all.
+            val groundErrorMessage = state.errorMessage
+            if (groundErrorMessage != null) {
+                Text(text = groundErrorMessage, color = MaterialTheme.colorScheme.error)
+            }
             return
         }
 
@@ -335,11 +356,14 @@ private fun AwardsSection(state: LeagueCreationState, viewModel: LeagueCreationV
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text = "Awards", style = MaterialTheme.typography.titleMedium)
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().height((state.awards.size.coerceAtLeast(1) * 96).dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(state.awards.size) { index -> AwardRow(award = state.awards[index], index = index, viewModel = viewModel) }
+        // A plain Column, not LazyColumn -- this list is always a handful of rows (a handful of
+        // awards per league), never large enough to need virtualization, and a LazyColumn here
+        // previously needed a manually-guessed fixed height (state.awards.size * 96.dp) that
+        // undercounted each row's real height, silently clipping awards past whatever fit in that
+        // budget with no way to scroll to the rest -- e.g. a league's 3rd award becoming
+        // inaccessible in Edit mode. A plain Column just takes the height its content needs.
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.awards.forEachIndexed { index, award -> AwardRow(award = award, index = index, viewModel = viewModel) }
         }
 
         TextButton(onClick = viewModel::onAddAward) { Text("Add another award") }
@@ -357,16 +381,20 @@ private fun AwardRow(award: AwardDraft, index: Int, viewModel: LeagueCreationVie
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            // Cash gets the full width on its own line -- squeezed into a Row alongside the
+            // Checkbox/"Trophy"/"Remove" controls (as this used to be), its "Cash (optional)"
+            // label had only ~100dp to work with and wrapped across 3 lines, which was the direct
+            // cause of each row being far taller than the LazyColumn height budget above assumed.
+            OutlinedTextField(
+                value = award.cashAmount,
+                onValueChange = { viewModel.onAwardCashAmountChanged(index, it) },
+                label = { Text("Cash (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = award.cashAmount,
-                    onValueChange = { viewModel.onAwardCashAmountChanged(index, it) },
-                    label = { Text("Cash (optional)") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
                 Checkbox(checked = award.hasTrophy, onCheckedChange = { viewModel.onAwardTrophyToggled(index) })
-                Text("Trophy")
+                Text("Trophy", modifier = Modifier.weight(1f))
                 TextButton(onClick = { viewModel.onRemoveAward(index) }) { Text("Remove") }
             }
         }

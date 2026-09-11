@@ -53,6 +53,11 @@ suspend fun uploadPhotoViaPresignedPost(
         url = uploadInfo.uploadUrl,
         formData = formData {
             uploadInfo.fields.forEach { (key, value) -> append(key, value) }
+            // S3's presigned-POST policy condition `["starts-with", "$Content-Type", ...]`
+            // (see backend PhotoUploadService) is checked against a plain form field named
+            // "Content-Type", not the "file" part's own Content-Type header below -- both are
+            // required, and this field must come before "file" like every other field.
+            append("Content-Type", contentType)
             append(
                 key = "file",
                 value = bytes,

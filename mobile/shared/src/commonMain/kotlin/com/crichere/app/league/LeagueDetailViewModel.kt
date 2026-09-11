@@ -35,9 +35,11 @@ class LeagueDetailViewModel(
     private val _state = MutableStateFlow(LeagueDetailState())
     val state: StateFlow<LeagueDetailState> = _state.asStateFlow()
 
-    init {
-        load()
-    }
+    // Deliberately not calling load() here -- Koin's koinViewModel(key = "league-detail:$leagueId")
+    // returns this same instance every time this league's detail screen is re-entered with the
+    // same id (e.g. returning from Edit having just changed its awards), so a one-time init load
+    // would keep showing what was true the first time this screen was visited. LeagueDetailRoute
+    // calls retry() itself on every entry instead -- see that composable.
 
     fun retry() = load()
 

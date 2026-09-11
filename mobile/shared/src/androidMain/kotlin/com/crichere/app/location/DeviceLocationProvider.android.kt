@@ -103,8 +103,14 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
         }
     }
 
+    // GPS_PROVIDER requires ACCESS_FINE_LOCATION, which this app never requests -- only
+    // ACCESS_COARSE_LOCATION, matching this feature's actual state/city-level precision need
+    // (see this class's doc). Requesting GPS_PROVIDER with only coarse permission throws a
+    // SecurityException that getCurrentLocation()'s runCatching silently swallows as null, so
+    // "Use my location" would look like it does nothing at all -- confirmed on a real device: the
+    // request returned null in under a millisecond, not after any real GPS search. NETWORK_PROVIDER
+    // is the one coarse permission actually authorizes.
     private fun bestAvailableProvider(locationManager: LocationManager): String? = when {
-        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
         locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
         else -> null
     }

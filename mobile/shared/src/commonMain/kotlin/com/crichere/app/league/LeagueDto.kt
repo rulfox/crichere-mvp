@@ -46,6 +46,7 @@ data class LeagueDto(
     val district: String,
     val city: String,
     val groundId: String? = null,
+    val groundName: String? = null,
     val startsOn: String,
     val format: String? = null,
     val franchisesRequired: Int? = null,

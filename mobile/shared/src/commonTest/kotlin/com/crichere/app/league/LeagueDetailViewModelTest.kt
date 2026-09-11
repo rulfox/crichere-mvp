@@ -42,6 +42,7 @@ class LeagueDetailViewModelTest {
     fun `loads the league and marks the viewer as organizer when ids match`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
         advanceUntilIdle()
 
         val state = viewModel.state.value
@@ -54,6 +55,7 @@ class LeagueDetailViewModelTest {
     fun `a non-organizer viewer does not get organizer actions`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("someone-else"))
+        viewModel.retry()
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isOrganizer)
@@ -63,6 +65,7 @@ class LeagueDetailViewModelTest {
     fun `a signed-out viewer -- null user id -- is never treated as organizer`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository(null))
+        viewModel.retry()
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isOrganizer)
@@ -72,6 +75,7 @@ class LeagueDetailViewModelTest {
     fun `a load failure surfaces an error message instead of crashing`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = emptyList())
         val viewModel = LeagueDetailViewModel("missing-id", leagueRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
         advanceUntilIdle()
 
         val state = viewModel.state.value
@@ -87,6 +91,7 @@ class LeagueDetailViewModelTest {
             nextCompleted = completed
         }
         val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
         advanceUntilIdle()
 
         viewModel.markCompleted()
@@ -104,6 +109,7 @@ class LeagueDetailViewModelTest {
             nextCompleted = league.copy(status = LeagueStatus.COMPLETED)
         }
         val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("someone-else"))
+        viewModel.retry()
         advanceUntilIdle()
 
         viewModel.markCompleted()
