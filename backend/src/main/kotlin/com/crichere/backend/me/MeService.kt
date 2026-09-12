@@ -29,8 +29,13 @@ class MeService(
         val organizing = leagueRepository.findByOrganizerUserId(callerId)
         val playing = playerRepository.findByUserIdAndRemovedAtIsNull(callerId)
             .mapNotNull { leagueRepository.findById(it.leagueId).orElse(null) }
+        // distinctBy: unlike players (unique per league+user), a user can own more than one
+        // franchise in the same league (see docs/PHASE3.md's Decisions Made -- "dual roles
+        // allowed freely"), which would otherwise put the same league in this list twice. This
+        // list represents leagues you own a franchise in, not one row per franchise.
         val franchiseOwner = franchiseRepository.findByOwnerUserIdAndRemovedAtIsNull(callerId)
             .mapNotNull { leagueRepository.findById(it.leagueId).orElse(null) }
+            .distinctBy { it.id }
         val following = leagueFollowRepository.findByUserId(callerId)
             .mapNotNull { leagueRepository.findById(it.leagueId).orElse(null) }
 

@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -66,7 +66,11 @@ private fun LazyListScope.leagueSection(
 ) {
     if (leagues.isEmpty()) return
     item { Text(text = title, style = MaterialTheme.typography.titleMedium) }
-    items(leagues, key = { "$title-${it.id}" }) { league ->
+    // Index in the key too -- the backend already dedupes each list by league id (a user can own
+    // more than one franchise in the same league, see docs/PHASE3.md's Decisions Made), but a
+    // duplicate id here would otherwise crash this LazyColumn outright rather than just rendering
+    // oddly, so this is defense-in-depth against that same class of bug recurring.
+    itemsIndexed(leagues, key = { index, item -> "$title-${item.id}-$index" }) { _, league ->
         Card(
             modifier = Modifier
                 .fillMaxWidth()

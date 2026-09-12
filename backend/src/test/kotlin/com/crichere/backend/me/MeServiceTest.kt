@@ -75,4 +75,27 @@ class MeServiceTest {
         assertEquals(listOf(franchiseLeagueId), result.franchiseOwner.map { it.id })
         assertEquals(listOf(followedLeagueId), result.following.map { it.id })
     }
+
+    @Test
+    fun `owning two franchises in the same league lists that league only once`() {
+        // Reproduces a real on-device crash: unlike players (unique per league+user), a user can
+        // own more than one franchise in the same league (docs/PHASE3.md's "dual roles allowed
+        // freely"), which previously put the same league into franchiseOwner twice -- a duplicate
+        // key that crashed the mobile My Leagues screen's LazyColumn outright.
+        val leagueId = UUID.randomUUID()
+        val sharedLeague = league(leagueId, UUID.randomUUID())
+
+        every { leagueRepository.findByOrganizerUserId(callerId) } returns emptyList()
+        every { playerRepository.findByUserIdAndRemovedAtIsNull(callerId) } returns emptyList()
+        every { franchiseRepository.findByOwnerUserIdAndRemovedAtIsNull(callerId) } returns listOf(
+            FranchiseEntity(id = UUID.randomUUID(), leagueId = leagueId, ownerUserId = callerId, name = "Bihar Warriors"),
+            FranchiseEntity(id = UUID.randomUUID(), leagueId = leagueId, ownerUserId = callerId, name = "Patna Panthers"),
+        )
+        every { leagueRepository.findById(leagueId) } returns Optional.of(sharedLeague)
+        every { leagueFollowRepository.findByUserId(callerId) } returns emptyList()
+
+        val result = service.getMyLeagues(callerId)
+
+        assertEquals(listOf(leagueId), result.franchiseOwner.map { it.id })
+    }
 }
