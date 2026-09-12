@@ -76,6 +76,20 @@ class FranchiseFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `a non-https paymentScreenshotUrl or logoUrl is rejected -- for example a local file URI`() {
+        val leagueId = createLeague(organizerToken)
+        val ownerToken = signInNewUser()
+
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/franchises", claimBody(screenshotUrl = "file:///storage/emulated/0/DCIM/private.jpg"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/franchises", mapOf("name" to "Chennai Kings", "logoUrl" to "content://media/external/images/1"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+    }
+
+    @Test
     fun `a second claim by the same user in the same league succeeds`() {
         val leagueId = createLeague(organizerToken)
         val ownerToken = signInNewUser()

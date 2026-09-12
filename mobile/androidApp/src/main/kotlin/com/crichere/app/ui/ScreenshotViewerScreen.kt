@@ -41,6 +41,11 @@ internal fun ScreenshotViewerRoute(imageUrl: String, onBack: () -> Unit) {
 
     LaunchedEffect(imageUrl) {
         runCatching {
+            // The backend already restricts this field to https:// (see LeaguePlayerJoinRequest/
+            // LeagueFranchiseClaimRequest), but this is a second, independent check right at the
+            // point the URL is actually opened -- a `file://`/`content://` value here would
+            // otherwise read local storage on whichever device views this "screenshot".
+            require(imageUrl.startsWith("https://")) { "Unsupported image URL" }
             withContext(Dispatchers.IO) {
                 URL(imageUrl).openStream().use { BitmapFactory.decodeStream(it) }
             }

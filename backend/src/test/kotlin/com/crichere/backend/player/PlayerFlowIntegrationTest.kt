@@ -79,6 +79,16 @@ class PlayerFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `a non-https paymentScreenshotUrl is rejected -- for example a local file URI`() {
+        val leagueId = createLeague(organizerToken)
+        val playerToken = signInNewUser()
+
+        authedPost(playerToken, "/api/v1/leagues/$leagueId/players", mapOf("paymentScreenshotUrl" to "file:///storage/emulated/0/DCIM/private.jpg"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+    }
+
+    @Test
     fun `joining twice is rejected as already joined`() {
         val leagueId = createLeague(organizerToken)
         val playerToken = signInNewUser()
