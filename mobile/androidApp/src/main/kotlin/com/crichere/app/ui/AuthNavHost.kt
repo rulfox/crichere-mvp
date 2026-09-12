@@ -313,5 +313,6 @@ private fun MainRoute(
 @Composable
 private fun OwnProfileRoute(onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit) {
     val viewModel: OwnProfileViewModel = koinViewModel()
+    LaunchedEffect(Unit) { viewModel.retry() }
     OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry)
 }

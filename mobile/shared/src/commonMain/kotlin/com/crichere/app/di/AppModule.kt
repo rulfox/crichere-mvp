@@ -8,6 +8,7 @@ import com.crichere.app.auth.OtpVerifyViewModel
 import com.crichere.app.auth.PhoneEntryViewModel
 import com.crichere.app.ground.GroundRepository
 import com.crichere.app.ground.KtorGroundRepository
+import io.ktor.client.HttpClient
 import com.crichere.app.league.AuctionSettingsViewModel
 import com.crichere.app.league.ClaimFranchiseViewModel
 import com.crichere.app.league.FranchiseRepository
@@ -82,6 +83,7 @@ val sharedModule: Module = module {
             authHttpClient = get(AUTH_HTTP_CLIENT),
             phoneAuthClient = get(),
             secureStorage = get(),
+            authenticatedHttpClientProvider = { get<HttpClient>() },
         )
     }
 

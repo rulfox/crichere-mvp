@@ -27,7 +27,7 @@ class PhoneEntryViewModelTest {
         val phoneAuthClient = FakePhoneAuthClient().apply {
             sendVerificationCodeResult = Result.success(PhoneVerificationHandle("real-verification-id", resendToken = "token-42"))
         }
-        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage())
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
 
         viewModel.onPhoneNumberChanged("+919876543210")
@@ -45,7 +45,7 @@ class PhoneEntryViewModelTest {
     @Test
     fun `an implausible phone number is rejected before ever calling Firebase`() = viewModelTest {
         val phoneAuthClient = FakePhoneAuthClient()
-        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage())
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
 
         viewModel.onPhoneNumberChanged("not-a-phone-number")
@@ -61,7 +61,7 @@ class PhoneEntryViewModelTest {
         val phoneAuthClient = FakePhoneAuthClient().apply {
             sendVerificationCodeResult = Result.failure(IllegalStateException("Firebase quota exceeded"))
         }
-        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage())
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
 
         viewModel.onPhoneNumberChanged("+919876543210")
@@ -77,7 +77,7 @@ class PhoneEntryViewModelTest {
         val phoneAuthClient = FakePhoneAuthClient().apply {
             sendVerificationCodeResult = Result.failure(IllegalStateException("boom"))
         }
-        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage())
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
         viewModel.onPhoneNumberChanged("+919876543210")
         viewModel.requestCode()

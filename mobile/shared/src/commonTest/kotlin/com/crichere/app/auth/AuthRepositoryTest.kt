@@ -4,10 +4,14 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
+import io.ktor.client.request.get
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -42,7 +46,7 @@ class AuthRepositoryTest {
     @Test
     fun `sendOtp delegates straight to the fake PhoneAuthClient`() = runTest {
         val phoneAuthClient = FakePhoneAuthClient()
-        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, phoneAuthClient, FakeSecureStorage())
+        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         val result = repository.sendOtp("+919876543210")
 
@@ -54,7 +58,7 @@ class AuthRepositoryTest {
     @Test
     fun `verifyOtp delegates straight to the fake PhoneAuthClient`() = runTest {
         val phoneAuthClient = FakePhoneAuthClient()
-        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, phoneAuthClient, FakeSecureStorage())
+        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         val result = repository.verifyOtp("verification-id", "123456")
 
@@ -75,7 +79,7 @@ class AuthRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage)
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         val result = repository.exchangeSession("real-firebase-id-token")
 
@@ -87,18 +91,76 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun `exchangeSession clears the authenticated client's cached bearer token so the next request uses the new one`() = runTest {
+        // Reproduces a real on-device bug: Ktor's `bearer` auth provider caches whatever
+        // loadTokens() returned the first time it was needed and does not re-read it before every
+        // request -- only after a 401 triggers refreshTokens(). Without exchangeSession clearing
+        // that cache, a fresh sign-in as a different user (log out, sign in as someone else, no
+        // app restart) would keep sending the *previous* user's access token on every subsequent
+        // request, surfacing as a 403 on the first organizer-only action the new user tries.
+        val storage = FakeSecureStorage()
+        storage.set(SecureStorageKeys.ACCESS_TOKEN, "stale-access-token")
+        storage.set(SecureStorageKeys.REFRESH_TOKEN, "stale-refresh-token")
+
+        var capturedAuthHeader: String? = null
+        val authenticatedClient = HttpClient(MockEngine) {
+            install(ContentNegotiation) { json() }
+            defaultRequest { url("http://localhost/") }
+            install(Auth) {
+                bearer {
+                    loadTokens {
+                        val access = storage.get(SecureStorageKeys.ACCESS_TOKEN) ?: return@loadTokens null
+                        val refresh = storage.get(SecureStorageKeys.REFRESH_TOKEN) ?: return@loadTokens null
+                        BearerTokens(access, refresh)
+                    }
+                }
+            }
+            engine {
+                addHandler { request ->
+                    capturedAuthHeader = request.headers[HttpHeaders.Authorization]
+                    respond(content = "{}", status = HttpStatusCode.OK, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                }
+            }
+        }
+
+        // Prime the client's cache with the stale token, same as any request a still-open screen
+        // might have already made before this fresh sign-in.
+        authenticatedClient.get("/anything")
+        assertEquals("Bearer stale-access-token", capturedAuthHeader)
+
+        val sessionHttpClient = mockHttpClient { request ->
+            respond(
+                content = authResponseJson(profileComplete = true),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = KtorAuthRepository(
+            sessionHttpClient,
+            FakePhoneAuthClient(),
+            storage,
+            authenticatedHttpClientProvider = { authenticatedClient },
+        )
+
+        repository.exchangeSession("a-different-user's-firebase-id-token")
+
+        authenticatedClient.get("/anything")
+        assertEquals("Bearer access-1", capturedAuthHeader, "still using the previous user's cached token")
+    }
+
+    @Test
     fun `exchangeSession throws on a non-2xx response instead of silently swallowing it`() = runTest {
         val httpClient = mockHttpClient { request ->
             respond(content = "{}", status = HttpStatusCode.Unauthorized, headers = headersOf(HttpHeaders.ContentType, "application/json"))
         }
-        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), FakeSecureStorage())
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), FakeSecureStorage(), authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         assertFailsWith<SessionExchangeFailedException> { repository.exchangeSession("bad-token") }
     }
 
     @Test
     fun `refresh returns null without an HTTP call when nothing is stored yet`() = runTest {
-        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, FakePhoneAuthClient(), FakeSecureStorage())
+        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, FakePhoneAuthClient(), FakeSecureStorage(), authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         assertNull(repository.refresh())
     }
@@ -118,7 +180,7 @@ class AuthRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage)
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         val result = repository.refresh()
 
@@ -134,7 +196,7 @@ class AuthRepositoryTest {
             mapOf(SecureStorageKeys.ACCESS_TOKEN to "stale-access", SecureStorageKeys.REFRESH_TOKEN to "revoked-refresh"),
         )
         val httpClient = mockHttpClient { respond(content = "{}", status = HttpStatusCode.Unauthorized) }
-        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage)
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         assertNull(repository.refresh())
         // Task 7's app-start routing relies on this clearing already happening here, rather than
@@ -147,7 +209,7 @@ class AuthRepositoryTest {
     fun `refresh throws on a 500 instead of treating it like an invalid token`() = runTest {
         val storage = FakeSecureStorage(mapOf(SecureStorageKeys.REFRESH_TOKEN to "some-refresh"))
         val httpClient = mockHttpClient { respond(content = "{}", status = HttpStatusCode.InternalServerError) }
-        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage)
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         assertFailsWith<SessionRefreshFailedException> { repository.refresh() }
     }
@@ -162,7 +224,7 @@ class AuthRepositoryTest {
             assertTrue(requestBodyText(request).contains("\"refreshToken\":\"refresh-to-revoke\""))
             respond(content = "", status = HttpStatusCode.NoContent)
         }
-        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage)
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         repository.logout()
 
@@ -173,7 +235,7 @@ class AuthRepositoryTest {
     @Test
     fun `logout clears storage locally even when there is nothing to revoke`() = runTest {
         val storage = FakeSecureStorage()
-        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, FakePhoneAuthClient(), storage)
+        val repository = KtorAuthRepository(mockHttpClient { error("no HTTP call expected") }, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } })
 
         repository.logout()
 

@@ -3,6 +3,7 @@ package com.crichere.app.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crichere.app.auth.AuthRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,8 +51,20 @@ class OwnProfileViewModel(
     private val _navigationEvents = Channel<OwnProfileNavigationEvent>(Channel.BUFFERED)
     val navigationEvents: Flow<OwnProfileNavigationEvent> = _navigationEvents.receiveAsFlow()
 
-    init {
-        viewModelScope.launch {
+    // Deliberately not loading in an `init` block -- Koin's koinViewModel() (no key, no
+    // parameters) returns this same instance for the whole process lifetime, same caveat as
+    // ProfileSetupViewModel/LeagueDetailViewModel. Reproduced on-device: view this tab as user A,
+    // log out, sign in as user B, and this tab would keep showing user A's profile instead of
+    // refetching. OwnProfileRoute calls retry() itself on every entry instead -- see that
+    // composable.
+    private var loadJob: Job? = null
+
+    fun retry() = load()
+
+    private fun load() {
+        loadJob?.cancel()
+        _state.update { OwnProfileState(isLoading = true) }
+        loadJob = viewModelScope.launch {
             runCatching { profileRepository.getProfile() }
                 .onSuccess { profile ->
                     _state.update {

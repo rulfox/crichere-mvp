@@ -3,6 +3,8 @@ package com.crichere.app.auth
 import com.crichere.app.storage.SecureStore
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.auth.authProvider
+import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -86,7 +88,27 @@ internal class KtorAuthRepository(
     private val authHttpClient: HttpClient,
     private val phoneAuthClient: PhoneAuthClient,
     private val secureStorage: SecureStore,
+    /**
+     * Lazy provider for the *authenticated* client (`HttpClientFactory.create`'s instance, the one
+     * carrying the `Auth` bearer plugin every other repository shares) -- deferred the same way
+     * [com.crichere.app.auth.AuthTokenProvider]'s `authRepositoryProvider` is, so this doesn't
+     * force that client's own registration (which itself depends on [AuthTokenProvider], not this
+     * class, so no real cycle -- just consistent with the established pattern).
+     *
+     * Ktor's `bearer` auth provider caches whatever [AuthTokenProvider.loadTokens] returned the
+     * *first* time it was needed and only calls it again after a 401 triggers `refreshTokens` --
+     * it does not re-read `SecureStore` before every request. Without clearing that cache here,
+     * switching accounts within the same app process (log out, sign in as someone else) leaves
+     * every subsequent request silently using the *previous* user's access token: real bug found
+     * on-device, surfacing as organizer-only actions failing with a 403 right after switching to
+     * the actual organizer's account, with no other visible symptom pointing at the cause.
+     */
+    private val authenticatedHttpClientProvider: () -> HttpClient,
 ) : AuthRepository {
+
+    private fun clearCachedBearerToken() {
+        authenticatedHttpClientProvider().authProvider<BearerAuthProvider>()?.clearToken()
+    }
 
     override suspend fun sendOtp(phoneNumber: String, resendToken: Any?): Result<PhoneVerificationHandle> =
         phoneAuthClient.sendVerificationCode(phoneNumber, resendToken)
@@ -104,6 +126,10 @@ internal class KtorAuthRepository(
         }
         val result: AuthResult = response.body()
         persistTokens(result)
+        // A fresh sign-in -- possibly as a different user than whoever was last signed in on this
+        // same app process -- so any bearer token Ktor's Auth plugin already has cached must be
+        // dropped, not just SecureStore's copy. See [authenticatedHttpClientProvider]'s doc.
+        clearCachedBearerToken()
         return result
     }
 
@@ -151,6 +177,9 @@ internal class KtorAuthRepository(
         secureStorage.remove(SecureStorageKeys.ACCESS_TOKEN)
         secureStorage.remove(SecureStorageKeys.REFRESH_TOKEN)
         secureStorage.remove(SecureStorageKeys.USER_ID)
+        // See [authenticatedHttpClientProvider]'s doc -- without this, the next sign-in's first
+        // request(s) would still carry this session's now-revoked access token.
+        clearCachedBearerToken()
     }
 
     override suspend fun getCurrentUserId(): String? = secureStorage.get(SecureStorageKeys.USER_ID)

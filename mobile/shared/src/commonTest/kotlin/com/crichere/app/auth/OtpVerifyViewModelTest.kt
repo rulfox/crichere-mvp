@@ -62,7 +62,7 @@ class OtpVerifyViewModelTest {
         httpClient: HttpClient = unusedHttpClient(),
         secureStorage: FakeSecureStorage = FakeSecureStorage(),
     ): Triple<OtpVerifyViewModel, FakePhoneAuthClient, FakeSecureStorage> {
-        val repository = KtorAuthRepository(httpClient, phoneAuthClient, secureStorage)
+        val repository = KtorAuthRepository(httpClient, phoneAuthClient, secureStorage, authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = OtpVerifyViewModel(
             phoneNumber = "+919876543210",
             initialVerificationId = "initial-verification-id",

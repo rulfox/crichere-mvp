@@ -44,6 +44,7 @@ class OwnProfileViewModelTest {
         )
         val profileRepository = FakeProfileRepository(profile)
         val viewModel = OwnProfileViewModel(profileRepository, StubAuthRepository())
+        viewModel.retry()
 
         advanceUntilIdle()
 
@@ -98,10 +99,36 @@ class OwnProfileViewModelTest {
             getProfileError = RuntimeException("network blip")
         }
         val viewModel = OwnProfileViewModel(profileRepository, StubAuthRepository())
+        viewModel.retry()
 
         advanceUntilIdle()
 
         assertEquals(false, viewModel.state.value.isLoading)
         assertTrue(viewModel.state.value.errorMessage != null)
+    }
+
+    @Test
+    fun `a stale in-flight retry from an earlier user is cancelled, not left free to overwrite a newer user's state`() = viewModelTest {
+        // Reproduces a real on-device bug: this ViewModel instance outlives any single visit
+        // (Koin's koinViewModel() with no key returns the same instance for the whole process
+        // lifetime), so viewing this tab as one user, logging out, and signing in as someone else
+        // can leave an earlier retry() still in flight when a newer one starts. Without cancelling
+        // the older one, its slower response could land after the newer one's and silently show
+        // the previous user's profile again.
+        val profileRepository = FakeProfileRepository(ProfileDto(userId = "a", name = "User A"))
+        val viewModel = OwnProfileViewModel(profileRepository, StubAuthRepository())
+        viewModel.retry()
+        advanceUntilIdle() // let the first, real visit settle first
+
+        profileRepository.getProfileDelayMillis = 1000
+        viewModel.retry() // stale visit, still in flight, never advanced
+
+        profileRepository.profile = ProfileDto(userId = "b", name = "User B")
+        profileRepository.getProfileDelayMillis = 0
+        viewModel.retry() // fresh visit -- must win
+
+        advanceUntilIdle()
+
+        assertEquals("User B", viewModel.state.value.name)
     }
 }
