@@ -229,6 +229,14 @@ private fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCr
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        val feeSet = state.franchiseFee.isNotBlank() || state.playerFee.isNotBlank()
+        OutlinedTextField(
+            value = state.organizerUpiId,
+            onValueChange = viewModel::onOrganizerUpiIdChanged,
+            label = { Text(if (feeSet) "Your UPI ID (required to collect a fee)" else "Your UPI ID (optional)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         // ---- Awards ----
         AwardsSection(state = state, viewModel = viewModel)

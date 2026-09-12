@@ -77,13 +77,20 @@ data class LeagueCreationState(
     // Fees (text-field-backed; parsed to Double on save)
     val franchiseFee: String = "",
     val playerFee: String = "",
+    /** Required by the backend (`OrganizerUpiRequiredException`, 400) the moment either fee above is non-blank -- see docs/PHASE3.md's League Creation screen spec. */
+    val organizerUpiId: String = "",
     // Awards
     val awards: List<AwardDraft> = emptyList(),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
 ) {
     val isSaveEnabled: Boolean
-        get() = !isSaving && name.isNotBlank() && state != null && district != null && city != null && startsOn != null
+        get() {
+            if (isSaving || name.isBlank() || state == null || district == null || city == null || startsOn == null) return false
+            val feeSet = franchiseFee.isNotBlank() || playerFee.isNotBlank()
+            if (feeSet && organizerUpiId.isBlank()) return false
+            return true
+        }
 }
 
 sealed interface LeagueCreationNavigationEvent {
@@ -182,6 +189,7 @@ class LeagueCreationViewModel(
                         playersRequired = league.playersRequired?.toString().orEmpty(),
                         franchiseFee = league.franchiseFee?.toString().orEmpty(),
                         playerFee = league.playerFee?.toString().orEmpty(),
+                        organizerUpiId = league.organizerUpiId.orEmpty(),
                         awards = awardDrafts,
                     )
                 }
@@ -361,6 +369,7 @@ class LeagueCreationViewModel(
     fun onPlayersRequiredChanged(value: String) = _state.update { it.copy(playersRequired = value) }
     fun onFranchiseFeeChanged(value: String) = _state.update { it.copy(franchiseFee = value) }
     fun onPlayerFeeChanged(value: String) = _state.update { it.copy(playerFee = value) }
+    fun onOrganizerUpiIdChanged(value: String) = _state.update { it.copy(organizerUpiId = value, errorMessage = null) }
 
     // ---- Awards ----
 
@@ -487,6 +496,7 @@ class LeagueCreationViewModel(
         playersRequired = current.playersRequired.toIntOrNull(),
         franchiseFee = current.franchiseFee.toDoubleOrNull(),
         playerFee = current.playerFee.toDoubleOrNull(),
+        organizerUpiId = current.organizerUpiId.ifBlank { null },
         awards = if (includeAwards) current.awards.filter { it.name.isNotBlank() }.map { it.toRequest() } else null,
     )
 
