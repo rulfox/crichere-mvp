@@ -47,7 +47,7 @@ class ProfileSetupViewModelTest {
         ),
         locationProvider: FakeLocationProvider = FakeLocationProvider(),
     ): ProfileSetupViewModel =
-        ProfileSetupViewModel(isEditMode, profileRepository, referenceRepository, locationProvider)
+        ProfileSetupViewModel(isEditMode, profileRepository, referenceRepository, locationProvider).apply { retry() }
 
     private fun emptyProfile() = ProfileDto(userId = "u1")
 
@@ -559,5 +559,29 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
 
         assertEquals(BowlingStyle.RIGHT_ARM_OFFBREAK, profileRepository.savedSnapshots.single().bowlingStyle)
+    }
+
+    @Test
+    fun `a stale in-flight retry from an earlier user is cancelled, not left free to overwrite a newer user's state`() = viewModelTest {
+        // Reproduces a real on-device bug: this ViewModel instance outlives any single visit
+        // (Koin's koinViewModel(key = "profile-setup:$isEditMode") returns the same instance every
+        // time), so logging out and signing in as someone else and revisiting this screen can
+        // leave an earlier retry() still in flight when a newer one starts. Without cancelling the
+        // older one, its slower response could land after the newer one's and silently repopulate
+        // the form with the previous user's name/location/photo.
+        val profileRepository = FakeProfileRepository(emptyProfile().copy(name = "User A"))
+        val viewModel = newViewModel(profileRepository = profileRepository)
+        advanceUntilIdle() // the helper's own construction-time retry() -- let it settle first
+
+        profileRepository.getProfileDelayMillis = 1000
+        viewModel.retry() // stale visit, still in flight, never advanced
+
+        profileRepository.profile = emptyProfile().copy(name = "User B")
+        profileRepository.getProfileDelayMillis = 0
+        viewModel.retry() // fresh visit -- must win
+
+        advanceUntilIdle()
+
+        assertEquals("User B", viewModel.state.value.name)
     }
 }

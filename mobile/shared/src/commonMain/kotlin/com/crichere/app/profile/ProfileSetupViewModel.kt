@@ -7,6 +7,7 @@ import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.ReferenceRepository
 import com.crichere.app.reference.StateDto
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,8 +109,23 @@ class ProfileSetupViewModel(
     private val _navigationEvents = Channel<ProfileSetupNavigationEvent>(Channel.BUFFERED)
     val navigationEvents: Flow<ProfileSetupNavigationEvent> = _navigationEvents.receiveAsFlow()
 
-    init {
-        viewModelScope.launch {
+    // Deliberately not loading in an `init` block -- Koin's koinViewModel(key = "profile-setup:
+    // $isEditMode") returns this same instance every time this screen is entered with the same
+    // isEditMode value, for the life of the process (see LeagueDetailViewModel's doc for the same
+    // caveat). A one-time init load would keep showing whichever user's profile was loaded the
+    // first time this screen was ever reached -- reproduced on-device: sign in as user A, load
+    // this screen, log out, sign in as a brand-new user B (no profile row at all), and this screen
+    // would show user A's name/location/photo instead of a blank form. ProfileSetupRoute calls
+    // retry() itself on every entry instead -- see that composable, same convention
+    // LeagueDetailViewModel/AuctionSettingsViewModel already use.
+    private var loadJob: Job? = null
+
+    fun retry() = load()
+
+    private fun load() {
+        loadJob?.cancel()
+        _state.update { ProfileSetupState(isLoading = true) }
+        loadJob = viewModelScope.launch {
             val profile = runCatching { profileRepository.getProfile() }.getOrNull()
             val initialFocus = if (isEditMode || profile == null) {
                 ProfileField.NAME
@@ -117,7 +133,7 @@ class ProfileSetupViewModel(
                 firstMissingField(profile) ?: ProfileField.NAME
             }
             _state.update {
-                it.copy(
+                ProfileSetupState(
                     isLoading = false,
                     name = profile?.name.orEmpty(),
                     photoUrl = profile?.photoUrl,

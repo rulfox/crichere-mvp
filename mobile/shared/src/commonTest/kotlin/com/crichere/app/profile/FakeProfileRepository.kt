@@ -1,6 +1,7 @@
 package com.crichere.app.profile
 
 import com.crichere.app.upload.PhotoUploadInfoDto
+import kotlinx.coroutines.delay
 
 /** In-memory [ProfileRepository] test double -- `commonTest` has no real backend/S3 to hit. */
 class FakeProfileRepository(
@@ -27,8 +28,12 @@ class FakeProfileRepository(
     var uploadPhotoError: Throwable? = null
     var uploadedPhotoUrl: String = "https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/u1/profile.jpg"
 
+    /** Simulates a slow response -- lets tests prove a stale, still in-flight [getProfile] call gets cancelled rather than overwriting a newer one's state. */
+    var getProfileDelayMillis: Long = 0
+
     override suspend fun getProfile(): ProfileDto {
         getProfileCallCount++
+        if (getProfileDelayMillis > 0) delay(getProfileDelayMillis)
         getProfileError?.let { throw it }
         return profile
     }

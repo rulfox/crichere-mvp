@@ -175,6 +175,7 @@ private fun ProfileSetupRoute(isEditMode: Boolean, onNavigateToOwnProfile: () ->
         key = "profile-setup:$isEditMode",
         parameters = { parametersOf(isEditMode) },
     )
+    LaunchedEffect(Unit) { viewModel.retry() }
     ProfileSetupScreen(viewModel, onNavigateToOwnProfile)
 }
 

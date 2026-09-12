@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
  */
 class LeagueDetailViewModelTest {
 
-    private class StubAuthRepository(private val currentUserId: String?) : AuthRepository {
+    private class StubAuthRepository(var currentUserId: String?) : AuthRepository {
         override suspend fun sendOtp(phoneNumber: String, resendToken: Any?) = error("not used in this test")
         override suspend fun verifyOtp(verificationId: String, code: String) = error("not used in this test")
         override suspend fun exchangeSession(idToken: String) = error("not used in this test")
@@ -77,6 +77,32 @@ class LeagueDetailViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isOrganizer)
+    }
+
+    @Test
+    fun `a stale in-flight retry from an earlier viewer is cancelled, not left free to overwrite a newer one's state`() = viewModelTest {
+        // Reproduces a real on-device bug: this ViewModel instance outlives any single visit
+        // (Koin's koinViewModel(key = "league-detail:$leagueId") returns the same instance every
+        // time), so logging out and back in as a different user and revisiting this screen can
+        // leave an earlier retry() still in flight when a newer one starts. Without cancelling the
+        // older one, its slower response could land after the newer one's and silently overwrite
+        // the correct isOrganizer with stale data.
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val authRepository = StubAuthRepository(currentUserId = "someone-else")
+        val viewModel = LeagueDetailViewModel("l1", leagueRepository, authRepository, FakePlayerRepository(), FakeFranchiseRepository())
+
+        leagueRepository.getLeagueDelayMillis = 1000
+        viewModel.retry() // stale visit, as a non-organizer -- still in flight, never advanced
+
+        authRepository.currentUserId = "organizer-1"
+        leagueRepository.getLeagueDelayMillis = 0
+        viewModel.retry() // fresh visit, as the organizer -- must win
+
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state.isOrganizer)
+        assertEquals("organizer-1", state.currentUserId)
     }
 
     @Test

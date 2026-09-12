@@ -2,6 +2,7 @@ package com.crichere.app.league
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,11 +38,17 @@ class AuctionSettingsViewModel(
     private val _state = MutableStateFlow(AuctionSettingsState())
     val state: StateFlow<AuctionSettingsState> = _state.asStateFlow()
 
+    // See LeagueDetailViewModel's doc: this instance outlives any single visit (keyed only by
+    // leagueId, not by user), so an older visit's load() can finish after a newer one's and
+    // overwrite fresher data -- cancel any prior in-flight load before starting a new one.
+    private var loadJob: Job? = null
+
     fun retry() = load()
 
     private fun load() {
+        loadJob?.cancel()
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             runCatching { leagueRepository.getLeague(leagueId) }
                 .onSuccess { league ->
                     _state.update {

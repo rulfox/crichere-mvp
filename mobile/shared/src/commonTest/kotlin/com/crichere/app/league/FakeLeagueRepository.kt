@@ -1,6 +1,7 @@
 package com.crichere.app.league
 
 import com.crichere.app.upload.PhotoUploadInfoDto
+import kotlinx.coroutines.delay
 
 /** In-memory [LeagueRepository] test double -- `commonTest` has no real backend/S3 to hit. */
 class FakeLeagueRepository(
@@ -54,8 +55,13 @@ class FakeLeagueRepository(
         return leaguesNearest
     }
 
-    override suspend fun getLeague(id: String): LeagueDto =
-        leaguesByArea.first { it.id == id }
+    /** Simulates a slow response -- lets tests prove a stale, still in-flight [getLeague] call gets cancelled rather than overwriting a newer one's state. */
+    var getLeagueDelayMillis: Long = 0
+
+    override suspend fun getLeague(id: String): LeagueDto {
+        if (getLeagueDelayMillis > 0) delay(getLeagueDelayMillis)
+        return leaguesByArea.first { it.id == id }
+    }
 
     override suspend fun createLeague(request: LeagueSaveRequestDto): LeagueDto {
         createdRequests += request

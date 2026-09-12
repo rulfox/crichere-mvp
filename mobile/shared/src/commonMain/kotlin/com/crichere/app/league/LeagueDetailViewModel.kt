@@ -3,6 +3,7 @@ package com.crichere.app.league
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crichere.app.auth.AuthRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,11 +63,23 @@ class LeagueDetailViewModel(
     // would keep showing what was true the first time this screen was visited. LeagueDetailRoute
     // calls retry() itself on every entry instead -- see that composable.
 
+    // Since this ViewModel instance outlives any single visit to this screen (see above), a visit
+    // under one signed-in user followed by another visit under a different one (log out, sign in
+    // as someone else, come back) can leave two `load()` coroutines in flight at once, both still
+    // running in this same `viewModelScope`. Without cancelling the older one, its response can
+    // arrive *after* the newer visit's and silently overwrite the correct, fresh `isOrganizer` with
+    // stale data -- the organizer-only actions this state gates then look tappable but quietly do
+    // nothing (their own guards read `_state.value.isOrganizer`, now wrong). Real bug found this
+    // way during on-device Phase 3/4 QA, reproduced by switching accounts without restarting the
+    // app; a full process restart "fixed" it only because it also dropped the stale coroutine.
+    private var loadJob: Job? = null
+
     fun retry() = load()
 
     private fun load() {
+        loadJob?.cancel()
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             runCatching {
                 val league = leagueRepository.getLeague(leagueId)
                 val currentUserId = authRepository.getCurrentUserId()
