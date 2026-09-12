@@ -1,5 +1,10 @@
 package com.crichere.app.di
 
+import com.crichere.app.league.AuctionSettingsViewModel
+import com.crichere.app.league.ClaimFranchiseViewModel
+import com.crichere.app.league.JoinLeagueViewModel
+import com.crichere.app.league.LeagueDetailViewModel
+import com.crichere.app.league.MyLeaguesViewModel
 import com.crichere.app.profile.OwnProfileViewModel
 import com.crichere.app.profile.ProfileSetupViewModel
 import com.crichere.app.reference.ReferenceViewModel
@@ -49,4 +54,24 @@ class KoinHelper : KoinComponent {
      */
     fun profileSetupViewModel(isEditMode: Boolean): ProfileSetupViewModel =
         get { parametersOf(isEditMode) }
+
+    // Phase 3 (see docs/PHASE3.md) -- authored alongside the Android screens per the project's
+    // current "keep authoring iOS, verify later" posture, even though no iOS League screen has
+    // ever been wired into a nav graph (Phase 2's own iOS League Detail/Dashboard/Creation
+    // screens were skipped entirely, see docs/PHASE2.md Section 5). These accessors exist so the
+    // unwired Swift views below have a real, compiled entry point to call.
+    fun leagueDetailViewModel(leagueId: String): LeagueDetailViewModel =
+        get { parametersOf(leagueId) }
+
+    fun joinLeagueViewModel(leagueId: String): JoinLeagueViewModel =
+        get { parametersOf(leagueId) }
+
+    fun claimFranchiseViewModel(leagueId: String): ClaimFranchiseViewModel =
+        get { parametersOf(leagueId) }
+
+    val myLeaguesViewModel: MyLeaguesViewModel
+        get() = get()
+
+    fun auctionSettingsViewModel(leagueId: String): AuctionSettingsViewModel =
+        get { parametersOf(leagueId) }
 }

@@ -45,6 +45,14 @@ import org.koin.core.parameter.parametersOf
  * Compose -- see Task 6's doc on this file for why; the destination count has grown but the shape
  * (linear flow with a couple of branches, no real back-stack needs) hasn't changed enough to
  * justify a new nav-library dependency yet.
+ *
+ * [pendingDeepLinkLeagueId] (Phase 3, see docs/PHASE3.md): a league id extracted from a
+ * `crichere://leagues/{id}` intent, read once by `MainActivity` at Activity-intent-read time and
+ * passed in here. It's held as local state (not threaded through [PhoneEntry]/[OtpVerify]/
+ * [ProfileSetup] at all) and only consumed once [Main] is actually reached -- see [MainRoute]'s
+ * own doc for the consume-once handoff. This satisfies "not logged in -> goes through the normal
+ * flow first, then resumes into the league" for free, since every branch above already funnels
+ * into [Main] eventually.
  */
 private sealed interface AuthDestination {
     data object Starting : AuthDestination
@@ -59,11 +67,17 @@ private sealed interface AuthDestination {
     data class Main(val initialTab: MainTab = MainTab.DASHBOARD) : AuthDestination
 }
 
-private enum class MainTab { DASHBOARD, MY_PROFILE }
+internal enum class MainTab { DASHBOARD, MY_LEAGUES, MY_PROFILE }
 
 @Composable
-fun AuthNavHost() {
+fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
     var destination by remember { mutableStateOf<AuthDestination>(AuthDestination.Starting) }
+    // Keyed on the incoming parameter (not a bare `remember { }`) so a new crichere://leagues/{id}
+    // intent arriving via MainActivity.onNewIntent while the app is already running -- which
+    // updates this same composable's `pendingDeepLinkLeagueId` argument on recomposition, not a
+    // fresh AuthNavHost call -- actually resets this state to the new id, rather than being
+    // silently ignored by a `remember` that already ran once.
+    var pendingLeagueId by remember(pendingDeepLinkLeagueId) { mutableStateOf(pendingDeepLinkLeagueId) }
 
     when (val current = destination) {
         AuthDestination.Starting -> AppStartRoute { resolved ->
@@ -106,6 +120,8 @@ fun AuthNavHost() {
 
         is AuthDestination.Main -> MainRoute(
             initialTab = current.initialTab,
+            pendingLeagueId = pendingLeagueId,
+            onPendingLeagueIdConsumed = { pendingLeagueId = null },
             onNavigateToEditProfile = { destination = AuthDestination.ProfileSetup(isEditMode = true) },
             onNavigateToPhoneEntry = { destination = AuthDestination.PhoneEntry },
         )
@@ -163,13 +179,22 @@ private fun ProfileSetupRoute(isEditMode: Boolean, onNavigateToOwnProfile: () ->
 }
 
 /**
- * The 2-tab bottom-nav shell (Dashboard, My Profile) that hosts everything reachable after a
- * complete profile. League Detail/Creation are pushed as sibling states *above* the tab
- * container -- same plain `sealed interface` + `remember { mutableStateOf(...) }` pattern
- * [AuthNavHost] itself uses, not a new nav-library dependency -- so opening a league or creating
- * one temporarily replaces the tab bar rather than nesting inside it, matching how
- * [AuthDestination.OtpVerify]/[AuthDestination.ProfileSetup] already replace the whole screen
- * rather than living inside some enclosing chrome.
+ * The 3-tab bottom-nav shell (Dashboard, My Leagues, My Profile) that hosts everything reachable
+ * after a complete profile. League Detail/Creation/Join/Claim/Screenshot-viewer are pushed as
+ * sibling states *above* the tab container -- same plain `sealed interface` +
+ * `remember { mutableStateOf(...) }` pattern [AuthNavHost] itself uses, not a new nav-library
+ * dependency -- so opening any of them temporarily replaces the tab bar rather than nesting
+ * inside it, matching how [AuthDestination.OtpVerify]/[AuthDestination.ProfileSetup] already
+ * replace the whole screen rather than living inside some enclosing chrome.
+ *
+ * My Leagues (Phase 3, see docs/PHASE3.md) is a 3rd persistent tab, not a pushed destination like
+ * League Detail/Creation -- it's a routinely-revisited list (closer in spirit to Dashboard) rather
+ * than a one-off task, so it earns a permanent tab.
+ *
+ * [pendingLeagueId] (Phase 3 deep-link target, see [AuthNavHost]'s own doc) is consumed exactly
+ * once via the `LaunchedEffect` below, the first time this composable is reached with a non-null
+ * value -- it immediately pushes [MainDestination.LeagueDetail] and calls
+ * [onPendingLeagueIdConsumed] so a later recomposition (e.g. a config change) doesn't re-push it.
  *
  * The My Profile tab reuses [OwnProfileRoute] completely unchanged from before Phase 2 -- only
  * what hosts it changed, not the screen or its `ViewModel`.
@@ -178,11 +203,29 @@ private sealed interface MainDestination {
     data class Tabs(val tab: MainTab) : MainDestination
     data class LeagueDetail(val leagueId: String) : MainDestination
     data class LeagueCreation(val editingLeagueId: String?) : MainDestination
+    data class JoinLeagueFlow(val leagueId: String) : MainDestination
+    data class ClaimFranchiseFlow(val leagueId: String) : MainDestination
+    data class ScreenshotViewer(val imageUrl: String) : MainDestination
+    data class AuctionSettings(val leagueId: String) : MainDestination
 }
 
 @Composable
-private fun MainRoute(initialTab: MainTab, onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit) {
+private fun MainRoute(
+    initialTab: MainTab,
+    pendingLeagueId: String?,
+    onPendingLeagueIdConsumed: () -> Unit,
+    onNavigateToEditProfile: () -> Unit,
+    onNavigateToPhoneEntry: () -> Unit,
+) {
     var destination by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(initialTab)) }
+    var screenshotBackTarget by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(initialTab)) }
+
+    LaunchedEffect(pendingLeagueId) {
+        if (pendingLeagueId != null) {
+            destination = MainDestination.LeagueDetail(pendingLeagueId)
+            onPendingLeagueIdConsumed()
+        }
+    }
 
     when (val current = destination) {
         is MainDestination.Tabs -> Scaffold(
@@ -193,6 +236,12 @@ private fun MainRoute(initialTab: MainTab, onNavigateToEditProfile: () -> Unit, 
                         onClick = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
                         icon = {},
                         label = { Text("Dashboard") },
+                    )
+                    NavigationBarItem(
+                        selected = current.tab == MainTab.MY_LEAGUES,
+                        onClick = { destination = MainDestination.Tabs(MainTab.MY_LEAGUES) },
+                        icon = {},
+                        label = { Text("My Leagues") },
                     )
                     NavigationBarItem(
                         selected = current.tab == MainTab.MY_PROFILE,
@@ -209,6 +258,9 @@ private fun MainRoute(initialTab: MainTab, onNavigateToEditProfile: () -> Unit, 
                         onOpenLeague = { leagueId -> destination = MainDestination.LeagueDetail(leagueId) },
                         onCreateLeague = { destination = MainDestination.LeagueCreation(editingLeagueId = null) },
                     )
+                    MainTab.MY_LEAGUES -> MyLeaguesRoute(
+                        onOpenLeague = { leagueId -> destination = MainDestination.LeagueDetail(leagueId) },
+                    )
                     MainTab.MY_PROFILE -> OwnProfileRoute(onNavigateToEditProfile, onNavigateToPhoneEntry)
                 }
             }
@@ -218,12 +270,41 @@ private fun MainRoute(initialTab: MainTab, onNavigateToEditProfile: () -> Unit, 
             leagueId = current.leagueId,
             onBack = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
             onEditLeague = { leagueId -> destination = MainDestination.LeagueCreation(editingLeagueId = leagueId) },
+            onJoinLeague = { leagueId -> destination = MainDestination.JoinLeagueFlow(leagueId) },
+            onClaimFranchise = { leagueId -> destination = MainDestination.ClaimFranchiseFlow(leagueId) },
+            onViewScreenshot = { imageUrl ->
+                screenshotBackTarget = current
+                destination = MainDestination.ScreenshotViewer(imageUrl)
+            },
+            onAuctionSettings = { leagueId -> destination = MainDestination.AuctionSettings(leagueId) },
         )
 
         is MainDestination.LeagueCreation -> LeagueCreationRoute(
             editingLeagueId = current.editingLeagueId,
             onDone = { savedLeagueId -> destination = MainDestination.LeagueDetail(savedLeagueId) },
             onCancel = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
+        )
+
+        is MainDestination.AuctionSettings -> AuctionSettingsRoute(
+            leagueId = current.leagueId,
+            onBack = { destination = MainDestination.LeagueDetail(current.leagueId) },
+        )
+
+        is MainDestination.JoinLeagueFlow -> JoinLeagueRoute(
+            leagueId = current.leagueId,
+            onDone = { destination = MainDestination.LeagueDetail(current.leagueId) },
+            onCancel = { destination = MainDestination.LeagueDetail(current.leagueId) },
+        )
+
+        is MainDestination.ClaimFranchiseFlow -> ClaimFranchiseRoute(
+            leagueId = current.leagueId,
+            onDone = { destination = MainDestination.LeagueDetail(current.leagueId) },
+            onCancel = { destination = MainDestination.LeagueDetail(current.leagueId) },
+        )
+
+        is MainDestination.ScreenshotViewer -> ScreenshotViewerRoute(
+            imageUrl = current.imageUrl,
+            onBack = { destination = screenshotBackTarget },
         )
     }
 }

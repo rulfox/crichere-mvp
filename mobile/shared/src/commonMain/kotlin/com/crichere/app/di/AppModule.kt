@@ -8,11 +8,21 @@ import com.crichere.app.auth.OtpVerifyViewModel
 import com.crichere.app.auth.PhoneEntryViewModel
 import com.crichere.app.ground.GroundRepository
 import com.crichere.app.ground.KtorGroundRepository
+import com.crichere.app.league.AuctionSettingsViewModel
+import com.crichere.app.league.ClaimFranchiseViewModel
+import com.crichere.app.league.FranchiseRepository
+import com.crichere.app.league.JoinLeagueViewModel
+import com.crichere.app.league.KtorFranchiseRepository
 import com.crichere.app.league.KtorLeagueRepository
+import com.crichere.app.league.KtorMyLeaguesRepository
+import com.crichere.app.league.KtorPlayerRepository
 import com.crichere.app.league.LeagueCreationViewModel
 import com.crichere.app.league.LeagueDashboardViewModel
 import com.crichere.app.league.LeagueDetailViewModel
 import com.crichere.app.league.LeagueRepository
+import com.crichere.app.league.MyLeaguesRepository
+import com.crichere.app.league.MyLeaguesViewModel
+import com.crichere.app.league.PlayerRepository
 import com.crichere.app.network.HttpClientFactory
 import com.crichere.app.profile.KtorProfileRepository
 import com.crichere.app.profile.OwnProfileViewModel
@@ -83,6 +93,12 @@ val sharedModule: Module = module {
 
     single<LeagueRepository> { KtorLeagueRepository(httpClient = get(), uploadClient = get(UPLOAD_HTTP_CLIENT)) }
 
+    single<PlayerRepository> { KtorPlayerRepository(httpClient = get()) }
+
+    single<FranchiseRepository> { KtorFranchiseRepository(httpClient = get()) }
+
+    single<MyLeaguesRepository> { KtorMyLeaguesRepository(httpClient = get()) }
+
     factory { ReferenceViewModel(get()) }
     factory { PhoneEntryViewModel(get()) }
     factory { (phoneNumber: String, verificationId: String, resendToken: Any?) ->
@@ -104,7 +120,15 @@ val sharedModule: Module = module {
     }
     factory { OwnProfileViewModel(profileRepository = get(), authRepository = get()) }
     factory { LeagueDashboardViewModel(leagueRepository = get(), referenceRepository = get(), locationProvider = get()) }
-    factory { (leagueId: String) -> LeagueDetailViewModel(leagueId = leagueId, leagueRepository = get(), authRepository = get()) }
+    factory { (leagueId: String) ->
+        LeagueDetailViewModel(
+            leagueId = leagueId,
+            leagueRepository = get(),
+            authRepository = get(),
+            playerRepository = get(),
+            franchiseRepository = get(),
+        )
+    }
     factory { (editingLeagueId: String?) ->
         LeagueCreationViewModel(
             editingLeagueId = editingLeagueId,
@@ -114,6 +138,10 @@ val sharedModule: Module = module {
             locationProvider = get(),
         )
     }
+    factory { (leagueId: String) -> JoinLeagueViewModel(leagueId = leagueId, leagueRepository = get(), playerRepository = get()) }
+    factory { (leagueId: String) -> ClaimFranchiseViewModel(leagueId = leagueId, leagueRepository = get(), franchiseRepository = get()) }
+    factory { MyLeaguesViewModel(myLeaguesRepository = get()) }
+    factory { (leagueId: String) -> AuctionSettingsViewModel(leagueId = leagueId, leagueRepository = get()) }
 }
 
 /**

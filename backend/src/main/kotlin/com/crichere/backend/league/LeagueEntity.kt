@@ -77,6 +77,24 @@ class LeagueEntity(
     @Column(name = "player_fee")
     var playerFee: BigDecimal? = null,
 
+    @Column(name = "organizer_upi_id")
+    var organizerUpiId: String? = null,
+
+    @Column(name = "auction_base_price")
+    var auctionBasePrice: BigDecimal? = null,
+
+    @Column(name = "auction_purse")
+    var auctionPurse: BigDecimal? = null,
+
+    @Column(name = "auction_squad_min")
+    var auctionSquadMin: Int? = null,
+
+    @Column(name = "auction_squad_max")
+    var auctionSquadMax: Int? = null,
+
+    @Column(name = "auction_bid_increment")
+    var auctionBidIncrement: BigDecimal? = null,
+
     @Column(name = "completed_at")
     var completedAt: Instant? = null,
 

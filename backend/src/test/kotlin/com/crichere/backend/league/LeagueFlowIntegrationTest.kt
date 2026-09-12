@@ -299,6 +299,84 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
             .andReturn()
             .body()["id"] as String
 
+    private fun validAuctionSettingsBody(squadMin: Int = 5, squadMax: Int = 15) = mapOf(
+        "basePrice" to 500,
+        "purse" to 10000,
+        "squadMin" to squadMin,
+        "squadMax" to squadMax,
+        "bidIncrement" to 100,
+    )
+
+    @Test
+    fun `updating auction settings requires authentication`() {
+        val leagueId = createLeague()
+        mockMvc.perform(
+            put("/api/v1/leagues/$leagueId/auction-settings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"),
+        ).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `only the organizer can update auction settings`() {
+        val leagueId = createLeague()
+        val otherToken = signInOther()
+
+        authedPut(otherToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody())
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `the organizer can set auction settings, and GET reflects them for an anonymous caller`() {
+        val leagueId = createLeague()
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionBasePrice").value(500))
+            .andExpect(jsonPath("$.auctionPurse").value(10000))
+            .andExpect(jsonPath("$.auctionSquadMin").value(5))
+            .andExpect(jsonPath("$.auctionSquadMax").value(15))
+            .andExpect(jsonPath("$.auctionBidIncrement").value(100))
+
+        mockMvc.perform(get("/api/v1/leagues/$leagueId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionSquadMax").value(15))
+    }
+
+    @Test
+    fun `squadMin greater than squadMax is rejected with a clean 400`() {
+        val leagueId = createLeague()
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody(squadMin = 10, squadMax = 5))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("SQUAD_SIZE_INVALID"))
+    }
+
+    @Test
+    fun `a non-positive number is rejected by bean validation`() {
+        val leagueId = createLeague()
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody().plus("basePrice" to 0))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+    }
+
+    @Test
+    fun `auctionSquadMaxWarning reflects the squad-math check against playersRequired and franchisesRequired`() {
+        val leagueId = authedPost(organizerToken, "/api/v1/leagues", validLeagueBody() + mapOf("franchisesRequired" to 10, "playersRequired" to 50))
+            .andExpect(status().isOk)
+            .andReturn()
+            .body()["id"] as String
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody(squadMin = 1, squadMax = 6))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionSquadMaxWarning").value(true))
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody(squadMin = 1, squadMax = 5))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionSquadMaxWarning").value(false))
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private fun authedGet(token: String, path: String) =

@@ -54,4 +54,7 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
         @Param("latitude") latitude: Double,
         @Param("longitude") longitude: Double,
     ): List<LeagueEntity>
+
+    /** Every league a user organizes -- feeds `GET /api/v1/me/leagues`'s "organizing" list. */
+    fun findByOrganizerUserId(organizerUserId: UUID): List<LeagueEntity>
 }

@@ -47,6 +47,9 @@ interface LeagueRepository {
 
     suspend fun updateLeague(id: String, request: LeagueSaveRequestDto): LeagueDto
 
+    /** `PUT /api/v1/leagues/{id}/auction-settings` -- organizer-only, full-replace (see docs/PHASE4.md). */
+    suspend fun updateAuctionSettings(id: String, request: AuctionSettingsSaveRequestDto): LeagueDto
+
     suspend fun completeLeague(id: String): LeagueDto
 
     /** Throws [LeaguePhotoUploadUnavailableException] on a `503`. */
@@ -63,6 +66,18 @@ interface LeagueRepository {
     suspend fun updateAward(leagueId: String, awardId: String, request: LeagueAwardSaveRequestDto): LeagueAwardDto
 
     suspend fun deleteAward(leagueId: String, awardId: String)
+
+    /** Throws [LeaguePhotoUploadUnavailableException] on a `503`. Serves both the player-join and franchise-claim flows -- see docs/PHASE3.md. */
+    suspend fun requestPaymentScreenshotUploadUrl(leagueId: String): PhotoUploadInfoDto
+
+    /** Throws [LeaguePhotoUploadUnavailableException] on a `503`. Used before a franchise claim exists, so the resulting URL can be included directly in the claim request -- see docs/PHASE3.md. */
+    suspend fun requestPendingFranchiseLogoUploadUrl(leagueId: String): PhotoUploadInfoDto
+
+    /** Idempotent -- following twice is a no-op, not an error. */
+    suspend fun follow(id: String)
+
+    /** Idempotent -- unfollowing when not following is a no-op, not an error. */
+    suspend fun unfollow(id: String)
 }
 
 internal class KtorLeagueRepository(
@@ -101,6 +116,15 @@ internal class KtorLeagueRepository(
             setBody(request)
         }
         if (!response.status.isSuccess()) throw LeagueSaveFailedException("League update failed with status ${response.status}")
+        return response.body()
+    }
+
+    override suspend fun updateAuctionSettings(id: String, request: AuctionSettingsSaveRequestDto): LeagueDto {
+        val response = httpClient.put("/api/v1/leagues/$id/auction-settings") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Auction settings save failed with status ${response.status}")
         return response.body()
     }
 
@@ -148,5 +172,29 @@ internal class KtorLeagueRepository(
     override suspend fun deleteAward(leagueId: String, awardId: String) {
         val response = httpClient.delete("/api/v1/leagues/$leagueId/awards/$awardId")
         if (!response.status.isSuccess()) throw LeagueSaveFailedException("Award delete failed with status ${response.status}")
+    }
+
+    override suspend fun requestPaymentScreenshotUploadUrl(leagueId: String): PhotoUploadInfoDto {
+        val response: HttpResponse = httpClient.post("/api/v1/leagues/$leagueId/payment-screenshot-upload-url")
+        if (response.status == HttpStatusCode.ServiceUnavailable) throw LeaguePhotoUploadUnavailableException()
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Payment screenshot upload URL request failed with status ${response.status}")
+        return response.body()
+    }
+
+    override suspend fun requestPendingFranchiseLogoUploadUrl(leagueId: String): PhotoUploadInfoDto {
+        val response: HttpResponse = httpClient.post("/api/v1/leagues/$leagueId/franchise-logo-upload-url")
+        if (response.status == HttpStatusCode.ServiceUnavailable) throw LeaguePhotoUploadUnavailableException()
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Franchise logo upload URL request failed with status ${response.status}")
+        return response.body()
+    }
+
+    override suspend fun follow(id: String) {
+        val response = httpClient.post("/api/v1/leagues/$id/follow")
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Follow failed with status ${response.status}")
+    }
+
+    override suspend fun unfollow(id: String) {
+        val response = httpClient.delete("/api/v1/leagues/$id/follow")
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Unfollow failed with status ${response.status}")
     }
 }

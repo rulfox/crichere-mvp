@@ -80,6 +80,31 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
     }
 
     @Test
+    fun `auction settings columns round-trip and are nullable`() {
+        val user = persistedUser("auction-settings")
+        val withoutSettings = leagueRepository.saveAndFlush(validLeague(user.id!!))
+        val reloadedWithout = leagueRepository.findById(withoutSettings.id!!).orElseThrow()
+        assertNull(reloadedWithout.auctionBasePrice)
+        assertNull(reloadedWithout.auctionPurse)
+        assertNull(reloadedWithout.auctionSquadMin)
+        assertNull(reloadedWithout.auctionSquadMax)
+        assertNull(reloadedWithout.auctionBidIncrement)
+
+        val withSettings = leagueRepository.saveAndFlush(
+            validLeague(user.id!!).apply {
+                auctionBasePrice = java.math.BigDecimal("500")
+                auctionPurse = java.math.BigDecimal("10000")
+                auctionSquadMin = 5
+                auctionSquadMax = 15
+                auctionBidIncrement = java.math.BigDecimal("100")
+            },
+        )
+        val reloadedWith = leagueRepository.findById(withSettings.id!!).orElseThrow()
+        assertTrue(reloadedWith.auctionBasePrice == java.math.BigDecimal("500"))
+        assertTrue(reloadedWith.auctionSquadMax == 15)
+    }
+
+    @Test
     fun `creating a league for a non-existent organizer is rejected`() {
         assertFailsWith<DataIntegrityViolationException> {
             leagueRepository.saveAndFlush(validLeague(UUID.randomUUID()))
@@ -155,6 +180,16 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
         entityManager.clear()
 
         assertTrue(leagueAwardRepository.findById(award.id!!).isEmpty)
+    }
+
+    @Test
+    fun `organizer_upi_id round-trips and is nullable`() {
+        val user = persistedUser("upi")
+        val withoutUpi = leagueRepository.saveAndFlush(validLeague(user.id!!))
+        assertNull(leagueRepository.findById(withoutUpi.id!!).orElseThrow().organizerUpiId)
+
+        val withUpi = leagueRepository.saveAndFlush(validLeague(user.id!!).apply { organizerUpiId = "organizer@upi" })
+        assertTrue(leagueRepository.findById(withUpi.id!!).orElseThrow().organizerUpiId == "organizer@upi")
     }
 
     @Test

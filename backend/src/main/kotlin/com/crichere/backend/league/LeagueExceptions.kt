@@ -29,3 +29,24 @@ sealed class LeagueAuthorizationException(message: String) : RuntimeException(me
 }
 
 typealias NotOrganizerException = LeagueAuthorizationException.NotOrganizerException
+
+/** A join/claim was attempted on a league that's already been marked completed. */
+class LeagueCompletedException : RuntimeException("This league is completed")
+
+/** [role] is `"player"` or `"franchise"` -- shared by both `PlayerService.join` and `FranchiseService.claim`. */
+class LeagueCapacityFullException(val role: String) : RuntimeException("$role capacity is full")
+
+/** A create/edit request set a franchise/player fee but left `organizerUpiId` blank -- see docs/PHASE3.md's Decisions Made. */
+class OrganizerUpiRequiredException : RuntimeException("organizerUpiId is required when a fee is set")
+
+/** A `PUT` edit tried to drop `playersRequired`/`franchisesRequired` below the current active count for [role]. */
+class CapacityBelowActiveCountException(val role: String) : RuntimeException("$role capacity cannot be set below the current active count")
+
+/** A `PUT` edit tried to change `playerFee`/`franchiseFee` for [role] while at least one active row already exists for it. */
+class FeeLockedException(val role: String) : RuntimeException("$role fee is locked while active $role rows exist")
+
+/** [role]'s fee is set on this league but the join/claim request didn't include a payment screenshot. */
+class PaymentScreenshotRequiredException(val role: String) : RuntimeException("A payment screenshot is required to join/claim as $role")
+
+/** An auction-settings save had `squadMin` greater than `squadMax` -- see docs/PHASE4.md. */
+class SquadSizeInvalidException : RuntimeException("squad_min cannot be greater than squad_max")

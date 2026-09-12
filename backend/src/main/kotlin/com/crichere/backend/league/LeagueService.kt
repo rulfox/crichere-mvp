@@ -4,11 +4,17 @@ import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
+import com.crichere.backend.franchise.FranchiseRepository
+import com.crichere.backend.franchise.toResponse
 import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.league.dto.AuctionSettingsSaveRequest
 import com.crichere.backend.league.dto.LeagueAwardResponse
 import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
+import com.crichere.backend.player.PlayerRepository
+import com.crichere.backend.player.toResponse
+import com.crichere.backend.profile.ProfileRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -18,31 +24,40 @@ import java.util.UUID
 class LeagueService(
     private val leagueRepository: LeagueRepository,
     private val leagueAwardRepository: LeagueAwardRepository,
+    private val leagueFollowRepository: LeagueFollowRepository,
     private val groundRepository: GroundRepository,
+    private val playerRepository: PlayerRepository,
+    private val franchiseRepository: FranchiseRepository,
+    private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val photoUploadService: PhotoUploadService,
 ) {
 
-    /** `GET /api/v1/leagues/{id}`. */
+    /**
+     * `GET /api/v1/leagues/{id}`. [callerId] is `null` for an anonymous caller (the endpoint is
+     * public) -- only used to decide payment-screenshot/leave-request-timestamp redaction on the
+     * embedded `players`/`franchises` rows and to compute `isFollowing` (see
+     * docs/PHASE3.md's implementation plan, decision 2).
+     */
     @Transactional(readOnly = true)
-    fun getLeague(leagueId: UUID): LeagueResponse =
-        findLeagueOrThrow(leagueId).toResponse()
+    fun getLeague(leagueId: UUID, callerId: UUID?): LeagueResponse =
+        findLeagueOrThrow(leagueId).toResponse(callerId)
 
     /**
      * `GET /api/v1/leagues` with the area filters (state/district/city, each optional). Mutually
      * exclusive with [listNearest] in the UI -- see docs/PHASE2.md's Decisions Made.
      */
     @Transactional(readOnly = true)
-    fun listByArea(state: String?, district: String?, city: String?): List<LeagueResponse> =
-        leagueRepository.findByAreaFilters(state, district, city).map { it.toResponse() }
+    fun listByArea(state: String?, district: String?, city: String?, callerId: UUID?): List<LeagueResponse> =
+        leagueRepository.findByAreaFilters(state, district, city).map { it.toResponse(callerId) }
 
     /**
      * `GET /api/v1/leagues?near=lat,lng`. Only leagues with a ground attached participate --
      * no city/district-centroid fallback (see docs/PHASE2.md's Decisions Made).
      */
     @Transactional(readOnly = true)
-    fun listNearest(latitude: Double, longitude: Double): List<LeagueResponse> =
-        leagueRepository.findNearest(latitude, longitude).map { it.toResponse() }
+    fun listNearest(latitude: Double, longitude: Double, callerId: UUID?): List<LeagueResponse> =
+        leagueRepository.findNearest(latitude, longitude).map { it.toResponse(callerId) }
 
     /**
      * `POST /api/v1/leagues`. Rate-limited per caller (see [ContentRateLimiter]) -- an open,
@@ -53,6 +68,7 @@ class LeagueService(
      *
      * @throws ContentRateLimitExceededException the caller has created too many leagues recently.
      * @throws GroundNotFoundException [request]'s `groundId` doesn't reference a real ground.
+     * @throws OrganizerUpiRequiredException a fee is set but [request.organizerUpiId] is blank.
      */
     @Transactional
     fun create(organizerUserId: UUID, request: LeagueSaveRequest): LeagueResponse {
@@ -60,6 +76,7 @@ class LeagueService(
             throw ContentRateLimitExceededException(retryAfter)
         }
         requireGroundExistsIfReferenced(request.groundId)
+        requireOrganizerUpiIdIfFeeSet(request)
 
         val league = LeagueEntity(
             organizerUserId = organizerUserId,
@@ -77,6 +94,7 @@ class LeagueService(
             playersRequired = request.playersRequired,
             franchiseFee = request.franchiseFee,
             playerFee = request.playerFee,
+            organizerUpiId = request.organizerUpiId,
         )
         val saved = leagueRepository.save(league)
 
@@ -91,7 +109,7 @@ class LeagueService(
         }
         if (initialAwards.isNotEmpty()) leagueAwardRepository.saveAll(initialAwards)
 
-        return saved.toResponse()
+        return saved.toResponse(organizerUserId)
     }
 
     /**
@@ -101,18 +119,28 @@ class LeagueService(
      * awards are managed through their own endpoints once a league exists (see
      * [LeagueSaveRequest.awards]'s own doc).
      *
+     * Capacity can only be raised, never dropped below the current active player/franchise
+     * count; a fee can't be changed once at least one active row exists for that role (see
+     * docs/PHASE3.md's Decisions Made) -- both checked here, before [applyFullReplace].
+     *
      * @throws NotOrganizerException [callerId] is not this league's organizer.
      * @throws GroundNotFoundException [request]'s `groundId` doesn't reference a real ground.
+     * @throws OrganizerUpiRequiredException a fee is set but [request.organizerUpiId] is blank.
+     * @throws CapacityBelowActiveCountException [request] would drop capacity below the current active count for a role.
+     * @throws FeeLockedException [request] would change a fee while active rows already exist for that role.
      */
     @Transactional
     fun update(leagueId: UUID, callerId: UUID, request: LeagueSaveRequest): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
         requireOrganizer(league, callerId)
         requireGroundExistsIfReferenced(request.groundId)
+        requireOrganizerUpiIdIfFeeSet(request)
+        requireCapacityNotBelowActiveCount(league, request)
+        requireFeeNotLockedByActiveRows(league, request)
 
         applyFullReplace(league, request)
         league.updatedAt = Instant.now()
-        return leagueRepository.save(league).toResponse()
+        return leagueRepository.save(league).toResponse(callerId)
     }
 
     /**
@@ -129,7 +157,33 @@ class LeagueService(
 
         league.completedAt = Instant.now()
         league.updatedAt = Instant.now()
-        return leagueRepository.save(league).toResponse()
+        return leagueRepository.save(league).toResponse(callerId)
+    }
+
+    /**
+     * `PUT /api/v1/leagues/{id}/auction-settings`. Organizer-only, full-replace of all 5 fields
+     * together (see docs/PHASE4.md's Decisions Made). Stays editable indefinitely -- nothing in
+     * this phase locks it; the only thing that ever will is Phase 5's "start auction" action,
+     * which doesn't exist yet.
+     *
+     * @throws NotOrganizerException [callerId] is not this league's organizer.
+     * @throws SquadSizeInvalidException [request.squadMin] is greater than [request.squadMax].
+     */
+    @Transactional
+    fun updateAuctionSettings(leagueId: UUID, callerId: UUID, request: AuctionSettingsSaveRequest): LeagueResponse {
+        val league = findLeagueOrThrow(leagueId)
+        requireOrganizer(league, callerId)
+        val squadMin = requireNotNull(request.squadMin)
+        val squadMax = requireNotNull(request.squadMax)
+        if (squadMin > squadMax) throw SquadSizeInvalidException()
+
+        league.auctionBasePrice = request.basePrice
+        league.auctionPurse = request.purse
+        league.auctionSquadMin = squadMin
+        league.auctionSquadMax = squadMax
+        league.auctionBidIncrement = request.bidIncrement
+        league.updatedAt = Instant.now()
+        return leagueRepository.save(league).toResponse(callerId)
     }
 
     /**
@@ -154,6 +208,59 @@ class LeagueService(
         val league = findLeagueOrThrow(leagueId)
         requireOrganizer(league, callerId)
         return photoUploadService.createLeagueBannerUploadUrl(leagueId)
+    }
+
+    /**
+     * `POST /api/v1/leagues/{id}/payment-screenshot-upload-url`. Always self-scoped (the caller's
+     * own id is the key, see [PhotoUploadService.createPaymentScreenshotUploadUrl]) -- serves
+     * both the player-join and franchise-claim flows.
+     *
+     * @throws LeagueNotFoundException [leagueId] doesn't exist.
+     */
+    @Transactional(readOnly = true)
+    fun createPaymentScreenshotUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        findLeagueOrThrow(leagueId)
+        return photoUploadService.createPaymentScreenshotUploadUrl(leagueId, callerId)
+    }
+
+    /**
+     * `POST /api/v1/leagues/{id}/franchise-logo-upload-url`. Always self-scoped (the caller's own
+     * id is the key, see [PhotoUploadService.createPendingFranchiseLogoUploadUrl]) -- used before
+     * a franchise claim exists, so the resulting URL can be included directly in the claim
+     * request body rather than needing a separate post-claim update call.
+     *
+     * @throws LeagueNotFoundException [leagueId] doesn't exist.
+     */
+    @Transactional(readOnly = true)
+    fun createFranchiseLogoUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        findLeagueOrThrow(leagueId)
+        return photoUploadService.createPendingFranchiseLogoUploadUrl(leagueId, callerId)
+    }
+
+    /**
+     * `POST /api/v1/leagues/{id}/follow`. Self-scoped, no organizer check -- anyone can follow.
+     * Idempotent: following twice is a no-op, not an error.
+     *
+     * @throws LeagueNotFoundException [leagueId] doesn't exist.
+     */
+    @Transactional
+    fun follow(leagueId: UUID, callerId: UUID) {
+        findLeagueOrThrow(leagueId)
+        if (!leagueFollowRepository.existsByLeagueIdAndUserId(leagueId, callerId)) {
+            leagueFollowRepository.save(LeagueFollowEntity(leagueId = leagueId, userId = callerId))
+        }
+    }
+
+    /**
+     * `DELETE /api/v1/leagues/{id}/follow`. Self-scoped. Idempotent: unfollowing when not
+     * following is a no-op, not an error.
+     *
+     * @throws LeagueNotFoundException [leagueId] doesn't exist.
+     */
+    @Transactional
+    fun unfollow(leagueId: UUID, callerId: UUID) {
+        findLeagueOrThrow(leagueId)
+        leagueFollowRepository.deleteByLeagueIdAndUserId(leagueId, callerId)
     }
 
     /**
@@ -231,14 +338,31 @@ class LeagueService(
         league.playersRequired = request.playersRequired
         league.franchiseFee = request.franchiseFee
         league.playerFee = request.playerFee
+        league.organizerUpiId = request.organizerUpiId
     }
 
     private fun requireGroundExistsIfReferenced(groundId: UUID?) {
         if (groundId != null && !groundRepository.existsById(groundId)) throw GroundNotFoundException()
     }
 
-    private fun requireOrganizer(league: LeagueEntity, callerId: UUID) {
-        if (league.organizerUserId != callerId) throw NotOrganizerException()
+    /** See docs/PHASE3.md's Decisions Made: a fee with nowhere to pay it is a dead end. */
+    private fun requireOrganizerUpiIdIfFeeSet(request: LeagueSaveRequest) {
+        val feeSet = request.franchiseFee != null || request.playerFee != null
+        if (feeSet && request.organizerUpiId.isNullOrBlank()) throw OrganizerUpiRequiredException()
+    }
+
+    private fun requireCapacityNotBelowActiveCount(league: LeagueEntity, request: LeagueSaveRequest) {
+        val activePlayers = playerRepository.countByLeagueIdAndRemovedAtIsNull(requireNotNull(league.id))
+        val activeFranchises = franchiseRepository.countByLeagueIdAndRemovedAtIsNull(requireNotNull(league.id))
+        if (request.playersRequired != null && request.playersRequired < activePlayers) throw CapacityBelowActiveCountException("player")
+        if (request.franchisesRequired != null && request.franchisesRequired < activeFranchises) throw CapacityBelowActiveCountException("franchise")
+    }
+
+    private fun requireFeeNotLockedByActiveRows(league: LeagueEntity, request: LeagueSaveRequest) {
+        val activePlayers = playerRepository.countByLeagueIdAndRemovedAtIsNull(requireNotNull(league.id))
+        val activeFranchises = franchiseRepository.countByLeagueIdAndRemovedAtIsNull(requireNotNull(league.id))
+        if (request.playerFee != league.playerFee && activePlayers > 0) throw FeeLockedException("player")
+        if (request.franchiseFee != league.franchiseFee && activeFranchises > 0) throw FeeLockedException("franchise")
     }
 
     private fun findLeagueOrThrow(leagueId: UUID): LeagueEntity =
@@ -251,14 +375,25 @@ class LeagueService(
         return award
     }
 
-    private fun LeagueEntity.toResponse(): LeagueResponse {
-        val awards = leagueAwardRepository.findByLeagueIdOrderByDisplayOrder(requireNotNull(id)).map { it.toResponse() }
+    private fun LeagueEntity.toResponse(callerId: UUID?): LeagueResponse {
+        val leagueId = requireNotNull(id)
+        val awards = leagueAwardRepository.findByLeagueIdOrderByDisplayOrder(leagueId).map { it.toResponse() }
+        val players = playerRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.toResponse(callerId, organizerUserId, profileRepository) }
+        val franchises = franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.toResponse(callerId, organizerUserId, profileRepository) }
+        val isFollowing = callerId != null && leagueFollowRepository.existsByLeagueIdAndUserId(leagueId, callerId)
+        // Save-time-only warning, never a rejection -- see docs/PHASE4.md's two-stage squad-math
+        // check. Both sides must be present, or there's nothing to warn about yet.
+        val squadMax = auctionSquadMax
+        val franchisesTarget = franchisesRequired
+        val playersTarget = playersRequired
+        val auctionSquadMaxWarning = squadMax != null && franchisesTarget != null && playersTarget != null &&
+            squadMax * franchisesTarget > playersTarget
         // Same per-row lookup shape as the awards fetch just above -- an accepted N+1 for Phase 2's
         // data volume (see docs/PHASE2.md's Decisions Made / the code review that flagged this same
         // tradeoff for awards).
         val groundName = groundId?.let { groundRepository.findById(it).orElse(null)?.name }
         return LeagueResponse(
-            id = requireNotNull(id),
+            id = leagueId,
             organizerUserId = organizerUserId,
             name = name,
             description = description,
@@ -276,8 +411,18 @@ class LeagueService(
             playersRequired = playersRequired,
             franchiseFee = franchiseFee,
             playerFee = playerFee,
+            organizerUpiId = organizerUpiId,
             status = status,
             awards = awards,
+            players = players,
+            franchises = franchises,
+            isFollowing = isFollowing,
+            auctionBasePrice = auctionBasePrice,
+            auctionPurse = auctionPurse,
+            auctionSquadMin = auctionSquadMin,
+            auctionSquadMax = auctionSquadMax,
+            auctionBidIncrement = auctionBidIncrement,
+            auctionSquadMaxWarning = auctionSquadMaxWarning,
         )
     }
 

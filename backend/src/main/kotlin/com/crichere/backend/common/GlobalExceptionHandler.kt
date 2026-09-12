@@ -2,10 +2,24 @@ package com.crichere.backend.common
 
 import com.crichere.backend.auth.AuthenticationFailedException
 import com.crichere.backend.auth.RateLimitExceededException
+import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
+import com.crichere.backend.franchise.NoLeaveRequestPendingException as FranchiseNoLeaveRequestPendingException
+import com.crichere.backend.franchise.NotFranchiseOwnerException
+import com.crichere.backend.league.CapacityBelowActiveCountException
+import com.crichere.backend.league.FeeLockedException
 import com.crichere.backend.league.GroundNotFoundException
 import com.crichere.backend.league.LeagueAwardNotFoundException
+import com.crichere.backend.league.LeagueCapacityFullException
+import com.crichere.backend.league.LeagueCompletedException
 import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.NotOrganizerException
+import com.crichere.backend.league.OrganizerUpiRequiredException
+import com.crichere.backend.league.PaymentScreenshotRequiredException
+import com.crichere.backend.league.SquadSizeInvalidException
+import com.crichere.backend.player.AlreadyJoinedException
+import com.crichere.backend.player.LeaguePlayerNotFoundException
+import com.crichere.backend.player.NoLeaveRequestPendingException as PlayerNoLeaveRequestPendingException
+import com.crichere.backend.player.NotPlayerOwnerException
 import com.crichere.backend.profile.BowlingStyleNotAllowedException
 import com.crichere.backend.profile.BowlingStyleRequiredException
 import com.crichere.backend.reference.MalformedDistrictIdException
@@ -296,6 +310,165 @@ class GlobalExceptionHandler {
             title = "Access denied",
             code = "ACCESS_DENIED",
             detail = "You do not have permission to modify this league.",
+            instance = request.requestURI,
+        )
+
+    /** A join/claim was attempted on a league that's already completed (see `com.crichere.backend.league.LeagueExceptions`). */
+    @ExceptionHandler(LeagueCompletedException::class)
+    fun handleLeagueCompleted(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "league-completed",
+            title = "League completed",
+            code = "LEAGUE_COMPLETED",
+            detail = "This league is already completed.",
+            instance = request.requestURI,
+        )
+
+    /** `playersRequired`/`franchisesRequired` capacity has already been reached (see `com.crichere.backend.player.PlayerService`/`com.crichere.backend.franchise.FranchiseService`). */
+    @ExceptionHandler(LeagueCapacityFullException::class)
+    fun handleLeagueCapacityFull(exception: LeagueCapacityFullException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "capacity-full",
+            title = "Capacity full",
+            code = "CAPACITY_FULL",
+            detail = "Registration for this role is full.",
+            instance = request.requestURI,
+            extensions = mapOf("role" to exception.role),
+        )
+
+    /** A create/edit request set a fee but left `organizerUpiId` blank (see `com.crichere.backend.league.LeagueService`). */
+    @ExceptionHandler(OrganizerUpiRequiredException::class)
+    fun handleOrganizerUpiRequired(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "organizer-upi-required",
+            title = "Organizer UPI id required",
+            code = "ORGANIZER_UPI_REQUIRED",
+            detail = "organizerUpiId is required when a fee is set.",
+            instance = request.requestURI,
+        )
+
+    /** An auction-settings save had `squadMin` greater than `squadMax` (see `com.crichere.backend.league.LeagueExceptions`). */
+    @ExceptionHandler(SquadSizeInvalidException::class)
+    fun handleSquadSizeInvalid(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "squad-size-invalid",
+            title = "Invalid squad size",
+            code = "SQUAD_SIZE_INVALID",
+            detail = "squadMin cannot be greater than squadMax.",
+            instance = request.requestURI,
+        )
+
+    /** A `PUT` edit tried to drop capacity below the current active count (see `com.crichere.backend.league.LeagueService.update`). */
+    @ExceptionHandler(CapacityBelowActiveCountException::class)
+    fun handleCapacityBelowActiveCount(exception: CapacityBelowActiveCountException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "capacity-below-active-count",
+            title = "Capacity below active count",
+            code = "CAPACITY_BELOW_ACTIVE_COUNT",
+            detail = "Capacity cannot be set below the current number of active participants.",
+            instance = request.requestURI,
+            extensions = mapOf("role" to exception.role),
+        )
+
+    /** A `PUT` edit tried to change a fee while active rows already exist for that role (see `com.crichere.backend.league.LeagueService.update`). */
+    @ExceptionHandler(FeeLockedException::class)
+    fun handleFeeLocked(exception: FeeLockedException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "fee-locked",
+            title = "Fee locked",
+            code = "FEE_LOCKED",
+            detail = "This fee cannot be changed while active participants already exist for this role.",
+            instance = request.requestURI,
+            extensions = mapOf("role" to exception.role),
+        )
+
+    /** A role's fee is set but the join/claim request didn't include a payment screenshot (see `com.crichere.backend.player.PlayerService`/`com.crichere.backend.franchise.FranchiseService`). */
+    @ExceptionHandler(PaymentScreenshotRequiredException::class)
+    fun handlePaymentScreenshotRequired(exception: PaymentScreenshotRequiredException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "payment-screenshot-required",
+            title = "Payment screenshot required",
+            code = "PAYMENT_SCREENSHOT_REQUIRED",
+            detail = "A payment screenshot is required to join/claim as ${exception.role}.",
+            instance = request.requestURI,
+        )
+
+    /** No player row matches the id under the given league (see `com.crichere.backend.player.PlayerExceptions`). */
+    @ExceptionHandler(LeaguePlayerNotFoundException::class)
+    fun handleLeaguePlayerNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No player matches this id.",
+            instance = request.requestURI,
+        )
+
+    /** No franchise row matches the id under the given league (see `com.crichere.backend.franchise.FranchiseExceptions`). */
+    @ExceptionHandler(LeagueFranchiseNotFoundException::class)
+    fun handleLeagueFranchiseNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No franchise matches this id.",
+            instance = request.requestURI,
+        )
+
+    /** The caller already has an active join row for this league (see `league_players_active_unique`). */
+    @ExceptionHandler(AlreadyJoinedException::class)
+    fun handleAlreadyJoined(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "already-joined",
+            title = "Already joined",
+            code = "ALREADY_JOINED",
+            detail = "You have already joined this league as a player.",
+            instance = request.requestURI,
+        )
+
+    /** An approve/dismiss was attempted with no pending leave request (see `com.crichere.backend.player.PlayerExceptions`). */
+    @ExceptionHandler(PlayerNoLeaveRequestPendingException::class)
+    fun handlePlayerNoLeaveRequestPending(request: HttpServletRequest): ProblemDetail = noLeaveRequestPendingProblem(request)
+
+    /** Same as [handlePlayerNoLeaveRequestPending], for franchises (see `com.crichere.backend.franchise.FranchiseExceptions`). */
+    @ExceptionHandler(FranchiseNoLeaveRequestPendingException::class)
+    fun handleFranchiseNoLeaveRequestPending(request: HttpServletRequest): ProblemDetail = noLeaveRequestPendingProblem(request)
+
+    private fun noLeaveRequestPendingProblem(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "no-leave-request-pending",
+            title = "No leave request pending",
+            code = "NO_LEAVE_REQUEST_PENDING",
+            detail = "There is no pending leave request for this row.",
+            instance = request.requestURI,
+        )
+
+    /** The caller is authenticated but is not this player row's own user -- checked on a self-scoped leave request (see `com.crichere.backend.player.PlayerExceptions`). */
+    @ExceptionHandler(NotPlayerOwnerException::class)
+    fun handleNotPlayerOwner(request: HttpServletRequest): ProblemDetail = accessDeniedProblem(request)
+
+    /** The caller is authenticated but is neither the league's organizer nor this franchise's own owner (see `com.crichere.backend.franchise.FranchiseExceptions`). */
+    @ExceptionHandler(NotFranchiseOwnerException::class)
+    fun handleNotFranchiseOwner(request: HttpServletRequest): ProblemDetail = accessDeniedProblem(request)
+
+    private fun accessDeniedProblem(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.FORBIDDEN,
+            slug = "access-denied",
+            title = "Access denied",
+            code = "ACCESS_DENIED",
+            detail = "You do not have permission to perform this action.",
             instance = request.requestURI,
         )
 

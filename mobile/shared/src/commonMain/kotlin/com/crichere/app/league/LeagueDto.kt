@@ -27,6 +27,44 @@ data class LeagueAwardSaveRequestDto(
     val hasTrophy: Boolean = false,
 )
 
+/** Mirrors the backend's `LeaguePlayerResponse`. `paymentScreenshotUrl`/`leaveRequestedAt` are `null` unless the caller is the organizer or this row's own user (see docs/PHASE3.md). */
+@Serializable
+data class LeaguePlayerDto(
+    val id: String,
+    val userId: String,
+    val name: String? = null,
+    val joinedAt: String,
+    val paymentScreenshotUrl: String? = null,
+    val leaveRequestedAt: String? = null,
+)
+
+/** Body of `POST /leagues/{id}/players`. */
+@Serializable
+data class LeaguePlayerJoinRequestDto(
+    val paymentScreenshotUrl: String? = null,
+)
+
+/** Mirrors the backend's `LeagueFranchiseResponse`. Same redaction rule as [LeaguePlayerDto]. */
+@Serializable
+data class LeagueFranchiseDto(
+    val id: String,
+    val ownerUserId: String,
+    val ownerName: String? = null,
+    val name: String,
+    val logoUrl: String? = null,
+    val joinedAt: String,
+    val paymentScreenshotUrl: String? = null,
+    val leaveRequestedAt: String? = null,
+)
+
+/** Body of `POST /leagues/{id}/franchises`. */
+@Serializable
+data class LeagueFranchiseClaimRequestDto(
+    val name: String,
+    val logoUrl: String? = null,
+    val paymentScreenshotUrl: String? = null,
+)
+
 /**
  * Mirrors the backend's `LeagueResponse`. [startsOn] stays a plain ISO-8601 `String`
  * ("2026-10-12") -- same reasoning `AuthResult`/`PhotoUploadInfoDto` document for their own
@@ -53,8 +91,18 @@ data class LeagueDto(
     val playersRequired: Int? = null,
     val franchiseFee: Double? = null,
     val playerFee: Double? = null,
+    val organizerUpiId: String? = null,
     val status: LeagueStatus,
     val awards: List<LeagueAwardDto> = emptyList(),
+    val players: List<LeaguePlayerDto> = emptyList(),
+    val franchises: List<LeagueFranchiseDto> = emptyList(),
+    val isFollowing: Boolean = false,
+    val auctionBasePrice: Double? = null,
+    val auctionPurse: Double? = null,
+    val auctionSquadMin: Int? = null,
+    val auctionSquadMax: Int? = null,
+    val auctionBidIncrement: Double? = null,
+    val auctionSquadMaxWarning: Boolean = false,
 )
 
 /** Mirrors the backend's `LeagueSaveRequest` -- body of both create and edit. */
@@ -74,5 +122,16 @@ data class LeagueSaveRequestDto(
     val playersRequired: Int? = null,
     val franchiseFee: Double? = null,
     val playerFee: Double? = null,
+    val organizerUpiId: String? = null,
     val awards: List<LeagueAwardSaveRequestDto>? = null,
+)
+
+/** Mirrors the backend's `AuctionSettingsSaveRequest` -- body of `PUT /leagues/{id}/auction-settings` (see docs/PHASE4.md). All fields required together, full-replace, same posture as [LeagueSaveRequestDto]. */
+@Serializable
+data class AuctionSettingsSaveRequestDto(
+    val basePrice: Double,
+    val purse: Double,
+    val squadMin: Int,
+    val squadMax: Int,
+    val bidIncrement: Double,
 )

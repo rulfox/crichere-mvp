@@ -38,10 +38,17 @@ class LeagueDetailViewModelTest {
         status = LeagueStatus.ANNOUNCED,
     )
 
+    private fun viewModel(
+        leagueRepository: FakeLeagueRepository,
+        currentUserId: String? = "organizer-1",
+        playerRepository: FakePlayerRepository = FakePlayerRepository(),
+        franchiseRepository: FakeFranchiseRepository = FakeFranchiseRepository(),
+    ) = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository(currentUserId), playerRepository, franchiseRepository)
+
     @Test
     fun `loads the league and marks the viewer as organizer when ids match`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
-        val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("organizer-1"))
+        val viewModel = viewModel(leagueRepository, currentUserId = "organizer-1")
         viewModel.retry()
         advanceUntilIdle()
 
@@ -49,12 +56,13 @@ class LeagueDetailViewModelTest {
         assertFalse(state.isLoading)
         assertEquals("Weekend League", state.league?.name)
         assertTrue(state.isOrganizer)
+        assertEquals("organizer-1", state.currentUserId)
     }
 
     @Test
     fun `a non-organizer viewer does not get organizer actions`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
-        val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("someone-else"))
+        val viewModel = viewModel(leagueRepository, currentUserId = "someone-else")
         viewModel.retry()
         advanceUntilIdle()
 
@@ -64,7 +72,7 @@ class LeagueDetailViewModelTest {
     @Test
     fun `a signed-out viewer -- null user id -- is never treated as organizer`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
-        val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository(null))
+        val viewModel = viewModel(leagueRepository, currentUserId = null)
         viewModel.retry()
         advanceUntilIdle()
 
@@ -74,7 +82,7 @@ class LeagueDetailViewModelTest {
     @Test
     fun `a load failure surfaces an error message instead of crashing`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = emptyList())
-        val viewModel = LeagueDetailViewModel("missing-id", leagueRepository, StubAuthRepository("organizer-1"))
+        val viewModel = LeagueDetailViewModel("missing-id", leagueRepository, StubAuthRepository("organizer-1"), FakePlayerRepository(), FakeFranchiseRepository())
         viewModel.retry()
         advanceUntilIdle()
 
@@ -90,7 +98,7 @@ class LeagueDetailViewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(league)).apply {
             nextCompleted = completed
         }
-        val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("organizer-1"))
+        val viewModel = viewModel(leagueRepository)
         viewModel.retry()
         advanceUntilIdle()
 
@@ -108,7 +116,7 @@ class LeagueDetailViewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(league)).apply {
             nextCompleted = league.copy(status = LeagueStatus.COMPLETED)
         }
-        val viewModel = LeagueDetailViewModel("l1", leagueRepository, StubAuthRepository("someone-else"))
+        val viewModel = viewModel(leagueRepository, currentUserId = "someone-else")
         viewModel.retry()
         advanceUntilIdle()
 
@@ -116,5 +124,113 @@ class LeagueDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(LeagueStatus.ANNOUNCED, viewModel.state.value.league?.status)
+    }
+
+    // ---------------------------------------------------------------- Phase 3: follow / roster management
+
+    @Test
+    fun `toggleFollow follows when not currently following and reloads`() = viewModelTest {
+        val league = sampleLeague().copy(isFollowing = false)
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(league))
+        val viewModel = viewModel(leagueRepository, currentUserId = "someone-else")
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.toggleFollow()
+        advanceUntilIdle()
+
+        assertEquals(listOf("l1"), leagueRepository.followCalls)
+        assertFalse(viewModel.state.value.isTogglingFollow)
+    }
+
+    @Test
+    fun `toggleFollow unfollows when currently following`() = viewModelTest {
+        val league = sampleLeague().copy(isFollowing = true)
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(league))
+        val viewModel = viewModel(leagueRepository, currentUserId = "someone-else")
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.toggleFollow()
+        advanceUntilIdle()
+
+        assertEquals(listOf("l1"), leagueRepository.unfollowCalls)
+    }
+
+    @Test
+    fun `removePlayer is a no-op for a non-organizer viewer`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val playerRepository = FakePlayerRepository()
+        val viewModel = viewModel(leagueRepository, currentUserId = "someone-else", playerRepository = playerRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.removePlayer("p1")
+        advanceUntilIdle()
+
+        assertTrue(playerRepository.removeCalls.isEmpty())
+    }
+
+    @Test
+    fun `removePlayer by the organizer calls the repository and reloads`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val playerRepository = FakePlayerRepository()
+        val viewModel = viewModel(leagueRepository, currentUserId = "organizer-1", playerRepository = playerRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.removePlayer("p1")
+        advanceUntilIdle()
+
+        assertEquals(listOf("l1" to "p1"), playerRepository.removeCalls)
+        assertTrue(viewModel.state.value.removingIds.isEmpty())
+    }
+
+    @Test
+    fun `approvePlayerLeave by the organizer calls the repository and reloads`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val playerRepository = FakePlayerRepository().apply {
+            nextApproved = LeaguePlayerDto(id = "p1", userId = "u2", joinedAt = "2026-09-12T00:00:00Z")
+        }
+        val viewModel = viewModel(leagueRepository, currentUserId = "organizer-1", playerRepository = playerRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.approvePlayerLeave("p1")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.respondingToLeaveRequestIds.isEmpty())
+        assertTrue(viewModel.state.value.errorMessage == null)
+    }
+
+    @Test
+    fun `requestLeaveAsPlayer calls the repository and reloads`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val playerRepository = FakePlayerRepository().apply {
+            nextLeaveRequested = LeaguePlayerDto(id = "p1", userId = "u2", joinedAt = "2026-09-12T00:00:00Z")
+        }
+        val viewModel = viewModel(leagueRepository, currentUserId = "u2", playerRepository = playerRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.requestLeaveAsPlayer("p1")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isLeaveRequesting)
+    }
+
+    @Test
+    fun `a failed action surfaces an error message and clears the in-flight flag`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val playerRepository = FakePlayerRepository().apply { removeError = RuntimeException("boom") }
+        val viewModel = viewModel(leagueRepository, currentUserId = "organizer-1", playerRepository = playerRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.removePlayer("p1")
+        advanceUntilIdle()
+
+        assertEquals("boom", viewModel.state.value.errorMessage)
+        assertTrue(viewModel.state.value.removingIds.isEmpty())
     }
 }

@@ -1,6 +1,7 @@
 package com.crichere.backend.league
 
 import com.crichere.backend.common.PhotoUploadUrlResponse
+import com.crichere.backend.league.dto.AuctionSettingsSaveRequest
 import com.crichere.backend.league.dto.LeagueAwardResponse
 import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
@@ -42,15 +43,20 @@ class LeagueController(
         @RequestParam(required = false) city: String?,
         @RequestParam(required = false) nearLat: Double?,
         @RequestParam(required = false) nearLng: Double?,
+        @AuthenticationPrincipal(errorOnInvalidType = false) callerId: UUID?,
     ): List<LeagueResponse> =
         if (nearLat != null && nearLng != null) {
-            leagueService.listNearest(nearLat, nearLng)
+            leagueService.listNearest(nearLat, nearLng, callerId)
         } else {
-            leagueService.listByArea(state, district, city)
+            leagueService.listByArea(state, district, city, callerId)
         }
 
+    /** `callerId` is `null` for an anonymous caller -- see [LeagueService.getLeague]'s doc. */
     @GetMapping("/{id}")
-    fun getLeague(@PathVariable id: UUID): LeagueResponse = leagueService.getLeague(id)
+    fun getLeague(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal(errorOnInvalidType = false) callerId: UUID?,
+    ): LeagueResponse = leagueService.getLeague(id, callerId)
 
     @PostMapping
     fun create(
@@ -64,6 +70,13 @@ class LeagueController(
         @AuthenticationPrincipal userId: UUID,
         @Valid @RequestBody request: LeagueSaveRequest,
     ): LeagueResponse = leagueService.update(id, userId, request)
+
+    @PutMapping("/{id}/auction-settings")
+    fun updateAuctionSettings(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+        @Valid @RequestBody request: AuctionSettingsSaveRequest,
+    ): LeagueResponse = leagueService.updateAuctionSettings(id, userId, request)
 
     @PatchMapping("/{id}/complete")
     fun complete(
@@ -82,6 +95,30 @@ class LeagueController(
         @PathVariable id: UUID,
         @AuthenticationPrincipal userId: UUID,
     ): PhotoUploadUrlResponse = leagueService.createBannerUploadUrl(id, userId)
+
+    @PostMapping("/{id}/payment-screenshot-upload-url")
+    fun createPaymentScreenshotUploadUrl(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+    ): PhotoUploadUrlResponse = leagueService.createPaymentScreenshotUploadUrl(id, userId)
+
+    @PostMapping("/{id}/franchise-logo-upload-url")
+    fun createFranchiseLogoUploadUrl(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+    ): PhotoUploadUrlResponse = leagueService.createFranchiseLogoUploadUrl(id, userId)
+
+    @PostMapping("/{id}/follow")
+    fun follow(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+    ) = leagueService.follow(id, userId)
+
+    @DeleteMapping("/{id}/follow")
+    fun unfollow(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+    ) = leagueService.unfollow(id, userId)
 
     @PostMapping("/{id}/awards")
     fun addAward(

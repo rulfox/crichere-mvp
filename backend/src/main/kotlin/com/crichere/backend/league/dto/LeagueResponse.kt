@@ -1,6 +1,8 @@
 package com.crichere.backend.league.dto
 
+import com.crichere.backend.franchise.dto.LeagueFranchiseResponse
 import com.crichere.backend.league.LeagueStatus
+import com.crichere.backend.player.dto.LeaguePlayerResponse
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.UUID
@@ -28,6 +30,20 @@ data class LeagueResponse(
     val playersRequired: Int?,
     val franchiseFee: BigDecimal?,
     val playerFee: BigDecimal?,
+    /** Only meaningful once a fee is set -- see docs/PHASE3.md. Public regardless of caller: a prospective joiner needs it before they've joined. */
+    val organizerUpiId: String?,
     val status: LeagueStatus,
     val awards: List<LeagueAwardResponse>,
+    val players: List<LeaguePlayerResponse>,
+    val franchises: List<LeagueFranchiseResponse>,
+    /** `false` for an anonymous caller. No follower list is embedded -- nothing browses one, see docs/PHASE3.md's Screens section. */
+    val isFollowing: Boolean,
+    /** All nullable until the organizer configures auction settings -- see docs/PHASE4.md. Public on read, same posture as capacity/fees -- the auction pool itself is just [players], purse is the same [auctionPurse] number for every franchise. */
+    val auctionBasePrice: BigDecimal?,
+    val auctionPurse: BigDecimal?,
+    val auctionSquadMin: Int?,
+    val auctionSquadMax: Int?,
+    val auctionBidIncrement: BigDecimal?,
+    /** `true` when `auctionSquadMax * franchisesRequired > playersRequired` (both present) -- a save-time-only warning, never a rejection (see docs/PHASE4.md's two-stage squad-math check; the hard-block re-check against real counts is Phase 5's). */
+    val auctionSquadMaxWarning: Boolean,
 )

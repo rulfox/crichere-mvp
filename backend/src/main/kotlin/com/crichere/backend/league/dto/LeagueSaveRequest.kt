@@ -60,6 +60,10 @@ data class LeagueSaveRequest(
     @field:DecimalMin(value = "0.0", message = "playerFee cannot be negative")
     val playerFee: BigDecimal? = null,
 
+    /** Required (checked in `LeagueService`, not here -- the rule reads two sibling fields) once either fee above is set. See docs/PHASE3.md. */
+    @field:Size(max = 255, message = "organizerUpiId must be at most 255 characters")
+    val organizerUpiId: String? = null,
+
     /**
      * Optional initial awards, create-only (ignored by `PUT` -- once a league exists, awards are
      * managed through their own `POST`/`PUT`/`DELETE /api/v1/leagues/{id}/awards[/{awardId}]`

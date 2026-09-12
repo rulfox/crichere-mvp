@@ -23,6 +23,15 @@ struct IosAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    // Phase 3 deep link (see docs/PHASE3.md): crichere://leagues/{id}. This is a
+                    // parse-and-stash no-op stub, not a functioning resume flow -- there is no iOS
+                    // nav shell to resume into yet (see docs/PHASE2.md Section 5's deferred iOS
+                    // pass; Android's equivalent wiring is AuthNavHost.kt's pendingDeepLinkLeagueId).
+                    guard url.scheme == "crichere", url.host == "leagues" else { return }
+                    let leagueId = url.pathComponents.dropFirst().first
+                    print("Deep link received for league id: \(leagueId ?? "unknown") -- no-op until the iOS nav shell exists")
+                }
         }
     }
 }

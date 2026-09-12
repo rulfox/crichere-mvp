@@ -114,6 +114,32 @@ class PhotoUploadService(
     /** Builds a presigned POST for `leagues/{leagueId}/banner.jpg`. See the class doc's security-boundary note. */
     fun createLeagueBannerUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/banner.jpg")
 
+    /** Builds a presigned POST for `franchises/{franchiseId}/logo.jpg`. See the class doc's security-boundary note -- the ownership check is `FranchiseService`'s responsibility. */
+    fun createFranchiseLogoUploadUrl(franchiseId: UUID): PhotoUploadUrlResponse = presign("franchises/$franchiseId/logo.jpg")
+
+    /**
+     * Builds a presigned POST for a not-yet-claimed franchise's logo, before a claim (and
+     * therefore a franchise id) exists -- keyed on `leagues/{leagueId}/franchise-logos/
+     * {userId}-{random}.jpg`. The random suffix (not just `userId`) matters because one user can
+     * claim more than one franchise in the same league (see docs/PHASE3.md's Decisions Made) --
+     * without it, a second claim's logo upload would silently overwrite the first claim's S3
+     * object and both franchises would end up pointing at the same evolving image. Always
+     * self-scoped (the caller's own id), same implicit safety as [createUploadUrl].
+     */
+    fun createPendingFranchiseLogoUploadUrl(leagueId: UUID, userId: UUID): PhotoUploadUrlResponse =
+        presign("leagues/$leagueId/franchise-logos/$userId-${UUID.randomUUID()}.jpg")
+
+    /**
+     * Builds a presigned POST for `leagues/{leagueId}/payments/{userId}.jpg` -- a payment-proof
+     * screenshot for a player join or franchise claim. Keyed on the *caller's own* [userId], not a
+     * player/franchise row id, because the screenshot is uploaded before that row exists (proof
+     * is part of the join/claim request body) -- see docs/PHASE3.md's implementation plan,
+     * decision 7. Always self-scoped (the caller's own JWT-resolved id), same implicit safety as
+     * [createUploadUrl] -- no separate ownership check needed by the caller.
+     */
+    fun createPaymentScreenshotUploadUrl(leagueId: UUID, userId: UUID): PhotoUploadUrlResponse =
+        presign("leagues/$leagueId/payments/$userId.jpg")
+
     private fun presign(key: String): PhotoUploadUrlResponse {
         val bucket = properties.s3.bucket
         val region = properties.s3.region

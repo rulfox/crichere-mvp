@@ -117,4 +117,62 @@ class LeagueRepositoryTest {
 
         repository.deleteAward("l1", "a1")
     }
+
+    @Test
+    fun `follow POSTs to the league's follow endpoint`() = runTest {
+        val repository = repository(mockClient(expectedMethod = HttpMethod.Post, expectedPath = "/api/v1/leagues/l1/follow", body = ""))
+
+        repository.follow("l1")
+    }
+
+    @Test
+    fun `unfollow DELETEs the league's follow endpoint`() = runTest {
+        val repository = repository(mockClient(expectedMethod = HttpMethod.Delete, expectedPath = "/api/v1/leagues/l1/follow", body = ""))
+
+        repository.unfollow("l1")
+    }
+
+    @Test
+    fun `requestPaymentScreenshotUploadUrl throws LeaguePhotoUploadUnavailableException on a 503`() = runTest {
+        val repository = repository(mockClient(status = HttpStatusCode.ServiceUnavailable, body = "{}"))
+
+        assertFailsWith<LeaguePhotoUploadUnavailableException> {
+            repository.requestPaymentScreenshotUploadUrl("l1")
+        }
+    }
+
+    @Test
+    fun `updateAuctionSettings PUTs to the league's auction-settings endpoint`() = runTest {
+        val repository = repository(
+            mockClient(expectedMethod = HttpMethod.Put, expectedPath = "/api/v1/leagues/l1/auction-settings", body = sampleLeagueJson()),
+        )
+
+        val result = repository.updateAuctionSettings(
+            "l1",
+            AuctionSettingsSaveRequestDto(basePrice = 500.0, purse = 10000.0, squadMin = 5, squadMax = 15, bidIncrement = 100.0),
+        )
+
+        assertEquals("l1", result.id)
+    }
+
+    @Test
+    fun `updateAuctionSettings throws on a non-2xx response`() = runTest {
+        val repository = repository(mockClient(status = HttpStatusCode.BadRequest, body = "{}"))
+
+        assertFailsWith<LeagueSaveFailedException> {
+            repository.updateAuctionSettings("l1", AuctionSettingsSaveRequestDto(basePrice = 500.0, purse = 10000.0, squadMin = 5, squadMax = 15, bidIncrement = 100.0))
+        }
+    }
+
+    @Test
+    fun `requestPendingFranchiseLogoUploadUrl POSTs to the league's franchise-logo-upload-url endpoint`() = runTest {
+        val uploadJson = """{"uploadUrl":"https://s3.example.com/","fields":{},"key":"leagues/l1/franchise-logos/u1-abc.jpg","expiresAt":"2026-09-03T12:05:00.000Z"}"""
+        val repository = repository(
+            mockClient(expectedMethod = HttpMethod.Post, expectedPath = "/api/v1/leagues/l1/franchise-logo-upload-url", body = uploadJson),
+        )
+
+        val result = repository.requestPendingFranchiseLogoUploadUrl("l1")
+
+        assertEquals("leagues/l1/franchise-logos/u1-abc.jpg", result.key)
+    }
 }

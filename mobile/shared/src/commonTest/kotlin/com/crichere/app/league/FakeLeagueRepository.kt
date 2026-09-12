@@ -33,6 +33,15 @@ class FakeLeagueRepository(
     var deleteAwardCallCount = 0
         private set
 
+    val followCalls = mutableListOf<String>()
+    val unfollowCalls = mutableListOf<String>()
+    var followError: Throwable? = null
+    var unfollowError: Throwable? = null
+
+    var nextAuctionSettingsUpdated: LeagueDto? = null
+    var updateAuctionSettingsError: Throwable? = null
+    val updateAuctionSettingsRequests = mutableListOf<AuctionSettingsSaveRequestDto>()
+
     override suspend fun listByArea(state: String?, district: String?, city: String?): List<LeagueDto> {
         listByAreaCalls += Triple(state, district, city)
         listByAreaError?.let { throw it }
@@ -77,5 +86,25 @@ class FakeLeagueRepository(
 
     override suspend fun deleteAward(leagueId: String, awardId: String) {
         deleteAwardCallCount++
+    }
+
+    override suspend fun requestPaymentScreenshotUploadUrl(leagueId: String): PhotoUploadInfoDto = photoUploadInfo
+
+    override suspend fun requestPendingFranchiseLogoUploadUrl(leagueId: String): PhotoUploadInfoDto = photoUploadInfo
+
+    override suspend fun follow(id: String) {
+        followCalls += id
+        followError?.let { throw it }
+    }
+
+    override suspend fun unfollow(id: String) {
+        unfollowCalls += id
+        unfollowError?.let { throw it }
+    }
+
+    override suspend fun updateAuctionSettings(id: String, request: AuctionSettingsSaveRequestDto): LeagueDto {
+        updateAuctionSettingsRequests += request
+        updateAuctionSettingsError?.let { throw it }
+        return nextAuctionSettingsUpdated ?: error("nextAuctionSettingsUpdated not stubbed")
     }
 }

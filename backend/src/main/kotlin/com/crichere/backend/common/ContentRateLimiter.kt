@@ -30,6 +30,9 @@ data class ContentRateLimitProperties(
     val leagueCreateCapacity: Long = 20,
     val groundCreateCapacity: Long = 20,
     val awardCreateCapacity: Long = 100,
+    /** Same generosity reasoning as [leagueCreateCapacity] -- a real player joins a handful of leagues, not hundreds, in an hour. */
+    val playerJoinCapacity: Long = 20,
+    val franchiseClaimCapacity: Long = 20,
     /** The refill period every capacity above uses. */
     val window: Duration = Duration.ofHours(1),
     /** Safety valve on each in-memory bucket map -- see [ContentRateLimiter] for what happens then. */
@@ -52,6 +55,8 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     private val leagueCreateBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val groundCreateBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val awardCreateBuckets = ConcurrentHashMap<UUID, Bucket>()
+    private val playerJoinBuckets = ConcurrentHashMap<UUID, Bucket>()
+    private val franchiseClaimBuckets = ConcurrentHashMap<UUID, Bucket>()
 
     /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
     fun tryConsumeForLeagueCreate(userId: UUID): Duration? =
@@ -65,11 +70,26 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     fun tryConsumeForAwardCreate(userId: UUID): Duration? =
         consume(awardCreateBuckets, userId, properties.awardCreateCapacity)
 
+    /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
+    fun tryConsumeForPlayerJoin(userId: UUID): Duration? =
+        consume(playerJoinBuckets, userId, properties.playerJoinCapacity)
+
+    /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
+    fun tryConsumeForFranchiseClaim(userId: UUID): Duration? =
+        consume(franchiseClaimBuckets, userId, properties.franchiseClaimCapacity)
+
+    // Leave-request/approve/dismiss/remove/follow/unfollow are deliberately NOT rate-limited: a
+    // player leave-requesting repeatedly only harms themselves (no capacity/money consumed), and
+    // follow/unfollow has no abuse vector (no capacity, no money, no notification spam since
+    // Phase 3 notifications are silent/in-app only -- see docs/PHASE3.md).
+
     /** Test hook: forget every bucket. Not used by production code. */
     fun reset() {
         leagueCreateBuckets.clear()
         groundCreateBuckets.clear()
         awardCreateBuckets.clear()
+        playerJoinBuckets.clear()
+        franchiseClaimBuckets.clear()
     }
 
     private fun consume(buckets: ConcurrentHashMap<UUID, Bucket>, key: UUID, capacity: Long): Duration? {

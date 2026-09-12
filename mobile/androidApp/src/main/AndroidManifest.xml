@@ -31,6 +31,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+                Deep link into a specific league (Phase 3, see docs/PHASE3.md's Decisions Made):
+                crichere://leagues/{id}. Custom URI scheme, not a domain-based App Link, since no
+                real domain/hosting exists yet; android:autoVerify is not applicable here.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="crichere" android:host="leagues" />
+            </intent-filter>
         </activity>
 
         <!--

@@ -52,7 +52,7 @@ Describing what belongs on each screen — not layout, spacing, or component cho
 - Everything entered at creation: logo, banner, name, description, location (state/district/city), ground (name + map, if set), start date, format, organizer.
 - Capacity (franchises/players required), fees (if set), and the full awards list (name, cash amount, trophy) displayed together as a "Prizes" section.
 - If the current user is the league's organizer: an "Edit" action (covers every field including adding/removing awards, and attaching/changing the ground) and a "Mark as completed" action. Both remain available even after the league is marked completed — nothing freezes.
-- No join/registration action yet — that arrives with the auction phase.
+- No join/registration action yet — that arrives in Phase 3 (see [PHASE3.md](PHASE3.md)).
 
 ---
 
@@ -101,6 +101,14 @@ All forks surfaced during scoping and implementation planning (2026-09-04) were 
 - Who can register a new Ground — any logged-in user (same posture as league creation), or only while creating/editing a league (no standalone "add a ground" entry point)? Leaning toward the latter for Phase 2 (grounds are created as a byproduct of league creation, not their own directory feature yet), not yet confirmed.
 - **Google Maps API key provisioned (2026-09-05).** Created a dedicated key (`Maps SDK Android (debug)`) via `gcloud services api-keys create`, restricted to `maps-android-backend.googleapis.com` and locked to `com.crichere.app` + the local debug keystore's SHA-1 — not the broader, unrestricted auto-created Firebase Android key. Set as `MAPS_API_KEY` in `mobile/local.properties` (gitignored). Debug-only: this key stops working the moment the app is signed with a release keystore (different SHA-1) — provisioning a release-signed equivalent is a go-live task, not a Phase 2 blocker. Real on-device pin-drag verification with a live map still hasn't been exercised — only wiring is confirmed.
 - **iOS Phase 2 screens deliberately skipped for now (explicit user decision, 2026-09-05)**: discovered mid-Phase-2 that iOS never got Phase 1's own auth nav shell built either — `ContentView.swift` is still the pre-Phase-1 toolchain-proof screen, `PhoneEntryView`/`OtpVerifyView`/a root nav switcher don't exist, and `ProfileSetupView`/`OwnProfileView` are authored but never wired to anything. Building League Dashboard/Creation/Detail SwiftUI screens on top of that gap wouldn't be usable. Android Phase 2 continues to completion; iOS (Phase 1's nav shell and Phase 2's screens together) is deferred to its own dedicated pass.
+- **iOS keeps getting authored alongside Android going forward, verification stays deferred (confirmed 2026-09-12)**: no Mac available. Code (shared KMP + SwiftUI screens) is written in lockstep with Android per feature, same posture as the Firebase/Maps-key gaps — authored-but-unverified, not skipped. Real device/simulator testing and any bugs it surfaces wait until a Mac is available.
+
+### Pending verification / follow-ups (as of 2026-09-12)
+
+- **Map-pin drag needs a real human touch test.** Full on-device manual QA pass (2026-09-12) found and fixed 10 real bugs, but adb-synthetic touch can't trigger the map's drag-to-place marker gesture on a non-rooted device — needs an actual finger tap-and-hold-and-drag verification pass.
+- **iOS build/compile is green (3 KMP targets) but nothing has run on a simulator or device** — no Mac in this environment. Deferred per the decision above, not abandoned.
+- **This doc's Decisions/gaps sections don't yet reflect the 10 device-testing bug fixes** committed in `ae56a1a` (S3 upload Content-Type field, GPS provider/permission, stale-cache ViewModel refresh-on-visit, ground display name propagation, awards list clipping, edit-mode tab-return routing, logo/banner pending-state feedback, Firebase phone-auth switched on for real). Needs a proper write-up pass.
+- **Local Postgres test container (`crichere-dev-postgres`, port 45432) and any backend process left running from the manual QA session need tearing down** — not yet done.
 
 ---
 
