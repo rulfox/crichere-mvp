@@ -174,6 +174,28 @@ class AuctionViewModelTest {
     }
 
     @Test
+    fun `results load automatically when the organizer's own action -- not the SSE stream -- completes the auction`() = viewModelTest {
+        // Regression test: found on-device (2026-09-13) -- the organizer whose own `sold` call
+        // completed the auction saw no results, because only the SSE-observer path checked for
+        // the COMPLETED transition. Every other connected client (who only ever sees state via
+        // the stream) got it correctly, which is why this only showed up for the actor themselves.
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val results = AuctionResultsDto(auctionStatus = AuctionStatus.COMPLETED)
+        val auctionRepository = FakeAuctionRepository().apply {
+            nextState = auctionState(AuctionStatus.COMPLETED)
+            nextResults = results
+        }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.sold()
+        advanceUntilIdle()
+
+        assertEquals(results, viewModel.state.value.results)
+    }
+
+    @Test
     fun `results load automatically once the stream reports the auction completed`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val results = AuctionResultsDto(auctionStatus = AuctionStatus.COMPLETED)

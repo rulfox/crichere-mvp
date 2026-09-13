@@ -85,7 +85,19 @@ class AuctionViewModel(
     }
 
     private fun onAuctionState(newState: AuctionStateDto) {
-        _state.update { it.copy(isLoading = false, auction = newState) }
+        _state.update { it.copy(isLoading = false) }
+        applyAuctionState(newState)
+    }
+
+    /**
+     * Shared by the SSE path ([onAuctionState]) and every direct action response ([runOrganizerAction],
+     * [placeBid]) so the auto-load-results-on-completion behavior fires no matter which of them
+     * observes the COMPLETED transition first -- without this, the organizer whose own `sold`/`end`
+     * call is what completes the auction would never see it (their own response bypasses the SSE
+     * stream entirely), while every other connected client would.
+     */
+    private fun applyAuctionState(newState: AuctionStateDto) {
+        _state.update { it.copy(auction = newState) }
         if (newState.auctionStatus == AuctionStatus.COMPLETED && _state.value.results == null) loadResults()
     }
 
@@ -119,7 +131,10 @@ class AuctionViewModel(
         _state.update { it.copy(isBidding = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { auctionRepository.placeBid(leagueId, PlaceBidRequestDto(franchiseId, amount)) }
-                .onSuccess { newState -> _state.update { it.copy(isBidding = false, auction = newState, bidAmountInput = "") } }
+                .onSuccess { newState ->
+                    _state.update { it.copy(isBidding = false, bidAmountInput = "") }
+                    applyAuctionState(newState)
+                }
                 .onFailure { throwable ->
                     _state.update { it.copy(isBidding = false, errorMessage = throwable.message ?: "That bid was rejected. Please try again.") }
                 }
@@ -131,7 +146,10 @@ class AuctionViewModel(
         _state.update { it.copy(isActing = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { action() }
-                .onSuccess { newState -> _state.update { it.copy(isActing = false, auction = newState) } }
+                .onSuccess { newState ->
+                    _state.update { it.copy(isActing = false) }
+                    applyAuctionState(newState)
+                }
                 .onFailure { throwable ->
                     _state.update { it.copy(isActing = false, errorMessage = throwable.message ?: "That action couldn't be completed. Please try again.") }
                 }
