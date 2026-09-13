@@ -54,6 +54,13 @@ class LeagueServiceTest {
     private val profileRepository = mockk<ProfileRepository>()
     private val contentRateLimiter = mockk<ContentRateLimiter>()
     private val photoUploadService = mockk<PhotoUploadService>()
+    private val leagueRoleRepository = mockk<LeagueRoleRepository>().also {
+        // Every toResponse() call loads active co-organizers -- default to "none" so tests that
+        // don't care about roles specifically don't each need their own stub.
+        every { it.findByLeagueIdAndRevokedAtIsNull(any()) } returns emptyList()
+        every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
+    }
+    private val leagueAuthorization = LeagueAuthorization(leagueRoleRepository)
     private val service = LeagueService(
         leagueRepository,
         leagueAwardRepository,
@@ -64,6 +71,8 @@ class LeagueServiceTest {
         profileRepository,
         contentRateLimiter,
         photoUploadService,
+        leagueAuthorization,
+        leagueRoleRepository,
     )
 
     private val organizerId: UUID = UUID.randomUUID()

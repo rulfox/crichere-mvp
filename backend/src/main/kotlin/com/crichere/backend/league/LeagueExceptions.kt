@@ -50,3 +50,15 @@ class PaymentScreenshotRequiredException(val role: String) : RuntimeException("A
 
 /** An auction-settings save had `squadMin` greater than `squadMax` -- see docs/PHASE4.md. */
 class SquadSizeInvalidException : RuntimeException("squad_min cannot be greater than squad_max")
+
+/** A role-lookup phone number matched no registered user -- see docs/PHASE7.md. */
+class UserNotFoundException : RuntimeException("No user found with that phone number")
+
+/** A grant was attempted for a (league, user, role) that already has an active grant -- the partial unique index is the real backstop, this is just a clean error instead of a raw constraint violation. */
+class RoleAlreadyGrantedException : RuntimeException("This user already has that role on this league")
+
+/** A grant was attempted targeting the league's own organizer -- a no-op, since the organizer already has every permission a grant would add. */
+class CannotGrantRoleToOrganizerException : RuntimeException("The organizer already has full access -- no role needed")
+
+/** No active role matches the given id under the given league -- also thrown for a role id that's real but belongs to a different league, or one already revoked. */
+class RoleNotFoundException : RuntimeException("Role not found")

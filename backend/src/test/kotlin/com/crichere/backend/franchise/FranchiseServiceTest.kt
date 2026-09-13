@@ -5,11 +5,13 @@ import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.franchise.dto.LeagueFranchiseClaimRequest
+import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueCapacityFullException
 import com.crichere.backend.league.LeagueCompletedException
 import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
+import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.league.NotOrganizerException
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.profile.ProfileRepository
@@ -36,7 +38,12 @@ class FranchiseServiceTest {
     }
     private val contentRateLimiter = mockk<ContentRateLimiter>()
     private val photoUploadService = mockk<PhotoUploadService>()
-    private val service = FranchiseService(franchiseRepository, leagueRepository, profileRepository, contentRateLimiter, photoUploadService)
+    private val leagueAuthorization = LeagueAuthorization(
+        mockk<LeagueRoleRepository>().also {
+            every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
+        },
+    )
+    private val service = FranchiseService(franchiseRepository, leagueRepository, profileRepository, contentRateLimiter, photoUploadService, leagueAuthorization)
 
     private val organizerId: UUID = UUID.randomUUID()
     private val ownerId: UUID = UUID.randomUUID()

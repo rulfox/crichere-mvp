@@ -6,8 +6,10 @@ import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.franchise.NotFranchiseOwnerException
 import com.crichere.backend.league.AuctionLastActionType
 import com.crichere.backend.league.AuctionStatus
+import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueRepository
+import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.league.NotOrganizerException
 import com.crichere.backend.player.AuctionOutcome
 import com.crichere.backend.player.PlayerEntity
@@ -55,9 +57,16 @@ class AuctionServiceTest {
     private val broadcastService = mockk<AuctionBroadcastService>().also {
         every { it.broadcast(any(), any()) } just runs
     }
+    // Real LeagueAuthorization backed by a mock repository with no active grants -- preserves the
+    // exact prior organizer-column-only behavior these tests already assert on (see docs/PHASE7.md).
+    private val leagueAuthorization = LeagueAuthorization(
+        mockk<LeagueRoleRepository>().also {
+            every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
+        },
+    )
     private val service = AuctionService(
         leagueRepository, playerRepository, franchiseRepository, auctionBidRepository,
-        profileRepository, contentRateLimiter, broadcastService,
+        profileRepository, contentRateLimiter, broadcastService, leagueAuthorization,
     )
 
     private val organizerId: UUID = UUID.randomUUID()

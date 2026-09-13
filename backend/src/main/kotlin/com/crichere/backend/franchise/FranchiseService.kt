@@ -6,6 +6,7 @@ import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.franchise.dto.LeagueFranchiseClaimRequest
 import com.crichere.backend.franchise.dto.LeagueFranchiseResponse
+import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueCapacityFullException
 import com.crichere.backend.league.LeagueCompletedException
 import com.crichere.backend.league.LeagueEntity
@@ -14,7 +15,6 @@ import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.league.requireAuctionNotStarted
-import com.crichere.backend.league.requireOrganizer
 import com.crichere.backend.profile.ProfileRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -35,6 +35,7 @@ class FranchiseService(
     private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val photoUploadService: PhotoUploadService,
+    private val leagueAuthorization: LeagueAuthorization,
 ) {
 
     /**
@@ -87,7 +88,7 @@ class FranchiseService(
     @Transactional
     fun remove(leagueId: UUID, franchiseId: UUID, callerId: UUID) {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireAuctionNotStarted(league)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         franchise.removedAt = Instant.now()
@@ -122,7 +123,7 @@ class FranchiseService(
     @Transactional
     fun approveLeave(leagueId: UUID, franchiseId: UUID, callerId: UUID): LeagueFranchiseResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireAuctionNotStarted(league)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
@@ -140,7 +141,7 @@ class FranchiseService(
     @Transactional
     fun dismissLeave(leagueId: UUID, franchiseId: UUID, callerId: UUID): LeagueFranchiseResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         franchise.leaveRequestedAt = null
@@ -159,7 +160,7 @@ class FranchiseService(
     fun createLogoUploadUrl(leagueId: UUID, franchiseId: UUID, callerId: UUID): PhotoUploadUrlResponse {
         val league = findLeagueOrThrow(leagueId)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
-        if (callerId != league.organizerUserId && callerId != franchise.ownerUserId) throw NotFranchiseOwnerException()
+        if (!leagueAuthorization.isOrganizer(league, callerId) && callerId != franchise.ownerUserId) throw NotFranchiseOwnerException()
         return photoUploadService.createFranchiseLogoUploadUrl(franchiseId)
     }
 

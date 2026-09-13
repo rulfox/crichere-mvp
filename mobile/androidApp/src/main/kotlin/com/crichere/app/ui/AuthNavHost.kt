@@ -209,6 +209,7 @@ private sealed interface MainDestination {
     data class ScreenshotViewer(val imageUrl: String) : MainDestination
     data class AuctionSettings(val leagueId: String) : MainDestination
     data class AuctionLive(val leagueId: String) : MainDestination
+    data class ManageRoles(val leagueId: String) : MainDestination
 }
 
 @Composable
@@ -280,6 +281,7 @@ private fun MainRoute(
             },
             onAuctionSettings = { leagueId -> destination = MainDestination.AuctionSettings(leagueId) },
             onAuctionLive = { leagueId -> destination = MainDestination.AuctionLive(leagueId) },
+            onManageRoles = { leagueId -> destination = MainDestination.ManageRoles(leagueId) },
         )
 
         is MainDestination.LeagueCreation -> LeagueCreationRoute(
@@ -294,6 +296,11 @@ private fun MainRoute(
         )
 
         is MainDestination.AuctionLive -> AuctionLiveRoute(
+            leagueId = current.leagueId,
+            onBack = { destination = MainDestination.LeagueDetail(current.leagueId) },
+        )
+
+        is MainDestination.ManageRoles -> ManageRolesRoute(
             leagueId = current.leagueId,
             onBack = { destination = MainDestination.LeagueDetail(current.leagueId) },
         )

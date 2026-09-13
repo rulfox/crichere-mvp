@@ -13,10 +13,10 @@ import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
 import com.crichere.backend.franchise.NotFranchiseOwnerException
 import com.crichere.backend.league.AuctionLastActionType
 import com.crichere.backend.league.AuctionStatus
+import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
-import com.crichere.backend.league.requireOrganizer
 import com.crichere.backend.player.AuctionOutcome
 import com.crichere.backend.player.LeaguePlayerNotFoundException
 import com.crichere.backend.player.PlayerEntity
@@ -42,6 +42,7 @@ class AuctionService(
     private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val broadcastService: AuctionBroadcastService,
+    private val leagueAuthorization: LeagueAuthorization,
 ) {
 
     /**
@@ -58,7 +59,7 @@ class AuctionService(
     @Transactional
     fun start(leagueId: UUID, callerId: UUID): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         if (league.auctionStatus != AuctionStatus.NOT_STARTED) throw AuctionAlreadyStartedException()
 
         if (league.auctionBasePrice == null || league.auctionPurse == null ||
@@ -93,7 +94,7 @@ class AuctionService(
     @Transactional
     fun nextPlayer(leagueId: UUID, callerId: UUID): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireInProgress(league)
         if (league.auctionCurrentPlayerId != null) throw AuctionPlayerAlreadyOpenException()
 
@@ -177,7 +178,7 @@ class AuctionService(
     @Transactional
     fun sold(leagueId: UUID, callerId: UUID): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireInProgress(league)
         val playerId = league.auctionCurrentPlayerId ?: throw AuctionNoPlayerOpenException()
         val leadingFranchiseId = league.auctionCurrentLeadingFranchiseId ?: throw NoBidsToSellException()
@@ -210,7 +211,7 @@ class AuctionService(
     @Transactional
     fun unsold(leagueId: UUID, callerId: UUID): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireInProgress(league)
         val playerId = league.auctionCurrentPlayerId ?: throw AuctionNoPlayerOpenException()
 
@@ -235,7 +236,7 @@ class AuctionService(
     @Transactional
     fun undo(leagueId: UUID, callerId: UUID): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
 
         when (league.auctionLastActionType) {
             AuctionLastActionType.BID -> {
@@ -279,7 +280,7 @@ class AuctionService(
     @Transactional
     fun toggleExceedPurse(leagueId: UUID, callerId: UUID, allow: Boolean): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireInProgress(league)
         league.auctionAllowExceedPurse = allow
         return saveAndBroadcast(league)
@@ -294,7 +295,7 @@ class AuctionService(
     @Transactional
     fun end(leagueId: UUID, callerId: UUID): AuctionStateResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireInProgress(league)
 
         playerRepository.findByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING).forEach { player ->

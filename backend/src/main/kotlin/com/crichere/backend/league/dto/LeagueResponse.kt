@@ -46,4 +46,6 @@ data class LeagueResponse(
     val auctionBidIncrement: BigDecimal?,
     /** `true` when `auctionSquadMax * franchisesRequired > playersRequired` (both present) -- a save-time-only warning, never a rejection (see docs/PHASE4.md's two-stage squad-math check; the hard-block re-check against real counts is Phase 5's). */
     val auctionSquadMaxWarning: Boolean,
+    /** Active co-organizer grants (see docs/PHASE7.md) -- public, same posture as [organizerUserId] and every franchise owner's name already on this response. */
+    val coOrganizers: List<LeagueRoleResponse>,
 )

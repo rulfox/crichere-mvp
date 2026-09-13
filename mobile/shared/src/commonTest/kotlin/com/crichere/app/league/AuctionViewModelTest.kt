@@ -30,7 +30,11 @@ class AuctionViewModelTest {
         override suspend fun getCurrentUserId(): String? = currentUserId
     }
 
-    private fun sampleLeague(organizerUserId: String = "organizer-1", franchises: List<LeagueFranchiseDto> = emptyList()) = LeagueDto(
+    private fun sampleLeague(
+        organizerUserId: String = "organizer-1",
+        franchises: List<LeagueFranchiseDto> = emptyList(),
+        coOrganizers: List<LeagueRoleDto> = emptyList(),
+    ) = LeagueDto(
         id = "l1",
         organizerUserId = organizerUserId,
         name = "Weekend League",
@@ -40,6 +44,7 @@ class AuctionViewModelTest {
         startsOn = "2026-10-12",
         status = LeagueStatus.ANNOUNCED,
         franchises = franchises,
+        coOrganizers = coOrganizers,
     )
 
     private fun franchise(id: String = "f1", ownerUserId: String = "owner-1") =
@@ -63,6 +68,19 @@ class AuctionViewModelTest {
         assertFalse(state.isLoading)
         assertTrue(state.isOrganizer)
         assertEquals(AuctionStatus.IN_PROGRESS, state.auction?.auctionStatus)
+    }
+
+    @Test
+    fun `a co-organizer, not just the plain organizer, also gets isOrganizer`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(
+            leaguesByArea = listOf(sampleLeague(coOrganizers = listOf(LeagueRoleDto(id = "r1", userId = "delegate-1", grantedAt = "2026-09-13T00:00:00Z")))),
+        )
+        val viewModel = AuctionViewModel("l1", leagueRepository, FakeAuctionRepository(), StubAuthRepository("delegate-1"))
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isOrganizer)
     }
 
     @Test

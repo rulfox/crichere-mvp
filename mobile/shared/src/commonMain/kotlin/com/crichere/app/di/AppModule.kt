@@ -20,13 +20,16 @@ import com.crichere.app.league.KtorFranchiseRepository
 import com.crichere.app.league.KtorLeagueRepository
 import com.crichere.app.league.KtorMyLeaguesRepository
 import com.crichere.app.league.KtorPlayerRepository
+import com.crichere.app.league.KtorRoleRepository
 import com.crichere.app.league.LeagueCreationViewModel
 import com.crichere.app.league.LeagueDashboardViewModel
 import com.crichere.app.league.LeagueDetailViewModel
 import com.crichere.app.league.LeagueRepository
+import com.crichere.app.league.ManageRolesViewModel
 import com.crichere.app.league.MyLeaguesRepository
 import com.crichere.app.league.MyLeaguesViewModel
 import com.crichere.app.league.PlayerRepository
+import com.crichere.app.league.RoleRepository
 import com.crichere.app.network.HttpClientFactory
 import com.crichere.app.profile.KtorProfileRepository
 import com.crichere.app.profile.OwnProfileViewModel
@@ -106,6 +109,8 @@ val sharedModule: Module = module {
 
     single<MyLeaguesRepository> { KtorMyLeaguesRepository(httpClient = get()) }
 
+    single<RoleRepository> { KtorRoleRepository(httpClient = get()) }
+
     factory { ReferenceViewModel(get()) }
     factory { PhoneEntryViewModel(get()) }
     factory { (phoneNumber: String, verificationId: String, resendToken: Any?) ->
@@ -152,6 +157,7 @@ val sharedModule: Module = module {
     factory { (leagueId: String) ->
         AuctionViewModel(leagueId = leagueId, leagueRepository = get(), auctionRepository = get(), authRepository = get())
     }
+    factory { (leagueId: String) -> ManageRolesViewModel(leagueId = leagueId, leagueRepository = get(), roleRepository = get()) }
 }
 
 /**

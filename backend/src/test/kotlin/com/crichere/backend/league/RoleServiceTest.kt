@@ -1,0 +1,140 @@
+package com.crichere.backend.league
+
+import com.crichere.backend.auth.PhoneCryptoService
+import com.crichere.backend.auth.UserEntity
+import com.crichere.backend.auth.UserRepository
+import com.crichere.backend.common.ContentRateLimitExceededException
+import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.profile.ProfileRepository
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.Test
+import java.time.Duration
+import java.time.LocalDate
+import java.util.Optional
+import java.util.UUID
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+/** Unit-level coverage of [RoleService]. End-to-end HTTP behaviour is covered by `RoleFlowIntegrationTest`. */
+class RoleServiceTest {
+
+    private val leagueRepository = mockk<LeagueRepository>()
+    private val leagueRoleRepository = mockk<LeagueRoleRepository>()
+    private val leagueAuthorization = LeagueAuthorization(leagueRoleRepository)
+    private val userRepository = mockk<UserRepository>()
+    private val profileRepository = mockk<ProfileRepository>()
+    private val phoneCryptoService = mockk<PhoneCryptoService>()
+    private val contentRateLimiter = mockk<ContentRateLimiter>().also {
+        every { it.tryConsumeForRoleLookup(any()) } returns null
+    }
+    // LeagueService pulled in for real so `grant`/`revoke` exercise its actual toResponse()
+    // mapping, not a mock -- these tests care about RoleService's own decisions, and stubbing
+    // LeagueService here would just hide a real integration point AuctionServiceTest-style unit
+    // tests don't otherwise need to fake.
+    private val leagueService = LeagueService(
+        leagueRepository,
+        mockk<LeagueAwardRepository>().also { every { it.findByLeagueIdOrderByDisplayOrder(any()) } returns emptyList() },
+        mockk<com.crichere.backend.league.LeagueFollowRepository>().also { every { it.existsByLeagueIdAndUserId(any(), any()) } returns false },
+        mockk<GroundRepository>(),
+        mockk<com.crichere.backend.player.PlayerRepository>().also {
+            every { it.findByLeagueIdAndRemovedAtIsNull(any()) } returns emptyList()
+            every { it.countByLeagueIdAndRemovedAtIsNull(any()) } returns 0L
+        },
+        mockk<com.crichere.backend.franchise.FranchiseRepository>().also {
+            every { it.findByLeagueIdAndRemovedAtIsNull(any()) } returns emptyList()
+            every { it.countByLeagueIdAndRemovedAtIsNull(any()) } returns 0L
+        },
+        profileRepository,
+        mockk<ContentRateLimiter>(),
+        mockk<com.crichere.backend.common.PhotoUploadService>(),
+        leagueAuthorization,
+        leagueRoleRepository,
+    )
+    private val service = RoleService(
+        leagueRepository, leagueRoleRepository, leagueAuthorization, leagueService,
+        userRepository, profileRepository, phoneCryptoService, contentRateLimiter,
+    )
+
+    private val organizerId = UUID.randomUUID()
+    private val leagueId = UUID.randomUUID()
+    private val league = LeagueEntity(
+        id = leagueId, organizerUserId = organizerId, name = "Test League", country = "India",
+        state = "Karnataka", district = "Bengaluru Urban", city = "Bengaluru", startsOn = LocalDate.of(2026, 10, 12),
+    )
+
+    private fun givenLeague() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league)
+    }
+
+    @Test
+    fun `lookup rejects a non-organizer before ever touching the rate limiter or the user table`() {
+        givenLeague()
+        val stranger = UUID.randomUUID()
+        every { leagueRoleRepository.existsByLeagueIdAndUserIdAndRevokedAtIsNull(leagueId, stranger) } returns false
+
+        assertFailsWith<NotOrganizerException> { service.lookup(leagueId, stranger, "+919876543210") }
+    }
+
+    @Test
+    fun `lookup surfaces the rate limiter's rejection`() {
+        givenLeague()
+        every { contentRateLimiter.tryConsumeForRoleLookup(organizerId) } returns Duration.ofMinutes(5)
+
+        assertFailsWith<ContentRateLimitExceededException> { service.lookup(leagueId, organizerId, "+919876543210") }
+    }
+
+    @Test
+    fun `lookup 404s when the phone hash matches no user`() {
+        givenLeague()
+        every { phoneCryptoService.hmacLookupHash("+919876543210") } returns "hash"
+        every { userRepository.findByPhoneLookupHash("hash") } returns null
+
+        assertFailsWith<UserNotFoundException> { service.lookup(leagueId, organizerId, "+919876543210") }
+    }
+
+    @Test
+    fun `a found user's profile name is resolved onto the lookup response`() {
+        givenLeague()
+        val targetId = UUID.randomUUID()
+        every { phoneCryptoService.hmacLookupHash("+919876543210") } returns "hash"
+        every { userRepository.findByPhoneLookupHash("hash") } returns UserEntity(id = targetId, phoneLookupHash = "hash", phoneEncrypted = "enc")
+        every { profileRepository.findById(targetId) } returns Optional.of(
+            com.crichere.backend.profile.ProfileEntity(userId = targetId, name = "Delegate Name"),
+        )
+
+        val result = service.lookup(leagueId, organizerId, "+919876543210")
+
+        assertEquals(targetId, result.userId)
+        assertEquals("Delegate Name", result.name)
+    }
+
+    @Test
+    fun `grant rejects a target who is already the organizer`() {
+        givenLeague()
+        assertFailsWith<CannotGrantRoleToOrganizerException> { service.grant(leagueId, organizerId, organizerId) }
+    }
+
+    @Test
+    fun `grant rejects a duplicate active grant`() {
+        givenLeague()
+        val targetId = UUID.randomUUID()
+        every { leagueRoleRepository.existsByLeagueIdAndUserIdAndRevokedAtIsNull(leagueId, targetId) } returns true
+
+        assertFailsWith<RoleAlreadyGrantedException> { service.grant(leagueId, organizerId, targetId) }
+    }
+
+    @Test
+    fun `revoke rejects an id that's already revoked`() {
+        givenLeague()
+        val roleId = UUID.randomUUID()
+        val revokedRole = LeagueRoleEntity(
+            id = roleId, leagueId = leagueId, userId = UUID.randomUUID(), role = LeagueRole.CO_ORGANIZER,
+            grantedByUserId = organizerId, revokedAt = java.time.Instant.now(),
+        )
+        every { leagueRoleRepository.findByIdAndLeagueId(roleId, leagueId) } returns Optional.of(revokedRole)
+
+        assertFailsWith<RoleNotFoundException> { service.revoke(leagueId, organizerId, roleId) }
+    }
+}

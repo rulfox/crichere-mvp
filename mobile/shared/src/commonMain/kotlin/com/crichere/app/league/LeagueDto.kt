@@ -57,6 +57,22 @@ data class LeagueFranchiseDto(
     val leaveRequestedAt: String? = null,
 )
 
+/** Mirrors the backend's `LeagueRoleResponse` (docs/PHASE7.md) -- one active co-organizer grant. */
+@Serializable
+data class LeagueRoleDto(
+    val id: String,
+    val userId: String,
+    val name: String? = null,
+    val grantedAt: String,
+)
+
+/** Mirrors the backend's `RoleLookupResponse` -- who a phone number resolved to, not yet a grant. */
+@Serializable
+data class RoleLookupResultDto(
+    val userId: String,
+    val name: String? = null,
+)
+
 /** Body of `POST /leagues/{id}/franchises`. */
 @Serializable
 data class LeagueFranchiseClaimRequestDto(
@@ -103,7 +119,17 @@ data class LeagueDto(
     val auctionSquadMax: Int? = null,
     val auctionBidIncrement: Double? = null,
     val auctionSquadMaxWarning: Boolean = false,
+    val coOrganizers: List<LeagueRoleDto> = emptyList(),
 )
+
+/**
+ * "Can this caller act as this league's organizer" (docs/PHASE7.md) -- the plain
+ * `organizerUserId` comparison every screen used before this phase, widened to also accept an
+ * active co-organizer grant. Client-side gating only, same as every other `isOrganizer`-shaped
+ * check in this app -- the real enforcement is always server-side (`LeagueAuthorization`).
+ */
+fun LeagueDto.isOrganizerOrCoOrganizer(userId: String?): Boolean =
+    userId != null && (userId == organizerUserId || coOrganizers.any { it.userId == userId })
 
 /** Mirrors the backend's `LeagueSaveRequest` -- body of both create and edit. */
 @Serializable

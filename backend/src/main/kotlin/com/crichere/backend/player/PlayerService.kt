@@ -2,6 +2,7 @@ package com.crichere.backend.player
 
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueCapacityFullException
 import com.crichere.backend.league.LeagueCompletedException
 import com.crichere.backend.league.LeagueEntity
@@ -10,7 +11,6 @@ import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.league.requireAuctionNotStarted
-import com.crichere.backend.league.requireOrganizer
 import com.crichere.backend.player.dto.LeaguePlayerJoinRequest
 import com.crichere.backend.player.dto.LeaguePlayerResponse
 import com.crichere.backend.profile.ProfileRepository
@@ -23,7 +23,7 @@ import java.util.UUID
 /**
  * Joining a league as a player, and the request-and-approve leave flow (see docs/PHASE3.md's
  * Decisions Made). [join] mirrors [com.crichere.backend.league.LeagueService.create]'s
- * rate-limit-then-validate shape; [requireOrganizer] is the shared top-level function
+ * rate-limit-then-validate shape; [LeagueAuthorization] is the shared component
  * [com.crichere.backend.league.LeagueService] itself now also uses, not a private copy.
  */
 @Service
@@ -32,6 +32,7 @@ class PlayerService(
     private val leagueRepository: LeagueRepository,
     private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
+    private val leagueAuthorization: LeagueAuthorization,
 ) {
 
     /**
@@ -94,7 +95,7 @@ class PlayerService(
     @Transactional
     fun remove(leagueId: UUID, playerId: UUID, callerId: UUID) {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireAuctionNotStarted(league)
         val player = findPlayerOrThrow(leagueId, playerId)
         player.removedAt = Instant.now()
@@ -132,7 +133,7 @@ class PlayerService(
     @Transactional
     fun approveLeave(leagueId: UUID, playerId: UUID, callerId: UUID): LeaguePlayerResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireAuctionNotStarted(league)
         val player = findPlayerOrThrow(leagueId, playerId)
         if (player.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
@@ -151,7 +152,7 @@ class PlayerService(
     @Transactional
     fun dismissLeave(leagueId: UUID, playerId: UUID, callerId: UUID): LeaguePlayerResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         val player = findPlayerOrThrow(leagueId, playerId)
         if (player.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         player.leaveRequestedAt = null

@@ -57,7 +57,7 @@ class AuctionViewModel(
             runCatching {
                 val league = leagueRepository.getLeague(leagueId)
                 val currentUserId = authRepository.getCurrentUserId()
-                val isOrganizer = currentUserId != null && currentUserId == league.organizerUserId
+                val isOrganizer = league.isOrganizerOrCoOrganizer(currentUserId)
                 val myFranchiseId = currentUserId?.let { uid -> league.franchises.firstOrNull { it.ownerUserId == uid }?.id }
                 Triple(league, isOrganizer, myFranchiseId)
             }.onSuccess { (league, isOrganizer, myFranchiseId) ->

@@ -83,7 +83,7 @@ class LeagueDetailViewModel(
             runCatching {
                 val league = leagueRepository.getLeague(leagueId)
                 val currentUserId = authRepository.getCurrentUserId()
-                Triple(league, currentUserId, currentUserId != null && currentUserId == league.organizerUserId)
+                Triple(league, currentUserId, league.isOrganizerOrCoOrganizer(currentUserId))
             }.onSuccess { (league, currentUserId, isOrganizer) ->
                 _state.update {
                     it.copy(isLoading = false, league = league, currentUserId = currentUserId, isOrganizer = isOrganizer)

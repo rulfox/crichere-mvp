@@ -49,6 +49,7 @@ internal fun LeagueDetailRoute(
     onViewScreenshot: (String) -> Unit,
     onAuctionSettings: (String) -> Unit,
     onAuctionLive: (String) -> Unit,
+    onManageRoles: (String) -> Unit,
 ) {
     val viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -66,6 +67,7 @@ internal fun LeagueDetailRoute(
         onRetry = viewModel::retry,
         onAuctionSettings = { onAuctionSettings(leagueId) },
         onAuctionLive = { onAuctionLive(leagueId) },
+        onManageRoles = { onManageRoles(leagueId) },
         onJoinLeague = { onJoinLeague(leagueId) },
         onClaimFranchise = { onClaimFranchise(leagueId) },
         onToggleFollow = viewModel::toggleFollow,
@@ -97,6 +99,7 @@ private fun LeagueDetailScreen(
     onRetry: () -> Unit,
     onAuctionSettings: () -> Unit,
     onAuctionLive: () -> Unit,
+    onManageRoles: () -> Unit,
     onJoinLeague: () -> Unit,
     onClaimFranchise: () -> Unit,
     onToggleFollow: () -> Unit,
@@ -131,6 +134,7 @@ private fun LeagueDetailScreen(
                 onMarkCompleted = onMarkCompleted,
                 onAuctionSettings = onAuctionSettings,
                 onAuctionLive = onAuctionLive,
+                onManageRoles = onManageRoles,
                 onJoinLeague = onJoinLeague,
                 onClaimFranchise = onClaimFranchise,
                 onToggleFollow = onToggleFollow,
@@ -156,6 +160,7 @@ private fun LeagueDetailContent(
     onMarkCompleted: () -> Unit,
     onAuctionSettings: () -> Unit,
     onAuctionLive: () -> Unit,
+    onManageRoles: () -> Unit,
     onJoinLeague: () -> Unit,
     onClaimFranchise: () -> Unit,
     onToggleFollow: () -> Unit,
@@ -333,6 +338,9 @@ private fun LeagueDetailContent(
                     }
                     OutlinedButton(onClick = onAuctionSettings, modifier = Modifier.fillMaxWidth()) {
                         Text("Auction settings")
+                    }
+                    OutlinedButton(onClick = onManageRoles, modifier = Modifier.fillMaxWidth()) {
+                        Text("Manage co-organizers")
                     }
                     if (league.status != LeagueStatus.COMPLETED) {
                         OutlinedButton(onClick = onMarkCompleted, enabled = !state.isCompleting, modifier = Modifier.fillMaxWidth()) {

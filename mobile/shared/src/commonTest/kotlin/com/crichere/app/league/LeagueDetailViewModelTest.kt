@@ -27,7 +27,11 @@ class LeagueDetailViewModelTest {
         override suspend fun getCurrentUserId(): String? = currentUserId
     }
 
-    private fun sampleLeague(id: String = "l1", organizerUserId: String = "organizer-1") = LeagueDto(
+    private fun sampleLeague(
+        id: String = "l1",
+        organizerUserId: String = "organizer-1",
+        coOrganizers: List<LeagueRoleDto> = emptyList(),
+    ) = LeagueDto(
         id = id,
         organizerUserId = organizerUserId,
         name = "Weekend League",
@@ -36,6 +40,7 @@ class LeagueDetailViewModelTest {
         city = "Bengaluru",
         startsOn = "2026-10-12",
         status = LeagueStatus.ANNOUNCED,
+        coOrganizers = coOrganizers,
     )
 
     private fun viewModel(
@@ -57,6 +62,18 @@ class LeagueDetailViewModelTest {
         assertEquals("Weekend League", state.league?.name)
         assertTrue(state.isOrganizer)
         assertEquals("organizer-1", state.currentUserId)
+    }
+
+    @Test
+    fun `a co-organizer, not just the plain organizer, also gets isOrganizer`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(
+            leaguesByArea = listOf(sampleLeague(coOrganizers = listOf(LeagueRoleDto(id = "r1", userId = "delegate-1", grantedAt = "2026-09-13T00:00:00Z")))),
+        )
+        val viewModel = viewModel(leagueRepository, currentUserId = "delegate-1")
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isOrganizer)
     }
 
     @Test

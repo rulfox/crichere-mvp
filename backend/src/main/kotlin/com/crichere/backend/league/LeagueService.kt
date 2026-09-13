@@ -12,6 +12,7 @@ import com.crichere.backend.league.dto.AuctionSettingsSaveRequest
 import com.crichere.backend.league.dto.LeagueAwardResponse
 import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
+import com.crichere.backend.league.dto.LeagueRoleResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.player.toResponse
@@ -32,6 +33,8 @@ class LeagueService(
     private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val photoUploadService: PhotoUploadService,
+    private val leagueAuthorization: LeagueAuthorization,
+    private val leagueRoleRepository: LeagueRoleRepository,
 ) {
 
     /**
@@ -133,7 +136,7 @@ class LeagueService(
     @Transactional
     fun update(leagueId: UUID, callerId: UUID, request: LeagueSaveRequest): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireGroundExistsIfReferenced(request.groundId)
         requireOrganizerUpiIdIfFeeSet(request)
         requireCapacityNotBelowActiveCount(league, request)
@@ -160,7 +163,7 @@ class LeagueService(
     @Transactional
     fun complete(leagueId: UUID, callerId: UUID): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         if (league.auctionStatus == AuctionStatus.IN_PROGRESS) throw AuctionInProgressException()
 
         league.completedAt = Instant.now()
@@ -181,7 +184,7 @@ class LeagueService(
     @Transactional
     fun updateAuctionSettings(leagueId: UUID, callerId: UUID, request: AuctionSettingsSaveRequest): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         requireAuctionNotStarted(league)
         val squadMin = requireNotNull(request.squadMin)
         val squadMax = requireNotNull(request.squadMax)
@@ -208,7 +211,7 @@ class LeagueService(
     @Transactional(readOnly = true)
     fun createLogoUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         return photoUploadService.createLeagueLogoUploadUrl(leagueId)
     }
 
@@ -216,7 +219,7 @@ class LeagueService(
     @Transactional(readOnly = true)
     fun createBannerUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         return photoUploadService.createLeagueBannerUploadUrl(leagueId)
     }
 
@@ -284,7 +287,7 @@ class LeagueService(
     @Transactional
     fun addAward(leagueId: UUID, callerId: UUID, request: LeagueAwardSaveRequest): LeagueAwardResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         contentRateLimiter.tryConsumeForAwardCreate(callerId)?.let { retryAfter ->
             throw ContentRateLimitExceededException(retryAfter)
         }
@@ -309,7 +312,7 @@ class LeagueService(
     @Transactional
     fun updateAward(leagueId: UUID, awardId: UUID, callerId: UUID, request: LeagueAwardSaveRequest): LeagueAwardResponse {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         val award = findAwardOrThrow(leagueId, awardId)
 
         award.name = request.name
@@ -327,7 +330,7 @@ class LeagueService(
     @Transactional
     fun deleteAward(leagueId: UUID, awardId: UUID, callerId: UUID) {
         val league = findLeagueOrThrow(leagueId)
-        requireOrganizer(league, callerId)
+        leagueAuthorization.requireOrganizer(league, callerId)
         val award = findAwardOrThrow(leagueId, awardId)
         leagueAwardRepository.delete(award)
     }
@@ -402,6 +405,7 @@ class LeagueService(
         // data volume (see docs/PHASE2.md's Decisions Made / the code review that flagged this same
         // tradeoff for awards).
         val groundName = groundId?.let { groundRepository.findById(it).orElse(null)?.name }
+        val coOrganizers = leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId).map { it.toResponse() }
         return LeagueResponse(
             id = leagueId,
             organizerUserId = organizerUserId,
@@ -433,8 +437,16 @@ class LeagueService(
             auctionSquadMax = auctionSquadMax,
             auctionBidIncrement = auctionBidIncrement,
             auctionSquadMaxWarning = auctionSquadMaxWarning,
+            coOrganizers = coOrganizers,
         )
     }
+
+    private fun LeagueRoleEntity.toResponse() = LeagueRoleResponse(
+        id = requireNotNull(id),
+        userId = userId,
+        name = profileRepository.findById(userId).orElse(null)?.name,
+        grantedAt = grantedAt,
+    )
 
     private fun LeagueAwardEntity.toResponse() = LeagueAwardResponse(
         id = requireNotNull(id),

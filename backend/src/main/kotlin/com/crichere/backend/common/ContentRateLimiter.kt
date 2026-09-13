@@ -35,6 +35,8 @@ data class ContentRateLimitProperties(
     val franchiseClaimCapacity: Long = 20,
     /** Bids are a much higher-frequency action than a claim/join -- a real bidding war on one player alone can be a dozen-plus bids. Generous, but still bounded (see docs/PHASE5.md's Security section). */
     val bidCapacity: Long = 300,
+    /** Deliberately far below every capacity above -- this one guards a PII-lookup surface (resolving a phone number to an account), not a content-creation one. See docs/PHASE7.md's Security section for the full reasoning. */
+    val roleLookupCapacity: Long = 10,
     /** The refill period every capacity above uses. */
     val window: Duration = Duration.ofHours(1),
     /** Safety valve on each in-memory bucket map -- see [ContentRateLimiter] for what happens then. */
@@ -60,6 +62,7 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     private val playerJoinBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val franchiseClaimBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val bidBuckets = ConcurrentHashMap<UUID, Bucket>()
+    private val roleLookupBuckets = ConcurrentHashMap<UUID, Bucket>()
 
     /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
     fun tryConsumeForLeagueCreate(userId: UUID): Duration? =
@@ -85,6 +88,10 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     fun tryConsumeForBid(userId: UUID): Duration? =
         consume(bidBuckets, userId, properties.bidCapacity)
 
+    /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
+    fun tryConsumeForRoleLookup(userId: UUID): Duration? =
+        consume(roleLookupBuckets, userId, properties.roleLookupCapacity)
+
     // Leave-request/approve/dismiss/remove/follow/unfollow are deliberately NOT rate-limited: a
     // player leave-requesting repeatedly only harms themselves (no capacity/money consumed), and
     // follow/unfollow has no abuse vector (no capacity, no money, no notification spam since
@@ -98,6 +105,7 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
         playerJoinBuckets.clear()
         franchiseClaimBuckets.clear()
         bidBuckets.clear()
+        roleLookupBuckets.clear()
     }
 
     private fun consume(buckets: ConcurrentHashMap<UUID, Bucket>, key: UUID, capacity: Long): Duration? {

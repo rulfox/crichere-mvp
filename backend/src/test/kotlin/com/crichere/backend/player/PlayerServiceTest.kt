@@ -2,11 +2,13 @@ package com.crichere.backend.player
 
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueCapacityFullException
 import com.crichere.backend.league.LeagueCompletedException
 import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
+import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.league.NotOrganizerException
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.player.dto.LeaguePlayerJoinRequest
@@ -33,7 +35,12 @@ class PlayerServiceTest {
         every { it.findById(any()) } returns Optional.empty()
     }
     private val contentRateLimiter = mockk<ContentRateLimiter>()
-    private val service = PlayerService(playerRepository, leagueRepository, profileRepository, contentRateLimiter)
+    private val leagueAuthorization = LeagueAuthorization(
+        mockk<LeagueRoleRepository>().also {
+            every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
+        },
+    )
+    private val service = PlayerService(playerRepository, leagueRepository, profileRepository, contentRateLimiter, leagueAuthorization)
 
     private val organizerId: UUID = UUID.randomUUID()
     private val playerId: UUID = UUID.randomUUID()

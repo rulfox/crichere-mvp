@@ -16,6 +16,7 @@ import com.crichere.backend.auth.RateLimitExceededException
 import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
 import com.crichere.backend.franchise.NoLeaveRequestPendingException as FranchiseNoLeaveRequestPendingException
 import com.crichere.backend.franchise.NotFranchiseOwnerException
+import com.crichere.backend.league.CannotGrantRoleToOrganizerException
 import com.crichere.backend.league.CapacityBelowActiveCountException
 import com.crichere.backend.league.FeeLockedException
 import com.crichere.backend.league.GroundNotFoundException
@@ -26,7 +27,10 @@ import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.NotOrganizerException
 import com.crichere.backend.league.OrganizerUpiRequiredException
 import com.crichere.backend.league.PaymentScreenshotRequiredException
+import com.crichere.backend.league.RoleAlreadyGrantedException
+import com.crichere.backend.league.RoleNotFoundException
 import com.crichere.backend.league.SquadSizeInvalidException
+import com.crichere.backend.league.UserNotFoundException
 import com.crichere.backend.player.AlreadyJoinedException
 import com.crichere.backend.player.LeaguePlayerNotFoundException
 import com.crichere.backend.player.NoLeaveRequestPendingException as PlayerNoLeaveRequestPendingException
@@ -613,6 +617,54 @@ class GlobalExceptionHandler {
             title = "Nothing to undo",
             code = "NOTHING_TO_UNDO",
             detail = "There is nothing to undo.",
+            instance = request.requestURI,
+        )
+
+    /** A role-lookup phone number matched no registered user (see docs/PHASE7.md). Same "not found" shape whether the number is malformed or simply unregistered -- there's nothing more specific to tell the caller. */
+    @ExceptionHandler(UserNotFoundException::class)
+    fun handleUserNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No user found with that phone number.",
+            instance = request.requestURI,
+        )
+
+    /** A grant targeted a (league, user, role) that already has an active grant (see docs/PHASE7.md). */
+    @ExceptionHandler(RoleAlreadyGrantedException::class)
+    fun handleRoleAlreadyGranted(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "role-already-granted",
+            title = "Role already granted",
+            code = "ROLE_ALREADY_GRANTED",
+            detail = "This user already has that role on this league.",
+            instance = request.requestURI,
+        )
+
+    /** A grant targeted the league's own organizer -- a no-op (see docs/PHASE7.md). */
+    @ExceptionHandler(CannotGrantRoleToOrganizerException::class)
+    fun handleCannotGrantRoleToOrganizer(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "cannot-grant-role-to-organizer",
+            title = "Already the organizer",
+            code = "CANNOT_GRANT_ROLE_TO_ORGANIZER",
+            detail = "This user is already this league's organizer.",
+            instance = request.requestURI,
+        )
+
+    /** No active role matches the given id under the given league (see docs/PHASE7.md). */
+    @ExceptionHandler(RoleNotFoundException::class)
+    fun handleRoleNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No active role matches this id.",
             instance = request.requestURI,
         )
 
