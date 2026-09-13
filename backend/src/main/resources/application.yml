@@ -46,6 +46,10 @@ crichere:
     ground-create-capacity: 20
     award-create-capacity: 100
     window: 1h
+  web-viewer:
+    # Comma-separated CORS allowlist for the public web viewer (docs/PHASE6.md). Blank means CORS
+    # is entirely off -- see SecurityConfig.webViewerCorsConfigurationSource.
+    origins: ${WEB_VIEWER_ORIGINS:}
 
 ---
 # local profile: developer machine, Postgres via backend/docker-compose.yml
@@ -68,6 +72,10 @@ crichere:
     secret: ${JWT_SECRET:bG9jYWwtZGV2LWp3dC1zZWNyZXQtbm90LWZvci1kZXBsb3ltZW50IQ==}
   phone-crypto:
     secret: ${PHONE_CRYPTO_SECRET:bG9jYWwtZGV2LXBob25lLWNyeXB0by1zZWNyZXQtbm90LXJlYWwhIQ==}
+  web-viewer:
+    # Dev fallback so a locally-run web-viewer (`npm run dev`, port 3000) can call this backend
+    # without setting WEB_VIEWER_ORIGINS -- an env var always overrides.
+    origins: ${WEB_VIEWER_ORIGINS:http://localhost:3000}
 
 ---
 # test profile: used by Testcontainers-backed integration tests. Datasource is normally

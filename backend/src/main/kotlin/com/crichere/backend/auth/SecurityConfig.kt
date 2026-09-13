@@ -1,6 +1,7 @@
 package com.crichere.backend.auth
 
 import com.crichere.backend.common.ProblemDetails
+import com.crichere.backend.common.WebViewerProperties
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -15,6 +16,9 @@ import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import tools.jackson.databind.ObjectMapper
 
 /**
@@ -47,6 +51,7 @@ class SecurityConfig(
     private val jwtService: JwtService,
     private val rateLimiter: AuthRateLimiter,
     private val objectMapper: ObjectMapper,
+    private val webViewerProperties: WebViewerProperties,
 ) {
 
     @Bean
@@ -56,6 +61,7 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
             .logout { it.disable() }
+            .cors { it.configurationSource(webViewerCorsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { registry ->
                 registry
@@ -96,6 +102,35 @@ class SecurityConfig(
             )
 
         return http.build()
+    }
+
+    /**
+     * CORS for the public web viewer (docs/PHASE6.md) -- nothing needed this before it (the
+     * mobile app's Ktor client never triggers a browser preflight). Scoped narrowly on purpose:
+     * only the three routes already `permitAll()` below, `GET` only, no credentials, and only the
+     * origin(s) in [WebViewerProperties] -- never a wildcard, even though the underlying data is
+     * public, since an open `*` would let any third-party site read this API from a browser at
+     * zero benefit to us. An empty origin list (the property's default) disables CORS entirely --
+     * `UrlBasedCorsConfigurationSource` with no registered patterns rejects every cross-origin
+     * browser request the same as if this bean didn't exist, so nothing is open until a real
+     * origin is configured.
+     */
+    @Bean
+    fun webViewerCorsConfigurationSource(): CorsConfigurationSource {
+        val source = UrlBasedCorsConfigurationSource()
+        val origins = webViewerProperties.originList
+        if (origins.isNotEmpty()) {
+            val config = CorsConfiguration().apply {
+                allowedOrigins = origins
+                allowedMethods = listOf(HttpMethod.GET.name())
+                allowedHeaders = listOf("*")
+                allowCredentials = false
+            }
+            source.registerCorsConfiguration("/api/v1/leagues/*", config)
+            source.registerCorsConfiguration("/api/v1/leagues/*/auction/stream", config)
+            source.registerCorsConfiguration("/api/v1/leagues/*/auction/results", config)
+        }
+        return source
     }
 
     /**

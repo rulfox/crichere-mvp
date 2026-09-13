@@ -142,6 +142,45 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `the bid ticker reflects recent bids newest-first, drops a reversed bid, and empties once the next player opens`() {
+        val leagueId = createLeague(organizerToken)
+        configureAuction(organizerToken, leagueId, squadMax = 1)
+        val player1 = signInNewUser()
+        val player2 = signInNewUser()
+        joinAsPlayer(player1, leagueId)
+        joinAsPlayer(player2, leagueId)
+        val ownerToken = signInNewUser()
+        val franchiseId = claimFranchise(ownerToken, leagueId)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/start").andExpect(status().isOk)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player").andExpect(status().isOk)
+
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 100))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.recentBids.length()").value(1))
+            .andExpect(jsonPath("$.recentBids[0].amount").value(100))
+            .andExpect(jsonPath("$.recentBids[0].franchiseName").value("Chennai Kings"))
+
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 150))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.recentBids.length()").value(2))
+            .andExpect(jsonPath("$.recentBids[0].amount").value(150))
+            .andExpect(jsonPath("$.recentBids[1].amount").value(100))
+
+        // Undo drops the reversed 150 bid from the ticker, falling back to the 100 bid.
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/undo")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.recentBids.length()").value(1))
+            .andExpect(jsonPath("$.recentBids[0].amount").value(100))
+
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/sold").andExpect(status().isOk)
+
+        // A fresh player opens with no bids yet -- the ticker is scoped to the current player only.
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.recentBids.length()").value(0))
+    }
+
+    @Test
     fun `only the organizer can drive the auction, and only the franchise's own owner can bid`() {
         val leagueId = createLeague(organizerToken)
         configureAuction(organizerToken, leagueId, squadMax = 1)

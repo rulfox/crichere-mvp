@@ -1,0 +1,350 @@
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.liveDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--flag);
+  box-shadow: 0 0 0 3px rgba(196, 100, 95, 0.25);
+  animation: pulse 1.8s ease-in-out infinite;
+  flex: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.liveLabel {
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--flag);
+}
+
+.leagueName {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.leagueMeta {
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+.leagueMeta::before {
+  content: "\00b7";
+  margin-right: 10px;
+  color: var(--ink-dim);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.heroCol {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.onBlock {
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 24px clamp(18px, 4vw, 32px);
+}
+
+.onBlockLabel {
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+
+.playerName {
+  font-family: var(--font-display), "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  line-height: 1.02;
+}
+
+.playerMeta {
+  margin-top: 4px;
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+}
+
+.bidRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bidAmount {
+  font-family: var(--font-display), "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: clamp(3.4rem, 11vw, 5.6rem);
+  line-height: 0.9;
+  color: var(--accent);
+}
+
+.bidNone {
+  font-family: var(--font-display), "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  color: var(--ink-dim);
+}
+
+.leadingChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  font-size: 0.9rem;
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.sectionLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+
+.tickerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.tickerRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.96rem;
+  color: var(--ink-dim);
+}
+
+.tickerRow:first-child {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tickerFranchise {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tickerAmount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.tickerRow:first-child .tickerAmount {
+  color: var(--accent);
+}
+
+.tickerEmpty {
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+  padding: 10px 2px;
+}
+
+.standings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 761px) {
+  .standingsCol {
+    position: sticky;
+    top: 20px;
+  }
+}
+
+.franchiseRow {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-left: 3px solid transparent;
+  padding: 12px 14px;
+}
+
+.franchiseRow.leading {
+  border-left-color: var(--accent);
+}
+
+.franchiseTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.franchiseName {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.franchiseCount {
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  flex: none;
+}
+
+.purseBar {
+  height: 5px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.purseBarFill {
+  height: 100%;
+  background: var(--ink-dim);
+}
+
+.franchiseRow.leading .purseBarFill {
+  background: var(--accent);
+}
+
+.purseLabel {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.belowMin {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--flag);
+}
+
+.notice {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 28px clamp(18px, 4vw, 32px);
+}
+
+.noticeTitle {
+  font-family: var(--font-display), "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4.5vw, 2.4rem);
+}
+
+.noticeBody {
+  margin-top: 8px;
+  color: var(--ink-dim);
+  max-width: 60ch;
+}
+
+.leagueFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 18px;
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resultRow {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 16px 18px;
+}
+
+.resultTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.resultSpent {
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.playerList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.playerRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: var(--ink-dim);
+}
+
+.playerRow span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.footer {
+  margin-top: 36px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}

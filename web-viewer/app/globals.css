@@ -1,0 +1,61 @@
+/*
+  Crichere Watch -- design tokens (docs/PHASE6.md).
+
+  Deliberately single-theme, not OS-adaptive: this is a broadcast scoreboard, not a document --
+  the "stadium under floodlights at night" identity is the point, the same way a live cricket
+  telecast's on-screen scorecard stays dark regardless of what time the match is actually played.
+  Colors are still declared as tokens (never inlined) so the palette has one source of truth.
+*/
+
+:root {
+  --pitch: #0f2e24; /* ground */
+  --panel: #163b2e; /* card/section surface */
+  --panel-raised: #1c4636; /* current-player hero, slightly lifted */
+  --ink: #ede7d8; /* primary text -- warm chalk, not pure white */
+  --ink-dim: #93a99b; /* secondary text -- sage-tinted, not pure grey */
+  --accent: #d9a441; /* floodlight amber -- the one loud color: bid figures, leading marker */
+  --accent-ink: #241804; /* text set on a solid accent fill */
+  --flag: #c4645f; /* brick-red -- live pulse, below-squad-min flag. Semantic, not a second accent */
+  --rule: #2a5142; /* hairline borders */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--pitch);
+  color: var(--ink);
+  font-family: var(--font-body), -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

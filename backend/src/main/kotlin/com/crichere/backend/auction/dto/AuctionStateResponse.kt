@@ -2,6 +2,7 @@ package com.crichere.backend.auction.dto
 
 import com.crichere.backend.league.AuctionStatus
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -18,4 +19,14 @@ data class AuctionStateResponse(
     val currentLeadingFranchiseId: UUID?,
     val currentLeadingFranchiseName: String?,
     val allowExceedPurse: Boolean,
+    /** Public bid ticker (docs/PHASE6.md) -- last 8 unreversed bids on [currentPlayerId], newest
+     * first. Always empty when [currentPlayerId] is null. */
+    val recentBids: List<AuctionBidTickerResponse>,
+)
+
+data class AuctionBidTickerResponse(
+    val franchiseId: UUID,
+    val franchiseName: String?,
+    val amount: BigDecimal,
+    val placedAt: Instant,
 )

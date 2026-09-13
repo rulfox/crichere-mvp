@@ -12,4 +12,7 @@ interface AuctionBidRepository : JpaRepository<AuctionBidEntity, UUID> {
 
     /** Also rejects a bid id that's real but belongs to a *different* league, same guard every other `findByIdAnd<Parent>` lookup in this codebase uses. */
     fun findByIdAndLeagueId(id: UUID, leagueId: UUID): Optional<AuctionBidEntity>
+
+    /** The public bid ticker (docs/PHASE6.md) -- last 8 unreversed bids on the *current* player, newest first. Scoped to one player, not the whole auction, so it empties out the moment `next-player` opens a new one. */
+    fun findTop8ByLeagueIdAndPlayerIdAndReversedFalseOrderByPlacedAtDesc(leagueId: UUID, playerId: UUID): List<AuctionBidEntity>
 }

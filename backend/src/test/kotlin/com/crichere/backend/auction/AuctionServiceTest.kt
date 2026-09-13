@@ -41,7 +41,11 @@ class AuctionServiceTest {
     private val franchiseRepository = mockk<FranchiseRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
     }
-    private val auctionBidRepository = mockk<AuctionBidRepository>()
+    private val auctionBidRepository = mockk<AuctionBidRepository>().also {
+        // toStateResponse() always looks up the current player's bid ticker -- default to empty
+        // so tests that don't care about it don't each need their own stub.
+        every { it.findTop8ByLeagueIdAndPlayerIdAndReversedFalseOrderByPlacedAtDesc(any(), any()) } returns emptyList()
+    }
     private val profileRepository = mockk<ProfileRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
     }

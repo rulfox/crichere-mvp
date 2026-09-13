@@ -1,5 +1,7 @@
 package com.crichere.app.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,7 @@ import com.crichere.app.league.LeagueDto
 import com.crichere.app.league.LeagueFranchiseDto
 import com.crichere.app.league.LeaguePlayerDto
 import com.crichere.app.league.LeagueStatus
+import com.crichere.app.network.webViewerBaseUrl
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -247,6 +250,18 @@ private fun LeagueDetailContent(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Share") }
+
+                // Additive to the crichere:// share above, not a replacement (docs/PHASE6.md) --
+                // for the audience that link can't reach: someone without the app installed. Copies
+                // to the clipboard rather than opening a second share sheet, matching the actual use
+                // case (pasting into a WhatsApp group).
+                OutlinedButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(ClipboardManager::class.java)
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Watch link", "$webViewerBaseUrl/leagues/${league.id}"))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Copy watch link") }
 
                 // Visible to everyone, not just the organizer -- the organizer sees Start/manage
                 // controls inside this screen once opened, everyone else can watch/bid once an

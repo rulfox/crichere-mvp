@@ -1,5 +1,6 @@
 package com.crichere.backend.auction
 
+import com.crichere.backend.auction.dto.AuctionBidTickerResponse
 import com.crichere.backend.auction.dto.AuctionResultsResponse
 import com.crichere.backend.auction.dto.AuctionStateResponse
 import com.crichere.backend.auction.dto.FranchiseAuctionResultResponse
@@ -370,6 +371,17 @@ class AuctionService(
         val currentPlayer = auctionCurrentPlayerId?.let { playerRepository.findById(it).orElse(null) }
         val currentPlayerName = currentPlayer?.let { profileRepository.findById(it.userId).orElse(null)?.name }
         val leadingFranchise = auctionCurrentLeadingFranchiseId?.let { franchiseRepository.findById(it).orElse(null) }
+        val recentBids = auctionCurrentPlayerId?.let { playerId ->
+            auctionBidRepository.findTop8ByLeagueIdAndPlayerIdAndReversedFalseOrderByPlacedAtDesc(id!!, playerId)
+                .map { bid ->
+                    AuctionBidTickerResponse(
+                        franchiseId = bid.franchiseId,
+                        franchiseName = franchiseRepository.findById(bid.franchiseId).orElse(null)?.name,
+                        amount = bid.amount,
+                        placedAt = bid.placedAt,
+                    )
+                }
+        } ?: emptyList()
         return AuctionStateResponse(
             auctionStatus = auctionStatus,
             currentPlayerId = auctionCurrentPlayerId,
@@ -378,6 +390,7 @@ class AuctionService(
             currentLeadingFranchiseId = auctionCurrentLeadingFranchiseId,
             currentLeadingFranchiseName = leadingFranchise?.name,
             allowExceedPurse = auctionAllowExceedPurse,
+            recentBids = recentBids,
         )
     }
 
