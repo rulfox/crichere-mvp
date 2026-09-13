@@ -87,6 +87,12 @@ struct AuctionLiveView: View {
                                     isOn: Binding(get: { wrapper.state.auction?.allowExceedPurse ?? false }, set: { wrapper.toggleExceedPurse($0) }),
                                 )
                                 .disabled(wrapper.state.isActing)
+                            case AuctionStatus.completed:
+                                Text("This auction has ended.")
+                                // See AuctionLiveScreen.kt's matching comment: the sale/unsold call
+                                // that completed the auction is still undoable server-side, and the
+                                // client can't tell whether there's actually a last action pending.
+                                Button("Undo") { wrapper.undo() }.disabled(wrapper.state.isActing)
                             default:
                                 Text("This auction has ended.")
                             }

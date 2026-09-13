@@ -139,7 +139,15 @@ private fun AuctionLiveScreen(
                                 }
                             }
 
-                            AuctionStatus.COMPLETED -> Text("This auction has ended.")
+                            AuctionStatus.COMPLETED -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("This auction has ended.")
+                                // The sale/unsold call that completed the auction is still undoable
+                                // (AuctionService.undo reverts COMPLETED back to IN_PROGRESS) -- the
+                                // client has no way to know whether there's actually a last action to
+                                // reverse, so this stays enabled and a no-op undo surfaces the
+                                // server's "nothing to undo" error like any other rejected action.
+                                OutlinedButton(onClick = onUndo, enabled = !state.isActing, modifier = Modifier.fillMaxWidth()) { Text("Undo") }
+                            }
                         }
                     }
                 }
