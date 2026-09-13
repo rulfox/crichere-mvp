@@ -45,6 +45,7 @@ internal fun LeagueDetailRoute(
     onClaimFranchise: (String) -> Unit,
     onViewScreenshot: (String) -> Unit,
     onAuctionSettings: (String) -> Unit,
+    onAuctionLive: (String) -> Unit,
 ) {
     val viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -61,6 +62,7 @@ internal fun LeagueDetailRoute(
         onMarkCompleted = viewModel::markCompleted,
         onRetry = viewModel::retry,
         onAuctionSettings = { onAuctionSettings(leagueId) },
+        onAuctionLive = { onAuctionLive(leagueId) },
         onJoinLeague = { onJoinLeague(leagueId) },
         onClaimFranchise = { onClaimFranchise(leagueId) },
         onToggleFollow = viewModel::toggleFollow,
@@ -91,6 +93,7 @@ private fun LeagueDetailScreen(
     onMarkCompleted: () -> Unit,
     onRetry: () -> Unit,
     onAuctionSettings: () -> Unit,
+    onAuctionLive: () -> Unit,
     onJoinLeague: () -> Unit,
     onClaimFranchise: () -> Unit,
     onToggleFollow: () -> Unit,
@@ -124,6 +127,7 @@ private fun LeagueDetailScreen(
                 onEditLeague = onEditLeague,
                 onMarkCompleted = onMarkCompleted,
                 onAuctionSettings = onAuctionSettings,
+                onAuctionLive = onAuctionLive,
                 onJoinLeague = onJoinLeague,
                 onClaimFranchise = onClaimFranchise,
                 onToggleFollow = onToggleFollow,
@@ -148,6 +152,7 @@ private fun LeagueDetailContent(
     onEditLeague: () -> Unit,
     onMarkCompleted: () -> Unit,
     onAuctionSettings: () -> Unit,
+    onAuctionLive: () -> Unit,
     onJoinLeague: () -> Unit,
     onClaimFranchise: () -> Unit,
     onToggleFollow: () -> Unit,
@@ -242,6 +247,14 @@ private fun LeagueDetailContent(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Share") }
+
+                // Visible to everyone, not just the organizer -- the organizer sees Start/manage
+                // controls inside this screen once opened, everyone else can watch/bid once an
+                // auction is running (see docs/PHASE5.md's Decisions Made: the live auction is
+                // public like the rest of the league).
+                OutlinedButton(onClick = onAuctionLive, modifier = Modifier.fillMaxWidth()) {
+                    Text("Live Auction")
+                }
             }
         }
 

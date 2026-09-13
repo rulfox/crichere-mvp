@@ -9,10 +9,13 @@ import com.crichere.app.auth.PhoneEntryViewModel
 import com.crichere.app.ground.GroundRepository
 import com.crichere.app.ground.KtorGroundRepository
 import io.ktor.client.HttpClient
+import com.crichere.app.league.AuctionRepository
 import com.crichere.app.league.AuctionSettingsViewModel
+import com.crichere.app.league.AuctionViewModel
 import com.crichere.app.league.ClaimFranchiseViewModel
 import com.crichere.app.league.FranchiseRepository
 import com.crichere.app.league.JoinLeagueViewModel
+import com.crichere.app.league.KtorAuctionRepository
 import com.crichere.app.league.KtorFranchiseRepository
 import com.crichere.app.league.KtorLeagueRepository
 import com.crichere.app.league.KtorMyLeaguesRepository
@@ -95,6 +98,8 @@ val sharedModule: Module = module {
 
     single<LeagueRepository> { KtorLeagueRepository(httpClient = get(), uploadClient = get(UPLOAD_HTTP_CLIENT)) }
 
+    single<AuctionRepository> { KtorAuctionRepository(httpClient = get()) }
+
     single<PlayerRepository> { KtorPlayerRepository(httpClient = get()) }
 
     single<FranchiseRepository> { KtorFranchiseRepository(httpClient = get()) }
@@ -144,6 +149,9 @@ val sharedModule: Module = module {
     factory { (leagueId: String) -> ClaimFranchiseViewModel(leagueId = leagueId, leagueRepository = get(), franchiseRepository = get()) }
     factory { MyLeaguesViewModel(myLeaguesRepository = get()) }
     factory { (leagueId: String) -> AuctionSettingsViewModel(leagueId = leagueId, leagueRepository = get()) }
+    factory { (leagueId: String) ->
+        AuctionViewModel(leagueId = leagueId, leagueRepository = get(), auctionRepository = get(), authRepository = get())
+    }
 }
 
 /**

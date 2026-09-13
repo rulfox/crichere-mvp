@@ -208,6 +208,7 @@ private sealed interface MainDestination {
     data class ClaimFranchiseFlow(val leagueId: String) : MainDestination
     data class ScreenshotViewer(val imageUrl: String) : MainDestination
     data class AuctionSettings(val leagueId: String) : MainDestination
+    data class AuctionLive(val leagueId: String) : MainDestination
 }
 
 @Composable
@@ -278,6 +279,7 @@ private fun MainRoute(
                 destination = MainDestination.ScreenshotViewer(imageUrl)
             },
             onAuctionSettings = { leagueId -> destination = MainDestination.AuctionSettings(leagueId) },
+            onAuctionLive = { leagueId -> destination = MainDestination.AuctionLive(leagueId) },
         )
 
         is MainDestination.LeagueCreation -> LeagueCreationRoute(
@@ -287,6 +289,11 @@ private fun MainRoute(
         )
 
         is MainDestination.AuctionSettings -> AuctionSettingsRoute(
+            leagueId = current.leagueId,
+            onBack = { destination = MainDestination.LeagueDetail(current.leagueId) },
+        )
+
+        is MainDestination.AuctionLive -> AuctionLiveRoute(
             leagueId = current.leagueId,
             onBack = { destination = MainDestination.LeagueDetail(current.leagueId) },
         )

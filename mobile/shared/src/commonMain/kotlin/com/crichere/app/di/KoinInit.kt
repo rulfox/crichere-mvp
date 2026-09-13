@@ -1,6 +1,7 @@
 package com.crichere.app.di
 
 import com.crichere.app.league.AuctionSettingsViewModel
+import com.crichere.app.league.AuctionViewModel
 import com.crichere.app.league.ClaimFranchiseViewModel
 import com.crichere.app.league.JoinLeagueViewModel
 import com.crichere.app.league.LeagueDetailViewModel
@@ -73,5 +74,8 @@ class KoinHelper : KoinComponent {
         get() = get()
 
     fun auctionSettingsViewModel(leagueId: String): AuctionSettingsViewModel =
+        get { parametersOf(leagueId) }
+
+    fun auctionViewModel(leagueId: String): AuctionViewModel =
         get { parametersOf(leagueId) }
 }

@@ -1,5 +1,16 @@
 package com.crichere.backend.common
 
+import com.crichere.backend.auction.AuctionAlreadyStartedException
+import com.crichere.backend.auction.AuctionInProgressException
+import com.crichere.backend.auction.AuctionNoPlayerOpenException
+import com.crichere.backend.auction.AuctionNotInProgressException
+import com.crichere.backend.auction.AuctionNotReadyException
+import com.crichere.backend.auction.AuctionPlayerAlreadyOpenException
+import com.crichere.backend.auction.BidTooLowException
+import com.crichere.backend.auction.NoBidsToSellException
+import com.crichere.backend.auction.NothingToUndoException
+import com.crichere.backend.auction.PurseExceededException
+import com.crichere.backend.auction.SquadFullException
 import com.crichere.backend.auth.AuthenticationFailedException
 import com.crichere.backend.auth.RateLimitExceededException
 import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
@@ -469,6 +480,139 @@ class GlobalExceptionHandler {
             title = "Access denied",
             code = "ACCESS_DENIED",
             detail = "You do not have permission to perform this action.",
+            instance = request.requestURI,
+        )
+
+    /** `start` failed its readiness check (see `com.crichere.backend.auction.AuctionExceptions`). */
+    @ExceptionHandler(AuctionNotReadyException::class)
+    fun handleAuctionNotReady(exception: AuctionNotReadyException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "auction-not-ready",
+            title = "Auction not ready",
+            code = "AUCTION_NOT_READY",
+            detail = exception.message ?: "This league's auction is not ready to start.",
+            instance = request.requestURI,
+        )
+
+    /** Settings/join/claim/roster-removal attempted once the auction has left `NOT_STARTED` (see docs/PHASE5.md's Decisions Made). */
+    @ExceptionHandler(AuctionAlreadyStartedException::class)
+    fun handleAuctionAlreadyStarted(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "auction-already-started",
+            title = "Auction already started",
+            code = "AUCTION_ALREADY_STARTED",
+            detail = "This action is not allowed once the auction has started.",
+            instance = request.requestURI,
+        )
+
+    /** `PATCH /leagues/{id}/complete` attempted while the auction is `IN_PROGRESS`. */
+    @ExceptionHandler(AuctionInProgressException::class)
+    fun handleAuctionInProgress(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "auction-in-progress",
+            title = "Auction in progress",
+            code = "AUCTION_IN_PROGRESS",
+            detail = "This league's auction is in progress.",
+            instance = request.requestURI,
+        )
+
+    /** An auction action needs `IN_PROGRESS` but the auction hasn't started or has already ended. */
+    @ExceptionHandler(AuctionNotInProgressException::class)
+    fun handleAuctionNotInProgress(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "auction-not-in-progress",
+            title = "Auction not in progress",
+            code = "AUCTION_NOT_IN_PROGRESS",
+            detail = "This auction is not currently in progress.",
+            instance = request.requestURI,
+        )
+
+    /** `next-player` called while a player is already open (see `com.crichere.backend.auction.AuctionService`). */
+    @ExceptionHandler(AuctionPlayerAlreadyOpenException::class)
+    fun handleAuctionPlayerAlreadyOpen(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "auction-player-already-open",
+            title = "Player already open",
+            code = "AUCTION_PLAYER_ALREADY_OPEN",
+            detail = "A player is already open for bidding.",
+            instance = request.requestURI,
+        )
+
+    /** A bid/`sold`/`unsold` attempted with no player currently open. */
+    @ExceptionHandler(AuctionNoPlayerOpenException::class)
+    fun handleAuctionNoPlayerOpen(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "auction-no-player-open",
+            title = "No player open",
+            code = "AUCTION_NO_PLAYER_OPEN",
+            detail = "No player is currently open for bidding.",
+            instance = request.requestURI,
+        )
+
+    /** A bid was below the required minimum (see `com.crichere.backend.auction.AuctionService.placeBid`). */
+    @ExceptionHandler(BidTooLowException::class)
+    fun handleBidTooLow(exception: BidTooLowException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "bid-too-low",
+            title = "Bid too low",
+            code = "BID_TOO_LOW",
+            detail = "Bid must be at least ${exception.minimumAmount}.",
+            instance = request.requestURI,
+            extensions = mapOf("minimumAmount" to exception.minimumAmount),
+        )
+
+    /** A bid would push the franchise's squad past `auctionSquadMax`. */
+    @ExceptionHandler(SquadFullException::class)
+    fun handleSquadFull(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "squad-full",
+            title = "Squad full",
+            code = "SQUAD_FULL",
+            detail = "This franchise's squad is already full.",
+            instance = request.requestURI,
+        )
+
+    /** A bid would exceed the franchise's remaining purse and exceeding it isn't currently allowed. */
+    @ExceptionHandler(PurseExceededException::class)
+    fun handlePurseExceeded(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "purse-exceeded",
+            title = "Purse exceeded",
+            code = "PURSE_EXCEEDED",
+            detail = "This bid would exceed the franchise's remaining purse.",
+            instance = request.requestURI,
+        )
+
+    /** `sold` called with no leading bid (see `com.crichere.backend.auction.AuctionService`). */
+    @ExceptionHandler(NoBidsToSellException::class)
+    fun handleNoBidsToSell(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "no-bids-to-sell",
+            title = "No bids to sell",
+            code = "NO_BIDS_TO_SELL",
+            detail = "There are no bids to sell to. Use unsold instead.",
+            instance = request.requestURI,
+        )
+
+    /** `undo` called with no last action to reverse. */
+    @ExceptionHandler(NothingToUndoException::class)
+    fun handleNothingToUndo(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "nothing-to-undo",
+            title = "Nothing to undo",
+            code = "NOTHING_TO_UNDO",
+            detail = "There is nothing to undo.",
             instance = request.requestURI,
         )
 

@@ -1,5 +1,6 @@
 package com.crichere.backend.league
 
+import com.crichere.backend.auction.AuctionInProgressException
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.PhotoUploadService
@@ -148,12 +149,19 @@ class LeagueService(
      * and awards remain fully usable afterward (see docs/PHASE2.md's Decisions Made: some
      * awards, like Man of the Match, are only decided once a league is already complete).
      *
+     * Blocked while the auction is `IN_PROGRESS` (see docs/PHASE5.md's Decisions Made) -- unlike
+     * [updateAuctionSettings]/roster actions, which freeze forever once the auction has ever
+     * started, this only guards the live window: completing a league whose auction never started,
+     * or has already finished, is still allowed.
+     *
      * @throws NotOrganizerException [callerId] is not this league's organizer.
+     * @throws com.crichere.backend.auction.AuctionInProgressException the auction is `IN_PROGRESS`.
      */
     @Transactional
     fun complete(leagueId: UUID, callerId: UUID): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
         requireOrganizer(league, callerId)
+        if (league.auctionStatus == AuctionStatus.IN_PROGRESS) throw AuctionInProgressException()
 
         league.completedAt = Instant.now()
         league.updatedAt = Instant.now()
@@ -162,17 +170,19 @@ class LeagueService(
 
     /**
      * `PUT /api/v1/leagues/{id}/auction-settings`. Organizer-only, full-replace of all 5 fields
-     * together (see docs/PHASE4.md's Decisions Made). Stays editable indefinitely -- nothing in
-     * this phase locks it; the only thing that ever will is Phase 5's "start auction" action,
-     * which doesn't exist yet.
+     * together (see docs/PHASE4.md's Decisions Made). Editable up until the auction starts --
+     * Phase 5's `start` action (`com.crichere.backend.auction.AuctionService.start`) is what locks
+     * it, permanently, via [requireAuctionNotStarted].
      *
      * @throws NotOrganizerException [callerId] is not this league's organizer.
      * @throws SquadSizeInvalidException [request.squadMin] is greater than [request.squadMax].
+     * @throws com.crichere.backend.auction.AuctionAlreadyStartedException the auction has already started (see docs/PHASE5.md).
      */
     @Transactional
     fun updateAuctionSettings(leagueId: UUID, callerId: UUID, request: AuctionSettingsSaveRequest): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
         requireOrganizer(league, callerId)
+        requireAuctionNotStarted(league)
         val squadMin = requireNotNull(request.squadMin)
         val squadMax = requireNotNull(request.squadMax)
         if (squadMin > squadMax) throw SquadSizeInvalidException()

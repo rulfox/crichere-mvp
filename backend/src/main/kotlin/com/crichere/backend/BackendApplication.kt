@@ -3,9 +3,12 @@ package com.crichere.backend
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.scheduling.annotation.EnableScheduling
 import java.time.Clock
 
+/** [EnableScheduling] backs [com.crichere.backend.auction.AuctionBroadcastService]'s SSE heartbeat. */
 @SpringBootApplication
+@EnableScheduling
 class BackendApplication {
 
 	/**

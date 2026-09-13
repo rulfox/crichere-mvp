@@ -1,6 +1,8 @@
 package com.crichere.backend.league
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.util.UUID
@@ -57,4 +59,14 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
 
     /** Every league a user organizes -- feeds `GET /api/v1/me/leagues`'s "organizing" list. */
     fun findByOrganizerUserId(organizerUserId: UUID): List<LeagueEntity>
+
+    /**
+     * Row-level lock for `com.crichere.backend.auction.AuctionService.placeBid` -- two bids
+     * arriving the same instant must serialize against each other rather than both reading the
+     * same stale current-bid value (see docs/PHASE5.md's Security section). Only ever called
+     * inside a `@Transactional` method; the lock releases at commit.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM LeagueEntity l WHERE l.id = :id")
+    fun findByIdForUpdate(@Param("id") id: UUID): LeagueEntity?
 }

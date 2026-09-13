@@ -53,6 +53,10 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.client.auth)
+            // SSE (io.ktor.client.plugins.sse) ships inside ktor-client-core itself, no separate
+            // artifact -- confirmed against Ktor's own client-SSE docs before adding a dependency
+            // that turned out not to exist for this release. Consumes
+            // GET /leagues/{id}/auction/stream (see docs/PHASE5.md).
 
             implementation(libs.koin.core)
 

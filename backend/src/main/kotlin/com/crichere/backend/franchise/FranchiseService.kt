@@ -13,6 +13,7 @@ import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.league.PaymentScreenshotRequiredException
+import com.crichere.backend.league.requireAuctionNotStarted
 import com.crichere.backend.league.requireOrganizer
 import com.crichere.backend.profile.ProfileRepository
 import org.springframework.stereotype.Service
@@ -46,11 +47,13 @@ class FranchiseService(
      * @throws ContentRateLimitExceededException the caller has claimed too many franchises recently.
      * @throws LeagueCapacityFullException `franchisesRequired` has already been reached.
      * @throws com.crichere.backend.league.PaymentScreenshotRequiredException a fee is set but [request] has no screenshot.
+     * @throws com.crichere.backend.auction.AuctionAlreadyStartedException the auction has already started (see docs/PHASE5.md).
      */
     @Transactional
     fun claim(leagueId: UUID, callerId: UUID, request: LeagueFranchiseClaimRequest): LeagueFranchiseResponse {
         val league = findLeagueOrThrow(leagueId)
         if (league.status == LeagueStatus.COMPLETED) throw LeagueCompletedException()
+        requireAuctionNotStarted(league)
         contentRateLimiter.tryConsumeForFranchiseClaim(callerId)?.let { retryAfter ->
             throw ContentRateLimitExceededException(retryAfter)
         }
@@ -79,11 +82,13 @@ class FranchiseService(
      * @throws LeagueNotFoundException [leagueId] doesn't exist.
      * @throws com.crichere.backend.league.NotOrganizerException [callerId] is not this league's organizer.
      * @throws LeagueFranchiseNotFoundException [franchiseId] doesn't exist under this league.
+     * @throws com.crichere.backend.auction.AuctionAlreadyStartedException the auction has already started -- the roster freezes with it (see docs/PHASE5.md).
      */
     @Transactional
     fun remove(leagueId: UUID, franchiseId: UUID, callerId: UUID) {
         val league = findLeagueOrThrow(leagueId)
         requireOrganizer(league, callerId)
+        requireAuctionNotStarted(league)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         franchise.removedAt = Instant.now()
         franchiseRepository.save(franchise)
@@ -94,10 +99,12 @@ class FranchiseService(
      *
      * @throws LeagueFranchiseNotFoundException [franchiseId] doesn't exist under [leagueId].
      * @throws NotFranchiseOwnerException [callerId] is not this franchise's own owner.
+     * @throws com.crichere.backend.auction.AuctionAlreadyStartedException the auction has already started -- the roster freezes with it (see docs/PHASE5.md).
      */
     @Transactional
     fun requestLeave(leagueId: UUID, franchiseId: UUID, callerId: UUID): LeagueFranchiseResponse {
         val league = findLeagueOrThrow(leagueId)
+        requireAuctionNotStarted(league)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.ownerUserId != callerId) throw NotFranchiseOwnerException()
         franchise.leaveRequestedAt = Instant.now()
@@ -110,11 +117,13 @@ class FranchiseService(
      * @throws com.crichere.backend.league.NotOrganizerException [callerId] is not this league's organizer.
      * @throws LeagueFranchiseNotFoundException [franchiseId] doesn't exist under [leagueId].
      * @throws NoLeaveRequestPendingException [franchiseId] has no pending leave request.
+     * @throws com.crichere.backend.auction.AuctionAlreadyStartedException the auction has already started -- the roster freezes with it (see docs/PHASE5.md).
      */
     @Transactional
     fun approveLeave(leagueId: UUID, franchiseId: UUID, callerId: UUID): LeagueFranchiseResponse {
         val league = findLeagueOrThrow(leagueId)
         requireOrganizer(league, callerId)
+        requireAuctionNotStarted(league)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         franchise.removedAt = Instant.now()

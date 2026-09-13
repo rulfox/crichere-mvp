@@ -10,6 +10,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.sse.SSE
 import io.ktor.http.URLProtocol
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
@@ -48,6 +49,11 @@ internal object HttpClientFactory {
                 refreshTokens { refreshTokens() }
             }
         }
+
+        // Consumes GET /leagues/{id}/auction/stream (see docs/PHASE5.md). The stream itself is
+        // public, but this is the one client every feature repository already shares -- no need
+        // for a fourth client just to drop the Auth plugin for one endpoint.
+        install(SSE)
     }
 
     /**

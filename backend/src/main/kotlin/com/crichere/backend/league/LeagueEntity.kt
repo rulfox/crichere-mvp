@@ -2,6 +2,8 @@ package com.crichere.backend.league
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -95,6 +97,36 @@ class LeagueEntity(
     @Column(name = "auction_bid_increment")
     var auctionBidIncrement: BigDecimal? = null,
 
+    /** `NOT_STARTED` until the organizer calls `start`; see docs/PHASE5.md. */
+    @Column(name = "auction_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    var auctionStatus: AuctionStatus = AuctionStatus.NOT_STARTED,
+
+    @Column(name = "auction_current_player_id")
+    var auctionCurrentPlayerId: UUID? = null,
+
+    @Column(name = "auction_current_bid_amount")
+    var auctionCurrentBidAmount: BigDecimal? = null,
+
+    @Column(name = "auction_current_leading_franchise_id")
+    var auctionCurrentLeadingFranchiseId: UUID? = null,
+
+    /** Toggled live by the organizer -- see docs/PHASE5.md's Decisions Made (no cap while on). */
+    @Column(name = "auction_allow_exceed_purse", nullable = false)
+    var auctionAllowExceedPurse: Boolean = false,
+
+    /** One-shot pointer `undo` consumes then clears -- see [com.crichere.backend.auction.AuctionService.undo]. */
+    @Column(name = "auction_last_action_type")
+    @Enumerated(EnumType.STRING)
+    var auctionLastActionType: AuctionLastActionType? = null,
+
+    @Column(name = "auction_last_action_bid_id")
+    var auctionLastActionBidId: UUID? = null,
+
+    /** Which player a `SOLD`/`UNSOLD` last-action refers to -- [auctionCurrentPlayerId] itself is cleared the moment that player closes. */
+    @Column(name = "auction_last_action_player_id")
+    var auctionLastActionPlayerId: UUID? = null,
+
     @Column(name = "completed_at")
     var completedAt: Instant? = null,
 
@@ -112,4 +144,18 @@ class LeagueEntity(
 enum class LeagueStatus {
     ANNOUNCED,
     COMPLETED,
+}
+
+/** See docs/PHASE5.md. `COMPLETED` is reached either by the pool selling out or the organizer calling `end`. */
+enum class AuctionStatus {
+    NOT_STARTED,
+    IN_PROGRESS,
+    COMPLETED,
+}
+
+/** What [LeagueEntity.auctionLastActionBidId] (when [LeagueEntity.auctionLastActionType] is [BID]) or the current player (when [SOLD]/[UNSOLD]) refers to -- see [com.crichere.backend.auction.AuctionService.undo]. */
+enum class AuctionLastActionType {
+    BID,
+    SOLD,
+    UNSOLD,
 }
