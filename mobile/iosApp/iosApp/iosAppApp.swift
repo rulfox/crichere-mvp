@@ -7,13 +7,19 @@ import Shared
 /// Kotlin trailing-lambda builder directly, and iOS has no `Context` to register the way
 /// Android's `CricherApplication.onCreate()` does, so this call needs nothing further.
 ///
-/// `FirebaseApp.configure()` and installing `IosPhoneAuthBridgeHolder.bridge` are Task 6's
-/// additions -- real Firebase iOS Auth calls need a real `GoogleService-Info.plist` (this
-/// environment has none, same category as Android's missing `google-services.json`) and a real
-/// Xcode/CocoaPods/SPM setup this environment cannot run, so none of this has ever been compiled;
-/// see `FirebasePhoneAuthBridge.swift` and task-6-report.md.
+/// `FirebaseApp.configure()` and installing `IosPhoneAuthBridgeHolder.bridge` need a real
+/// `GoogleService-Info.plist` (this environment has none, same category as Android's missing
+/// `google-services.json`) and a real Xcode/SPM setup this environment cannot run, so none of
+/// this has ever been compiled; see `FirebasePhoneAuthBridge.swift` and `iosApp/README.md`.
+///
+/// Phase 9 (iOS wiring, see docs/PHASE9.md) replaced the Phase-1 toolchain-proof `ContentView()`
+/// root with the real `AppRootView` nav host, and made the deep link a real resume target instead
+/// of a parse-and-print no-op -- mirrors `MainActivity`'s intent-read -> `AuthNavHost(pendingDeepLinkLeagueId:)`
+/// handoff on Android.
 @main
 struct IosAppApp: App {
+    @State private var pendingDeepLinkLeagueId: String?
+
     init() {
         FirebaseApp.configure()
         IosPhoneAuthBridgeHolder.shared.bridge = FirebasePhoneAuthBridgeImpl()
@@ -22,15 +28,15 @@ struct IosAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppRootView(pendingDeepLinkLeagueId: $pendingDeepLinkLeagueId)
                 .onOpenURL { url in
-                    // Phase 3 deep link (see docs/PHASE3.md): crichere://leagues/{id}. This is a
-                    // parse-and-stash no-op stub, not a functioning resume flow -- there is no iOS
-                    // nav shell to resume into yet (see docs/PHASE2.md Section 5's deferred iOS
-                    // pass; Android's equivalent wiring is AuthNavHost.kt's pendingDeepLinkLeagueId).
+                    // crichere://leagues/{id} -- see docs/PHASE3.md. A URL arriving while the app
+                    // is already running updates this same @State, which AppRootView re-reads via
+                    // its own `pendingDeepLinkLeagueId` init param on the next relevant recomposition
+                    // -- same category of "resume into the league once Main is reached" behavior
+                    // AuthNavHost.kt's own doc describes, not a full nav-stack re-entry.
                     guard url.scheme == "crichere", url.host == "leagues" else { return }
-                    let leagueId = url.pathComponents.dropFirst().first
-                    print("Deep link received for league id: \(leagueId ?? "unknown") -- no-op until the iOS nav shell exists")
+                    pendingDeepLinkLeagueId = url.pathComponents.dropFirst().first
                 }
         }
     }

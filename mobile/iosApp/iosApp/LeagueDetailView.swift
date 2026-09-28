@@ -47,15 +47,33 @@ struct LeagueDetailView: View {
     let onJoinLeague: (String) -> Void
     let onClaimFranchise: (String) -> Void
     let onViewScreenshot: (String) -> Void
+    // Phase 9 (iOS wiring, see docs/PHASE9.md) -- organizer entry points this file never had a
+    // way to reach before: Auction Settings/Live and Manage Co-Organizers, matching Android's
+    // LeagueDetailScreen.kt onAuctionSettings/onAuctionLive/onManageRoles.
+    let onAuctionSettings: (String) -> Void
+    let onAuctionLive: (String) -> Void
+    let onManageRoles: (String) -> Void
 
     @StateObject private var wrapper: LeagueDetailViewModelWrapper
 
-    init(leagueId: String, onEditLeague: @escaping (String) -> Void, onJoinLeague: @escaping (String) -> Void, onClaimFranchise: @escaping (String) -> Void, onViewScreenshot: @escaping (String) -> Void) {
+    init(
+        leagueId: String,
+        onEditLeague: @escaping (String) -> Void,
+        onJoinLeague: @escaping (String) -> Void,
+        onClaimFranchise: @escaping (String) -> Void,
+        onViewScreenshot: @escaping (String) -> Void,
+        onAuctionSettings: @escaping (String) -> Void,
+        onAuctionLive: @escaping (String) -> Void,
+        onManageRoles: @escaping (String) -> Void
+    ) {
         self.leagueId = leagueId
         self.onEditLeague = onEditLeague
         self.onJoinLeague = onJoinLeague
         self.onClaimFranchise = onClaimFranchise
         self.onViewScreenshot = onViewScreenshot
+        self.onAuctionSettings = onAuctionSettings
+        self.onAuctionLive = onAuctionLive
+        self.onManageRoles = onManageRoles
         _wrapper = StateObject(wrappedValue: LeagueDetailViewModelWrapper(leagueId: leagueId))
     }
 
@@ -100,6 +118,11 @@ struct LeagueDetailView: View {
                                         Button("View payment screenshot") { onViewScreenshot(url) }
                                     }
                                     if wrapper.state.isOrganizer {
+                                        if player.leaveRequestedAt != nil {
+                                            Text("Requested to leave")
+                                            Button("Approve") { wrapper.approvePlayerLeave(playerId: player.id) }
+                                            Button("Dismiss") { wrapper.dismissPlayerLeave(playerId: player.id) }
+                                        }
                                         Button("Remove", role: .destructive) { wrapper.removePlayer(playerId: player.id) }
                                     }
                                 }
@@ -117,6 +140,11 @@ struct LeagueDetailView: View {
                                         Button("View payment screenshot") { onViewScreenshot(url) }
                                     }
                                     if wrapper.state.isOrganizer {
+                                        if franchise.leaveRequestedAt != nil {
+                                            Text("Requested to leave")
+                                            Button("Approve") { wrapper.approveFranchiseLeave(franchiseId: franchise.id) }
+                                            Button("Dismiss") { wrapper.dismissFranchiseLeave(franchiseId: franchise.id) }
+                                        }
                                         Button("Remove", role: .destructive) { wrapper.removeFranchise(franchiseId: franchise.id) }
                                     }
                                 }
@@ -130,6 +158,9 @@ struct LeagueDetailView: View {
                             if league.status != .completed {
                                 Button("Mark completed") { wrapper.markCompleted() }
                             }
+                            Button("Auction settings") { onAuctionSettings(leagueId) }
+                            Button("Live auction") { onAuctionLive(leagueId) }
+                            Button("Manage co-organizers") { onManageRoles(leagueId) }
                         }
                     }
 

@@ -56,6 +56,7 @@ struct ProfileSetupView: View {
     let onProfileComplete: () -> Void
 
     @StateObject private var wrapper: ProfileSetupViewModelWrapper
+    @StateObject private var locationPermission = LocationPermissionRequester()
     @State private var selectedPhotoItem: PhotosPickerItem?
 
     init(isEditMode: Bool, onProfileComplete: @escaping () -> Void) {
@@ -89,7 +90,10 @@ struct ProfileSetupView: View {
 
                     Section("Location") {
                         Button(wrapper.state.isLocating ? "Finding your location..." : "Use my location") {
-                            wrapper.useMyLocation()
+                            Task {
+                                await locationPermission.requestWhenInUseAuthorization()
+                                wrapper.useMyLocation()
+                            }
                         }
                         .disabled(wrapper.state.isLocating)
 

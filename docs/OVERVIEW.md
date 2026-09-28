@@ -65,6 +65,7 @@ Every `PHASEn.md` follows this structure, in order:
 - [Phase 6](PHASE6.md) — public web viewer: a no-login spectator page per league, consuming the existing public auction SSE stream. **Status: implemented (backend + web-viewer + mobile share addition), not yet deployed to Railway.**
 - [Phase 7](PHASE7.md) — co-organizer role delegation: grant full organizer authority to another registered user by phone number, multiple per league, revocable anytime. **Status: implemented (backend + Android, tested and manually verified on-device), iOS screen authored but unwired.**
 - [Phase 8](PHASE8.md) — push notifications (FCM, Android): auction start, sold/unsold, leave request/approval, role grant/revoke. **Status: implemented (backend + Android), tested and verified on-device with a real FCM round trip.**
+- [Phase 9](PHASE9.md) — iOS wiring: the missing login flow (Phone Entry/OTP Verify) and main hub (League Dashboard/Creation, with a real MapKit ground-picker), plus a real navigation host wiring every previously-standalone screen together, and an XcodeGen `project.yml` for a real, automatable `.xcodeproj`. **Status: implemented (iOS only — authored, not yet compiled/run; needs a Mac to verify).**
 
 ## Open Questions
 

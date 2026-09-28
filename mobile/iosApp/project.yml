@@ -1,0 +1,54 @@
+# XcodeGen spec (docs/PHASE9.md) -- generates the .xcodeproj this repo has never checked in (no
+# Mac/Xcode here to hand-author or validate one -- see this directory's README.md). A human on a
+# Mac runs `xcodegen generate` from this directory to get a real project; re-run it any time
+# iosApp/*.swift files are added/removed, no manual "add file to target" step in Xcode needed.
+name: iosApp
+
+options:
+  bundleIdPrefix: com.crichere
+  deploymentTarget:
+    iOS: "16.0" # matches ProfileSetupView.swift's PhotosPicker usage, iOS 16+ only
+
+packages:
+  # Pin an exact version by checking https://github.com/firebase/firebase-ios-sdk/releases at
+  # build time -- same "check live sources, don't assume from training data" discipline this
+  # repo's libs.versions.toml comments document for every other dependency. Placeholder version
+  # below MUST be updated before `xcodegen generate` is run for real.
+  FirebaseIOS:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "11.0.0"
+
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: iosApp
+    info:
+      path: iosApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.crichere.app
+        # A human on a Mac fills in their own Apple Developer Team id here (or in Xcode's Signing
+        # & Capabilities tab after generation) -- not something this environment has or should
+        # fabricate.
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "5.0"
+    dependencies:
+      - package: FirebaseIOS
+        product: FirebaseAuth
+      - package: FirebaseIOS
+        product: FirebaseCore
+    preBuildScripts:
+      - name: "Embed Shared.framework (Kotlin Multiplatform)"
+        # Standard KMP Gradle task for linking a Compose-Multiplatform-free shared module's
+        # exported framework (shared/build.gradle.kts's `binaries.framework { baseName = "Shared" }`)
+        # into an Xcode target -- replaces this README's old manual "add a Run Script build phase"
+        # instructions with a spec XcodeGen keeps in sync automatically. Xcode supplies
+        # CONFIGURATION/SDK_NAME/ARCHS/BUILT_PRODUCTS_DIR etc. to this script automatically as
+        # build-phase environment variables -- no manual passthrough needed.
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+        basedOnDependencyAnalysis: false

@@ -29,6 +29,7 @@ final class OwnProfileViewModelWrapper: ObservableObject {
         }
     }
 
+    func retry() { viewModel.retry() }
     func editProfile() { viewModel.editProfile() }
     func logout() { viewModel.logout() }
 }
@@ -66,6 +67,7 @@ struct OwnProfileView: View {
             }
         }
         .navigationTitle("Your profile")
+        .onAppear { wrapper.retry() }
         .onChange(of: wrapper.navigationEvent) { _, event in
             switch event {
             case .navigateToEditProfile: onNavigateToEditProfile()

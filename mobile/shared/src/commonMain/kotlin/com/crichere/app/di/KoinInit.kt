@@ -1,9 +1,14 @@
 package com.crichere.app.di
 
+import com.crichere.app.auth.AppStartViewModel
+import com.crichere.app.auth.OtpVerifyViewModel
+import com.crichere.app.auth.PhoneEntryViewModel
 import com.crichere.app.league.AuctionSettingsViewModel
 import com.crichere.app.league.AuctionViewModel
 import com.crichere.app.league.ClaimFranchiseViewModel
 import com.crichere.app.league.JoinLeagueViewModel
+import com.crichere.app.league.LeagueCreationViewModel
+import com.crichere.app.league.LeagueDashboardViewModel
 import com.crichere.app.league.LeagueDetailViewModel
 import com.crichere.app.league.ManageRolesViewModel
 import com.crichere.app.league.MyLeaguesViewModel
@@ -46,6 +51,17 @@ class KoinHelper : KoinComponent {
     val referenceViewModel: ReferenceViewModel
         get() = get()
 
+    // Phase 9 (iOS wiring, see docs/PHASE9.md) -- the app-start routing check and the login flow's
+    // two screens, mirroring AuthNavHost.kt's own koinViewModel() call sites exactly.
+    val appStartViewModel: AppStartViewModel
+        get() = get()
+
+    val phoneEntryViewModel: PhoneEntryViewModel
+        get() = get()
+
+    fun otpVerifyViewModel(phoneNumber: String, verificationId: String, resendToken: Any?): OtpVerifyViewModel =
+        get { parametersOf(phoneNumber, verificationId, resendToken) }
+
     val ownProfileViewModel: OwnProfileViewModel
         get() = get()
 
@@ -73,6 +89,15 @@ class KoinHelper : KoinComponent {
 
     val myLeaguesViewModel: MyLeaguesViewModel
         get() = get()
+
+    // Phase 9 -- the main post-login hub (League Dashboard, the 1st bottom-nav tab) and League
+    // Creation (create and edit, editingLeagueId null vs non-null), same as their Android
+    // koinViewModel() call sites in AuthNavHost.kt/LeagueDashboardScreen.kt/LeagueCreationScreen.kt.
+    val leagueDashboardViewModel: LeagueDashboardViewModel
+        get() = get()
+
+    fun leagueCreationViewModel(editingLeagueId: String?): LeagueCreationViewModel =
+        get { parametersOf(editingLeagueId) }
 
     fun auctionSettingsViewModel(leagueId: String): AuctionSettingsViewModel =
         get { parametersOf(leagueId) }
