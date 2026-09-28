@@ -178,6 +178,19 @@ final class LoginViewModelWrapper: ObservableObject {
 
 ## Decisions Resolved (2026-08-31)
 
+## Testing (updated 2026-09-28)
+
+**Automated:**
+- Backend: JUnit5 + MockK + Testcontainers (real Postgres), see Decisions Made below.
+- Mobile shared: `kotlin.test` in `commonTest`; Android-only test code may still use MockK.
+- Web-viewer: Vitest + React Testing Library for component/unit tests (`*.test.ts(x)`, run via `npm test`); **Playwright** for end-to-end (`web-viewer/e2e/`, run via `npm run test:e2e`). The e2e suite runs against a small local mock backend (`e2e/mock-server.mjs`, fixtures in `e2e/fixtures.mjs`) via Playwright's `webServer` config, not the real Spring Boot backend — deterministic, no Postgres/Docker needed to run it, and it can exercise all three `AuctionStatus` states (`NOT_STARTED`/`IN_PROGRESS`/`COMPLETED`) on demand instead of depending on whatever a real auction happens to be doing. The mock server sets permissive CORS since the SSE stream (`EventSource`) is fetched browser-side, cross-origin — unlike the plain JSON endpoints, which Next's server components fetch from Node and never cross a browser CORS boundary at all.
+
+**Manual/interactive verification — prefer structured output over screenshots, for speed:**
+- Web (Playwright MCP tools, used for exploratory/interactive checks outside the automated suite): use `browser_snapshot` (accessibility tree, text) as the default, not `browser_take_screenshot` (image, needs a vision read, much slower per turn). Reach for a screenshot only when the property under test is genuinely visual (colors, spacing, a rendered image) and can't be asserted from the accessibility tree.
+- Android (no Playwright equivalent — it only drives browsers): `adb shell uiautomator dump` + parsing the resulting XML for exact tap coordinates/text stays the default for driving and verifying on-device state, same technique used through Phases 5–8. Screenshots stay a last resort for the same reason as web: visual-only properties, not general verification.
+
+---
+
 All four items previously flagged here are now locked, per user confirmation:
 
 1. **Backend DTO mapping**: manual extension functions.
