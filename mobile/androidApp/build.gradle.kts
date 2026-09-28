@@ -1,3 +1,5 @@
+@file:OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -42,6 +44,16 @@ android {
         versionCode = 1
         versionName = "0.1.0-toolchain-proof"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Runs each @Test in its own instrumentation process -- an app crash or leaked static
+        // state in one test can't take the rest of the suite down with it. Real device/emulator
+        // only (see docs/ARCHITECTURE.md's Testing section); this is Android's actual equivalent
+        // to Playwright's own test-runner orchestration, not a loose analogy.
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     buildFeatures {
@@ -91,4 +103,27 @@ dependencies {
     // not KMP-shareable logic -- see that file's own doc.
     implementation(project.dependencies.platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    // Compose UI instrumented tests (docs/ARCHITECTURE.md's Testing section). Real ViewModels
+    // wired to `:testFakes`' Fake*Repository doubles, driving the actual screen composables --
+    // no Koin/DI override needed (see each Route composable's `viewModel: X = koinViewModel()`
+    // default-argument seam).
+    androidTestImplementation(project(":testFakes"))
+    androidTestImplementation(compose.uiTest)
+    // `compose.uiTest` (Compose Multiplatform's cross-platform test umbrella) doesn't carry the
+    // JUnit4 Android rule (`createComposeRule`) -- that's Android-only, published separately as
+    // AndroidX's own artifact. Pinned to the same Compose UI version the rest of the graph
+    // already resolves to (1.10.4, per `androidApp:dependencies`) so it can't drift.
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4-android:1.10.4")
+    // Supplies the placeholder ComponentActivity `createComposeRule()` launches into. Must be
+    // `debugImplementation` (the app itself), not `androidTestImplementation` (the separate test
+    // APK) -- the instrumented app process (com.crichere.app) is what resolves the launch intent,
+    // so the Activity has to live in *its* manifest. Got this wrong on the first attempt: with it
+    // on androidTestImplementation, the real device failed with "Intent in process
+    // com.crichere.app resolved to different process com.crichere.app.test".
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.10.4")
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestUtil(libs.androidx.test.orchestrator)
 }

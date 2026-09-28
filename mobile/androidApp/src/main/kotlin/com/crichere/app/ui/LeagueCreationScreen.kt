@@ -52,8 +52,12 @@ import java.time.ZoneOffset
 
 /** Resolves [LeagueCreationViewModel] via Koin, parameterized on [editingLeagueId] -- `null` is create mode. */
 @Composable
-internal fun LeagueCreationRoute(editingLeagueId: String?, onDone: (String) -> Unit, onCancel: () -> Unit) {
-    val viewModel: LeagueCreationViewModel = koinViewModel(key = "league-creation:$editingLeagueId") { parametersOf(editingLeagueId) }
+internal fun LeagueCreationRoute(
+    editingLeagueId: String?,
+    onDone: (String) -> Unit,
+    onCancel: () -> Unit,
+    viewModel: LeagueCreationViewModel = koinViewModel(key = "league-creation:$editingLeagueId") { parametersOf(editingLeagueId) },
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {

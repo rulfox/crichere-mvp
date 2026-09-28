@@ -2,7 +2,7 @@ package com.crichere.app.league
 
 import com.crichere.app.upload.PhotoUploadInfoDto
 
-/** In-memory [FranchiseRepository] test double -- `commonTest` has no real backend to hit. */
+/** In-memory [FranchiseRepository] test double -- no real backend to hit in tests. */
 class FakeFranchiseRepository : FranchiseRepository {
 
     var nextClaimed: LeagueFranchiseDto? = null

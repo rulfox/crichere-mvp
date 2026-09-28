@@ -1,0 +1,68 @@
+package com.crichere.app.ui
+
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.crichere.app.auth.AuthResult
+import com.crichere.app.auth.FakeAuthRepository
+import com.crichere.app.auth.OtpVerifyViewModel
+import org.junit.Rule
+import org.junit.Test
+
+class OtpVerifyScreenTest {
+
+    @get:Rule
+    val composeRule = createComposeRule()
+
+    @Test
+    fun enteringTheCorrectSixDigitCodeExchangesASession() {
+        val authRepository = FakeAuthRepository().apply {
+            nextVerifyOtpResult = Result.success("firebase-id-token")
+            nextExchangeSessionResult = AuthResult(
+                userId = "user-1",
+                accessToken = "access-1",
+                accessTokenExpiresAt = "2026-10-01T00:00:00Z",
+                refreshToken = "refresh-1",
+                profileComplete = true,
+            )
+        }
+        val viewModel = OtpVerifyViewModel(
+            phoneNumber = "+919876543210",
+            initialVerificationId = "verification-1",
+            initialResendToken = null,
+            authRepository = authRepository,
+        )
+
+        composeRule.setContent { OtpVerifyScreen(viewModel) }
+
+        composeRule.onNodeWithText("6-digit code").performTextInput("123456")
+        composeRule.onNodeWithText("Verify").performClick()
+        composeRule.waitForIdle()
+
+        assert(authRepository.verifyOtpCalls == listOf("verification-1" to "123456")) {
+            "expected verifyOtp(verification-1, 123456), got ${authRepository.verifyOtpCalls}"
+        }
+        assert(authRepository.exchangeSessionCalls == listOf("firebase-id-token"))
+    }
+
+    @Test
+    fun aShortCodeIsRejectedWithoutCallingVerifyOtp() {
+        val authRepository = FakeAuthRepository()
+        val viewModel = OtpVerifyViewModel(
+            phoneNumber = "+919876543210",
+            initialVerificationId = "verification-1",
+            initialResendToken = null,
+            authRepository = authRepository,
+        )
+
+        composeRule.setContent { OtpVerifyScreen(viewModel) }
+
+        composeRule.onNodeWithText("6-digit code").performTextInput("123")
+        composeRule.onNodeWithText("Verify").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Enter the 6-digit code.").assertExists()
+        assert(authRepository.verifyOtpCalls.isEmpty())
+    }
+}

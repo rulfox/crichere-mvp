@@ -1,6 +1,6 @@
 package com.crichere.app.reference
 
-/** In-memory [ReferenceRepository] test double -- `commonTest` has no real backend to hit. */
+/** In-memory [ReferenceRepository] test double -- no real backend to hit in tests. */
 class FakeReferenceRepository(
     var states: List<StateDto> = emptyList(),
     var districtsByStateCode: Map<String, List<DistrictDto>> = emptyMap(),

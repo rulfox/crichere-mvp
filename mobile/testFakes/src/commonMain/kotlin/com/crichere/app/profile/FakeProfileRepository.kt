@@ -3,7 +3,7 @@ package com.crichere.app.profile
 import com.crichere.app.upload.PhotoUploadInfoDto
 import kotlinx.coroutines.delay
 
-/** In-memory [ProfileRepository] test double -- `commonTest` has no real backend/S3 to hit. */
+/** In-memory [ProfileRepository] test double -- no real backend/S3 to hit in tests. */
 class FakeProfileRepository(
     var profile: ProfileDto = ProfileDto(userId = "11111111-1111-1111-1111-111111111111"),
 ) : ProfileRepository {

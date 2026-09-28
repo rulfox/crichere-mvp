@@ -50,8 +50,8 @@ internal fun LeagueDetailRoute(
     onAuctionSettings: (String) -> Unit,
     onAuctionLive: (String) -> Unit,
     onManageRoles: (String) -> Unit,
+    viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) },
 ) {
-    val viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // The ViewModel survives leaving and re-entering this screen for the same leagueId (see its

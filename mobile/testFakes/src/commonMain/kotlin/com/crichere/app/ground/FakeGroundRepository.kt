@@ -1,6 +1,6 @@
 package com.crichere.app.ground
 
-/** In-memory [GroundRepository] test double -- `commonTest` has no real backend to hit. */
+/** In-memory [GroundRepository] test double -- no real backend to hit in tests. */
 class FakeGroundRepository(
     var searchResults: List<GroundDto> = emptyList(),
 ) : GroundRepository {

@@ -68,6 +68,9 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.koin.test)
+            // Fake*Repository test doubles, shared with androidApp's instrumented tests -- see
+            // testFakes/build.gradle.kts for why this lives in its own module rather than here.
+            implementation(project(":testFakes"))
         }
 
         androidMain.dependencies {

@@ -3,7 +3,7 @@ package com.crichere.app.league
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-/** In-memory [AuctionRepository] test double -- `commonTest` has no real backend/SSE to hit. */
+/** In-memory [AuctionRepository] test double -- no real backend/SSE to hit in tests. */
 class FakeAuctionRepository : AuctionRepository {
 
     var nextState: AuctionStateDto? = null

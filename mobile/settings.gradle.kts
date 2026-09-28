@@ -18,3 +18,4 @@ rootProject.name = "crichere-mobile"
 
 include(":shared")
 include(":androidApp")
+include(":testFakes")

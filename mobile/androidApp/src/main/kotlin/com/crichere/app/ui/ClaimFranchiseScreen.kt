@@ -33,8 +33,12 @@ import org.koin.core.parameter.parametersOf
 
 /** Resolves [ClaimFranchiseViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.ClaimFranchiseFlow`. */
 @Composable
-internal fun ClaimFranchiseRoute(leagueId: String, onDone: () -> Unit, onCancel: () -> Unit) {
-    val viewModel: ClaimFranchiseViewModel = koinViewModel(key = "claim-franchise:$leagueId") { parametersOf(leagueId) }
+internal fun ClaimFranchiseRoute(
+    leagueId: String,
+    onDone: () -> Unit,
+    onCancel: () -> Unit,
+    viewModel: ClaimFranchiseViewModel = koinViewModel(key = "claim-franchise:$leagueId") { parametersOf(leagueId) },
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.retry() }

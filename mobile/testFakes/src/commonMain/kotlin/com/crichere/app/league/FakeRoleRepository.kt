@@ -1,6 +1,6 @@
 package com.crichere.app.league
 
-/** In-memory [RoleRepository] test double -- `commonTest` has no real backend to hit. */
+/** In-memory [RoleRepository] test double -- no real backend to hit in tests. */
 class FakeRoleRepository : RoleRepository {
 
     var nextLookupResult: RoleLookupResultDto? = null

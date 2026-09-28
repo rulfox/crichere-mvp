@@ -26,8 +26,11 @@ import org.koin.core.parameter.parametersOf
 
 /** Resolves [AuctionSettingsViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.AuctionSettings`. */
 @Composable
-internal fun AuctionSettingsRoute(leagueId: String, onBack: () -> Unit) {
-    val viewModel: AuctionSettingsViewModel = koinViewModel(key = "auction-settings:$leagueId") { parametersOf(leagueId) }
+internal fun AuctionSettingsRoute(
+    leagueId: String,
+    onBack: () -> Unit,
+    viewModel: AuctionSettingsViewModel = koinViewModel(key = "auction-settings:$leagueId") { parametersOf(leagueId) },
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.retry() }

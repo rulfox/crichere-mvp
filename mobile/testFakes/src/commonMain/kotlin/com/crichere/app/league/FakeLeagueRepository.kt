@@ -3,7 +3,7 @@ package com.crichere.app.league
 import com.crichere.app.upload.PhotoUploadInfoDto
 import kotlinx.coroutines.delay
 
-/** In-memory [LeagueRepository] test double -- `commonTest` has no real backend/S3 to hit. */
+/** In-memory [LeagueRepository] test double -- no real backend to hit in tests. */
 class FakeLeagueRepository(
     var leaguesByArea: List<LeagueDto> = emptyList(),
     var leaguesNearest: List<LeagueDto> = emptyList(),

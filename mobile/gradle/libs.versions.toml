@@ -22,6 +22,13 @@ robolectric = "4.16"
 kotlinxCoroutinesTest = "1.10.2"
 junit4 = "4.13.2"
 androidxTestCore = "1.7.0"
+# Android instrumented UI tests (Compose UI Testing + Android Test Orchestrator), checked against
+# live sources (developer.android.com/jetpack/androidx/releases/test) 2026-09-28, same precedent
+# as every other version in this file.
+androidxTestRunner = "1.7.0"
+androidxTestRules = "1.7.0"
+androidxTestExtJunit = "1.2.1"
+androidxTestOrchestrator = "1.6.1"
 # Firebase BOM + google-services plugin, checked against live sources (mvnrepository.com,
 # firebase.google.com/support/release-notes/android) on 2026-09-03, same as Task 5's precedent.
 # Note: `firebase-auth-ktx` (named in this task's brief) no longer exists as of BOM 34.0.0
@@ -74,6 +81,10 @@ androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTestRules" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+androidx-test-orchestrator = { module = "androidx.test:orchestrator", version.ref = "androidxTestOrchestrator" }
 
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }

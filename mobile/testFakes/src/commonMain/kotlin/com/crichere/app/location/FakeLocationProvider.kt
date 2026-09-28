@@ -1,9 +1,6 @@
 package com.crichere.app.location
 
-/**
- * In-memory [LocationProvider] test double -- per this task's Testing Strategy, GPS-match logic
- * must be unit-testable "using a fake `LocationProvider`, not a real one".
- */
+/** In-memory [LocationProvider] test double -- no real GPS/geocoder to hit in tests. */
 class FakeLocationProvider(
     var location: GeoPoint? = null,
     var geocoded: GeocodedLocation? = null,

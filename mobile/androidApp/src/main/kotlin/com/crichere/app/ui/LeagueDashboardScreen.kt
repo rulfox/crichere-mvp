@@ -35,8 +35,11 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /** Resolves [LeagueDashboardViewModel] via Koin -- the app's new post-login landing content (see `AuthNavHost`'s `Main` destination). */
 @Composable
-internal fun LeagueDashboardRoute(onOpenLeague: (String) -> Unit, onCreateLeague: () -> Unit) {
-    val viewModel: LeagueDashboardViewModel = koinViewModel()
+internal fun LeagueDashboardRoute(
+    onOpenLeague: (String) -> Unit,
+    onCreateLeague: () -> Unit,
+    viewModel: LeagueDashboardViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 

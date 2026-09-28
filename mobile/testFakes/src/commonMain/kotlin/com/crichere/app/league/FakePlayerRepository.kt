@@ -1,6 +1,6 @@
 package com.crichere.app.league
 
-/** In-memory [PlayerRepository] test double -- `commonTest` has no real backend to hit. */
+/** In-memory [PlayerRepository] test double -- no real backend to hit in tests. */
 class FakePlayerRepository : PlayerRepository {
 
     var nextJoined: LeaguePlayerDto? = null

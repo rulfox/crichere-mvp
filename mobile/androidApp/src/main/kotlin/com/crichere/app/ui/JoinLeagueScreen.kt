@@ -32,8 +32,12 @@ import org.koin.core.parameter.parametersOf
 
 /** Resolves [JoinLeagueViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.JoinLeagueFlow`. */
 @Composable
-internal fun JoinLeagueRoute(leagueId: String, onDone: () -> Unit, onCancel: () -> Unit) {
-    val viewModel: JoinLeagueViewModel = koinViewModel(key = "join-league:$leagueId") { parametersOf(leagueId) }
+internal fun JoinLeagueRoute(
+    leagueId: String,
+    onDone: () -> Unit,
+    onCancel: () -> Unit,
+    viewModel: JoinLeagueViewModel = koinViewModel(key = "join-league:$leagueId") { parametersOf(leagueId) },
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.retry() }
