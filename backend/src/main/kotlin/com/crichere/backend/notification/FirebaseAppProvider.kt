@@ -6,7 +6,9 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.io.ByteArrayInputStream
 import java.io.FileInputStream
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -29,18 +31,19 @@ class FirebaseAppProvider(private val properties: FirebaseProperties) {
     val app: FirebaseApp by lazy { initialiseFirebaseApp() }
 
     private fun initialiseFirebaseApp(): FirebaseApp {
+        // Prefer the JSON content directly (Railway: the value lives entirely in an env var --
+        // no filesystem write step to get wrong). Fall back to a file path for local dev, where
+        // the service account is mounted directly on disk.
+        val json = properties.serviceAccountJson
         val path = properties.serviceAccountPath
-        check(path.isNotBlank()) {
-            "crichere.firebase.service-account-path is not configured; set FIREBASE_SERVICE_ACCOUNT_PATH"
-        }
-        check(Files.isReadable(Path.of(path))) {
-            "Firebase service account file is missing or unreadable at the configured path"
+        check(json.isNotBlank() || path.isNotBlank()) {
+            "Neither crichere.firebase.service-account-json nor service-account-path is configured"
         }
 
         val existing = FirebaseApp.getApps().firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
         val app =
             existing
-                ?: FileInputStream(path).use { stream ->
+                ?: credentialsStream(json, path).use { stream ->
                     FirebaseApp.initializeApp(
                         FirebaseOptions.builder()
                             .setCredentials(GoogleCredentials.fromStream(stream))
@@ -50,4 +53,14 @@ class FirebaseAppProvider(private val properties: FirebaseProperties) {
         log.info("Firebase Admin SDK initialised")
         return app
     }
+
+    private fun credentialsStream(json: String, path: String) =
+        if (json.isNotBlank()) {
+            ByteArrayInputStream(json.toByteArray(StandardCharsets.UTF_8))
+        } else {
+            check(Files.isReadable(Path.of(path))) {
+                "Firebase service account file is missing or unreadable at the configured path"
+            }
+            FileInputStream(path)
+        }
 }

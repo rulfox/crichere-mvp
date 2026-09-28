@@ -27,7 +27,9 @@ crichere:
   firebase:
     # Blank in dev/CI, where no service account exists yet. The Admin SDK is initialised lazily,
     # so a blank value does not stop the application from starting -- only ID-token
-    # verification fails, and only when it is actually attempted.
+    # verification fails, and only when it is actually attempted. service-account-json (the
+    # content itself) takes priority over service-account-path (a file on disk) when both are set.
+    service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
     service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
   aws:
     s3:

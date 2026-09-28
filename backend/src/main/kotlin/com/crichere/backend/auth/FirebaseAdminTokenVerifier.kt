@@ -14,8 +14,15 @@ import org.springframework.stereotype.Component
 @ConfigurationProperties(prefix = "crichere.firebase")
 data class FirebaseProperties(
     /**
-     * Filesystem path to the Firebase service-account JSON. Blank in dev/CI, where no
-     * credentials exist yet -- see [FirebaseAdminTokenVerifier] for why that is not fatal.
+     * The Firebase service-account JSON content itself (not a path). Preferred over
+     * [serviceAccountPath] when set -- see [com.crichere.backend.notification.FirebaseAppProvider].
+     * Blank in dev/CI, where no credentials exist yet -- see [FirebaseAdminTokenVerifier] for why
+     * that is not fatal.
+     */
+    val serviceAccountJson: String = "",
+    /**
+     * Filesystem path to the Firebase service-account JSON, for local dev where the file is
+     * mounted directly. Blank in dev/CI, where no credentials exist yet.
      */
     val serviceAccountPath: String = "",
 )
