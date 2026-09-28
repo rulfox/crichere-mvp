@@ -5,9 +5,12 @@ import com.crichere.backend.league.LeagueFollowRepository
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.toSummaryResponse
 import com.crichere.backend.me.dto.MyLeaguesResponse
+import com.crichere.backend.notification.DeviceTokenEntity
+import com.crichere.backend.notification.DeviceTokenRepository
 import com.crichere.backend.player.PlayerRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -22,6 +25,7 @@ class MeService(
     private val playerRepository: PlayerRepository,
     private val franchiseRepository: FranchiseRepository,
     private val leagueFollowRepository: LeagueFollowRepository,
+    private val deviceTokenRepository: DeviceTokenRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -45,5 +49,29 @@ class MeService(
             franchiseOwner = franchiseOwner.map { it.toSummaryResponse() },
             following = following.map { it.toSummaryResponse() },
         )
+    }
+
+    /**
+     * `POST /me/device-tokens` (docs/PHASE8.md). Upserts by [token] alone, reassigning it onto
+     * [callerId] regardless of who it belonged to before -- see that doc's Decisions Made on why
+     * this is the correct behavior when a different account signs into the same device.
+     */
+    @Transactional
+    fun registerDeviceToken(callerId: UUID, token: String, platform: String) {
+        val existing = deviceTokenRepository.findByToken(token)
+        if (existing != null) {
+            existing.userId = callerId
+            existing.platform = platform
+            existing.updatedAt = Instant.now()
+            deviceTokenRepository.save(existing)
+        } else {
+            deviceTokenRepository.save(DeviceTokenEntity(userId = callerId, token = token, platform = platform))
+        }
+    }
+
+    /** `POST /me/device-tokens/unregister`. Scoped to the caller's own token -- see [DeviceTokenRepository.deleteByTokenAndUserId]. */
+    @Transactional
+    fun unregisterDeviceToken(callerId: UUID, token: String) {
+        deviceTokenRepository.deleteByTokenAndUserId(token, callerId)
     }
 }

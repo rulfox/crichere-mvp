@@ -6,9 +6,11 @@ import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.profile.ProfileRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.LocalDate
@@ -52,9 +54,10 @@ class RoleServiceTest {
         leagueAuthorization,
         leagueRoleRepository,
     )
+    private val fcmSender = mockk<FcmSender>(relaxed = true)
     private val service = RoleService(
         leagueRepository, leagueRoleRepository, leagueAuthorization, leagueService,
-        userRepository, profileRepository, phoneCryptoService, contentRateLimiter,
+        userRepository, profileRepository, phoneCryptoService, contentRateLimiter, fcmSender,
     )
 
     private val organizerId = UUID.randomUUID()
@@ -117,6 +120,19 @@ class RoleServiceTest {
     }
 
     @Test
+    fun `grant notifies the target user`() {
+        givenLeague()
+        val targetId = UUID.randomUUID()
+        every { leagueRoleRepository.existsByLeagueIdAndUserIdAndRevokedAtIsNull(leagueId, targetId) } returns false
+        every { leagueRoleRepository.save(any()) } answers { firstArg() }
+        every { leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId) } returns emptyList()
+
+        service.grant(leagueId, organizerId, targetId)
+
+        verify { fcmSender.sendToUser(targetId, "Test League", any(), any()) }
+    }
+
+    @Test
     fun `grant rejects a duplicate active grant`() {
         givenLeague()
         val targetId = UUID.randomUUID()
@@ -136,5 +152,36 @@ class RoleServiceTest {
         every { leagueRoleRepository.findByIdAndLeagueId(roleId, leagueId) } returns Optional.of(revokedRole)
 
         assertFailsWith<RoleNotFoundException> { service.revoke(leagueId, organizerId, roleId) }
+    }
+
+    @Test
+    fun `revoke notifies the revoked user when the organizer revokes it`() {
+        givenLeague()
+        val roleId = UUID.randomUUID()
+        val delegateId = UUID.randomUUID()
+        val role = LeagueRoleEntity(id = roleId, leagueId = leagueId, userId = delegateId, role = LeagueRole.CO_ORGANIZER, grantedByUserId = organizerId)
+        every { leagueRoleRepository.findByIdAndLeagueId(roleId, leagueId) } returns Optional.of(role)
+        every { leagueRoleRepository.save(any()) } answers { firstArg() }
+        every { leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId) } returns emptyList()
+
+        service.revoke(leagueId, organizerId, roleId)
+
+        verify { fcmSender.sendToUser(delegateId, "Test League", any(), any()) }
+    }
+
+    @Test
+    fun `revoke does not notify anyone on a self-revoke`() {
+        givenLeague()
+        val roleId = UUID.randomUUID()
+        val delegateId = UUID.randomUUID()
+        val role = LeagueRoleEntity(id = roleId, leagueId = leagueId, userId = delegateId, role = LeagueRole.CO_ORGANIZER, grantedByUserId = organizerId)
+        every { leagueRoleRepository.existsByLeagueIdAndUserIdAndRevokedAtIsNull(leagueId, delegateId) } returns true
+        every { leagueRoleRepository.findByIdAndLeagueId(roleId, leagueId) } returns Optional.of(role)
+        every { leagueRoleRepository.save(any()) } answers { firstArg() }
+        every { leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId) } returns emptyList()
+
+        service.revoke(leagueId, delegateId, roleId)
+
+        verify(exactly = 0) { fcmSender.sendToUser(delegateId, any(), any(), any()) }
     }
 }

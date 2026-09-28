@@ -10,12 +10,14 @@ import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.league.NotOrganizerException
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.player.dto.LeaguePlayerJoinRequest
 import com.crichere.backend.profile.ProfileRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.Duration
@@ -40,7 +42,8 @@ class PlayerServiceTest {
             every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
         },
     )
-    private val service = PlayerService(playerRepository, leagueRepository, profileRepository, contentRateLimiter, leagueAuthorization)
+    private val fcmSender = mockk<FcmSender>(relaxed = true)
+    private val service = PlayerService(playerRepository, leagueRepository, profileRepository, contentRateLimiter, leagueAuthorization, fcmSender)
 
     private val organizerId: UUID = UUID.randomUUID()
     private val playerId: UUID = UUID.randomUUID()
@@ -153,6 +156,18 @@ class PlayerServiceTest {
     }
 
     @Test
+    fun `requestLeave notifies the organizer`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league())
+        every { playerRepository.findById(entityId) } returns
+            Optional.of(PlayerEntity(id = entityId, leagueId = leagueId, userId = playerId))
+        every { playerRepository.save(any()) } answers { firstArg() }
+
+        service.requestLeave(leagueId, entityId, playerId)
+
+        verify { fcmSender.sendToUser(organizerId, "Test League", any(), any()) }
+    }
+
+    @Test
     fun `approveLeave requires organizer`() {
         every { leagueRepository.findById(leagueId) } returns Optional.of(league())
 
@@ -183,6 +198,7 @@ class PlayerServiceTest {
         service.approveLeave(leagueId, entityId, organizerId)
 
         assertEquals(true, saved.captured.removedAt != null)
+        verify { fcmSender.sendToUser(playerId, "Test League", any(), any()) }
     }
 
     @Test

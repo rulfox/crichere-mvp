@@ -91,6 +91,70 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun `exchangeSession registers the device token when one is available`() = runTest {
+        val httpClient = mockHttpClient { request ->
+            respond(
+                content = authResponseJson(profileComplete = false),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val deviceTokenRepository = FakeDeviceTokenRepository()
+        val repository = KtorAuthRepository(
+            httpClient, FakePhoneAuthClient(), FakeSecureStorage(),
+            authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } },
+            deviceTokenProvider = FakeDeviceTokenProvider("fcm-token-a"),
+            deviceTokenRepository = deviceTokenRepository,
+        )
+
+        repository.exchangeSession("real-firebase-id-token")
+
+        assertEquals(listOf("fcm-token-a" to "ANDROID"), deviceTokenRepository.registerCalls)
+    }
+
+    @Test
+    fun `exchangeSession with no device token available registers nothing`() = runTest {
+        val httpClient = mockHttpClient { request ->
+            respond(
+                content = authResponseJson(profileComplete = false),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val deviceTokenRepository = FakeDeviceTokenRepository()
+        val repository = KtorAuthRepository(
+            httpClient, FakePhoneAuthClient(), FakeSecureStorage(),
+            authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } },
+            deviceTokenProvider = FakeDeviceTokenProvider(null),
+            deviceTokenRepository = deviceTokenRepository,
+        )
+
+        repository.exchangeSession("real-firebase-id-token")
+
+        assertTrue(deviceTokenRepository.registerCalls.isEmpty())
+    }
+
+    @Test
+    fun `logout unregisters the device token before clearing local state`() = runTest {
+        val storage = FakeSecureStorage(mapOf(SecureStorageKeys.ACCESS_TOKEN to "access", SecureStorageKeys.REFRESH_TOKEN to "refresh"))
+        val httpClient = mockHttpClient { request ->
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+        val deviceTokenRepository = FakeDeviceTokenRepository()
+        val repository = KtorAuthRepository(
+            httpClient, FakePhoneAuthClient(), storage,
+            authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } },
+            deviceTokenProvider = FakeDeviceTokenProvider("fcm-token-a"),
+            deviceTokenRepository = deviceTokenRepository,
+        )
+
+        repository.logout()
+
+        assertEquals(listOf("fcm-token-a"), deviceTokenRepository.unregisterCalls)
+        assertNull(storage.snapshot()[SecureStorageKeys.ACCESS_TOKEN])
+    }
+
+    @Test
     fun `exchangeSession clears the authenticated client's cached bearer token so the next request uses the new one`() = runTest {
         // Reproduces a real on-device bug: Ktor's `bearer` auth provider caches whatever
         // loadTokens() returned the first time it was needed and does not re-read it before every

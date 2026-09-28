@@ -6,10 +6,14 @@ import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueFollowEntity
 import com.crichere.backend.league.LeagueFollowRepository
 import com.crichere.backend.league.LeagueRepository
+import com.crichere.backend.notification.DeviceTokenEntity
+import com.crichere.backend.notification.DeviceTokenRepository
 import com.crichere.backend.player.PlayerEntity
 import com.crichere.backend.player.PlayerRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import java.util.Optional
@@ -23,7 +27,8 @@ class MeServiceTest {
     private val playerRepository = mockk<PlayerRepository>()
     private val franchiseRepository = mockk<FranchiseRepository>()
     private val leagueFollowRepository = mockk<LeagueFollowRepository>()
-    private val service = MeService(leagueRepository, playerRepository, franchiseRepository, leagueFollowRepository)
+    private val deviceTokenRepository = mockk<DeviceTokenRepository>()
+    private val service = MeService(leagueRepository, playerRepository, franchiseRepository, leagueFollowRepository, deviceTokenRepository)
 
     private val callerId: UUID = UUID.randomUUID()
 
@@ -97,5 +102,42 @@ class MeServiceTest {
         val result = service.getMyLeagues(callerId)
 
         assertEquals(listOf(leagueId), result.franchiseOwner.map { it.id })
+    }
+
+    @Test
+    fun `registering a new token inserts a row owned by the caller`() {
+        every { deviceTokenRepository.findByToken("token-a") } returns null
+        val saved = slot<DeviceTokenEntity>()
+        every { deviceTokenRepository.save(capture(saved)) } answers { firstArg() }
+
+        service.registerDeviceToken(callerId, "token-a", "ANDROID")
+
+        assertEquals(callerId, saved.captured.userId)
+        assertEquals("token-a", saved.captured.token)
+    }
+
+    @Test
+    fun `registering an already-known token reassigns it to the new caller -- switching accounts on the same device`() {
+        // Reproduces this app's own tested behavior: signing out and into a different account on
+        // the same physical device must move that device's notifications to the new account, not
+        // leave them pointed at whoever was previously signed in (see docs/PHASE8.md).
+        val previousOwnerId = UUID.randomUUID()
+        val existing = DeviceTokenEntity(userId = previousOwnerId, token = "token-a", platform = "ANDROID")
+        every { deviceTokenRepository.findByToken("token-a") } returns existing
+        val saved = slot<DeviceTokenEntity>()
+        every { deviceTokenRepository.save(capture(saved)) } answers { firstArg() }
+
+        service.registerDeviceToken(callerId, "token-a", "ANDROID")
+
+        assertEquals(callerId, saved.captured.userId)
+    }
+
+    @Test
+    fun `unregistering a token only ever removes the caller's own`() {
+        every { deviceTokenRepository.deleteByTokenAndUserId("token-a", callerId) } returns Unit
+
+        service.unregisterDeviceToken(callerId, "token-a")
+
+        verify { deviceTokenRepository.deleteByTokenAndUserId("token-a", callerId) }
     }
 }

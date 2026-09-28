@@ -64,6 +64,7 @@ Every `PHASEn.md` follows this structure, in order:
 - [Phase 5](PHASE5.md) — the live auction engine itself: real-time bidding (SSE), undo/override, unsold-retry rounds, post-auction squad/results views. **Status: implemented (backend + Android, tested and manually verified on-device), iOS screen authored but unwired.**
 - [Phase 6](PHASE6.md) — public web viewer: a no-login spectator page per league, consuming the existing public auction SSE stream. **Status: implemented (backend + web-viewer + mobile share addition), not yet deployed to Railway.**
 - [Phase 7](PHASE7.md) — co-organizer role delegation: grant full organizer authority to another registered user by phone number, multiple per league, revocable anytime. **Status: implemented (backend + Android, tested and manually verified on-device), iOS screen authored but unwired.**
+- [Phase 8](PHASE8.md) — push notifications (FCM, Android): auction start, sold/unsold, leave request/approval, role grant/revoke. **Status: implemented (backend + Android), tested and verified on-device with a real FCM round trip.**
 
 ## Open Questions
 

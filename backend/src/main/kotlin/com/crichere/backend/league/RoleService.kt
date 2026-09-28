@@ -6,6 +6,7 @@ import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.RoleLookupResponse
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.profile.ProfileRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,6 +30,7 @@ class RoleService(
     private val profileRepository: ProfileRepository,
     private val phoneCryptoService: PhoneCryptoService,
     private val contentRateLimiter: ContentRateLimiter,
+    private val fcmSender: FcmSender,
 ) {
 
     /**
@@ -83,7 +85,10 @@ class RoleService(
                 grantedByUserId = callerId,
             ),
         )
-        return leagueService.getLeague(leagueId, callerId)
+        val response = leagueService.getLeague(leagueId, callerId)
+
+        fcmSender.sendToUser(targetUserId, league.name, "You're now a co-organizer of ${league.name}", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
@@ -105,7 +110,14 @@ class RoleService(
         if (role.revokedAt != null) throw RoleNotFoundException()
         role.revokedAt = Instant.now()
         leagueRoleRepository.save(role)
-        return leagueService.getLeague(leagueId, callerId)
+        val response = leagueService.getLeague(leagueId, callerId)
+
+        // No point notifying someone of their own action -- see docs/PHASE7.md's "a co-organizer
+        // can revoke their own grant" decision.
+        if (role.userId != callerId) {
+            fcmSender.sendToUser(role.userId, league.name, "Your co-organizer access to ${league.name} was revoked", mapOf("leagueId" to leagueId.toString()))
+        }
+        return response
     }
 
     private fun findLeagueOrThrow(leagueId: UUID): LeagueEntity =

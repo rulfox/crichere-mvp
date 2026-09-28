@@ -11,6 +11,7 @@ import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.league.requireAuctionNotStarted
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.dto.LeaguePlayerJoinRequest
 import com.crichere.backend.player.dto.LeaguePlayerResponse
 import com.crichere.backend.profile.ProfileRepository
@@ -33,6 +34,7 @@ class PlayerService(
     private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val leagueAuthorization: LeagueAuthorization,
+    private val fcmSender: FcmSender,
 ) {
 
     /**
@@ -118,7 +120,11 @@ class PlayerService(
         val player = findPlayerOrThrow(leagueId, playerId)
         if (player.userId != callerId) throw NotPlayerOwnerException()
         player.leaveRequestedAt = Instant.now()
-        return playerRepository.save(player).toResponse(callerId, league.organizerUserId)
+        val response = playerRepository.save(player).toResponse(callerId, league.organizerUserId)
+
+        val name = profileRepository.findById(callerId).orElse(null)?.name ?: "A player"
+        fcmSender.sendToUser(league.organizerUserId, league.name, "$name requested to leave", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
@@ -138,7 +144,10 @@ class PlayerService(
         val player = findPlayerOrThrow(leagueId, playerId)
         if (player.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         player.removedAt = Instant.now()
-        return playerRepository.save(player).toResponse(callerId, league.organizerUserId)
+        val response = playerRepository.save(player).toResponse(callerId, league.organizerUserId)
+
+        fcmSender.sendToUser(player.userId, league.name, "Your request to leave was approved", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
@@ -156,7 +165,10 @@ class PlayerService(
         val player = findPlayerOrThrow(leagueId, playerId)
         if (player.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         player.leaveRequestedAt = null
-        return playerRepository.save(player).toResponse(callerId, league.organizerUserId)
+        val response = playerRepository.save(player).toResponse(callerId, league.organizerUserId)
+
+        fcmSender.sendToUser(player.userId, league.name, "Your request to leave was dismissed", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     private fun findLeagueOrThrow(leagueId: UUID): LeagueEntity =

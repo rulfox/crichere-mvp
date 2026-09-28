@@ -31,6 +31,8 @@ import com.crichere.app.league.MyLeaguesViewModel
 import com.crichere.app.league.PlayerRepository
 import com.crichere.app.league.RoleRepository
 import com.crichere.app.network.HttpClientFactory
+import com.crichere.app.notification.DeviceTokenRepository
+import com.crichere.app.notification.KtorDeviceTokenRepository
 import com.crichere.app.profile.KtorProfileRepository
 import com.crichere.app.profile.OwnProfileViewModel
 import com.crichere.app.profile.ProfileRepository
@@ -90,6 +92,8 @@ val sharedModule: Module = module {
             phoneAuthClient = get(),
             secureStorage = get(),
             authenticatedHttpClientProvider = { get<HttpClient>() },
+            deviceTokenProvider = get(),
+            deviceTokenRepository = get(),
         )
     }
 
@@ -110,6 +114,8 @@ val sharedModule: Module = module {
     single<MyLeaguesRepository> { KtorMyLeaguesRepository(httpClient = get()) }
 
     single<RoleRepository> { KtorRoleRepository(httpClient = get()) }
+
+    single<DeviceTokenRepository> { KtorDeviceTokenRepository(httpClient = get()) }
 
     factory { ReferenceViewModel(get()) }
     factory { PhoneEntryViewModel(get()) }

@@ -17,6 +17,7 @@ import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.AuctionOutcome
 import com.crichere.backend.player.LeaguePlayerNotFoundException
 import com.crichere.backend.player.PlayerEntity
@@ -43,6 +44,7 @@ class AuctionService(
     private val contentRateLimiter: ContentRateLimiter,
     private val broadcastService: AuctionBroadcastService,
     private val leagueAuthorization: LeagueAuthorization,
+    private val fcmSender: FcmSender,
 ) {
 
     /**
@@ -80,7 +82,18 @@ class AuctionService(
         }
 
         league.auctionStatus = AuctionStatus.IN_PROGRESS
-        return saveAndBroadcast(league)
+        val response = saveAndBroadcast(league)
+        notifyAuctionStarted(leagueId, league.name)
+        return response
+    }
+
+    /** Push notification (docs/PHASE8.md) -- every active player and franchise owner in the league. */
+    private fun notifyAuctionStarted(leagueId: UUID, leagueName: String) {
+        val recipients = playerRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.userId } +
+            franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.ownerUserId }
+        recipients.distinct().forEach { userId ->
+            fcmSender.sendToUser(userId, leagueName, "The auction is live -- come bid!", mapOf("leagueId" to leagueId.toString()))
+        }
     }
 
     /**
@@ -197,7 +210,11 @@ class AuctionService(
         league.auctionCurrentBidAmount = null
         league.auctionCurrentLeadingFranchiseId = null
         completeIfPoolExhausted(league)
-        return saveAndBroadcast(league)
+        val response = saveAndBroadcast(league)
+
+        val franchiseName = franchiseRepository.findById(leadingFranchiseId).orElse(null)?.name ?: "a franchise"
+        fcmSender.sendToUser(player.userId, league.name, "You were sold to $franchiseName for ₹$bidAmount", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
@@ -214,6 +231,7 @@ class AuctionService(
         leagueAuthorization.requireOrganizer(league, callerId)
         requireInProgress(league)
         val playerId = league.auctionCurrentPlayerId ?: throw AuctionNoPlayerOpenException()
+        val player = findPlayerOrThrow(leagueId, playerId)
 
         league.auctionLastActionType = AuctionLastActionType.UNSOLD
         league.auctionLastActionPlayerId = playerId
@@ -221,7 +239,10 @@ class AuctionService(
         league.auctionCurrentPlayerId = null
         league.auctionCurrentBidAmount = null
         league.auctionCurrentLeadingFranchiseId = null
-        return saveAndBroadcast(league)
+        val response = saveAndBroadcast(league)
+
+        fcmSender.sendToUser(player.userId, league.name, "You went unsold -- you're back in the pool", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**

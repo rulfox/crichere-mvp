@@ -68,6 +68,37 @@ class MeFlowIntegrationTest : AbstractWebIntegrationTest {
             .andExpect(jsonPath("$.following[?(@.id=='$followedLeagueId')]").exists())
     }
 
+    @Test
+    fun `registering a device token requires authentication`() {
+        postJson("/api/v1/me/device-tokens", mapOf("token" to "token-a", "platform" to "ANDROID")).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `a device token can be registered, then unregistered by its own owner`() {
+        val token = signInNewUser()
+
+        authedPost(token, "/api/v1/me/device-tokens", mapOf("token" to "device-token-a", "platform" to "ANDROID")).andExpect(status().isNoContent)
+        authedPost(token, "/api/v1/me/device-tokens/unregister", mapOf("token" to "device-token-a")).andExpect(status().isNoContent)
+    }
+
+    @Test
+    fun `registering the same token again just reassigns it to whoever is currently signed in`() {
+        // The same on-device account-switching behavior this app already supports and tests
+        // elsewhere -- see docs/PHASE8.md's Decisions Made.
+        val firstUserToken = signInNewUser()
+        val secondUserToken = signInNewUser()
+
+        authedPost(firstUserToken, "/api/v1/me/device-tokens", mapOf("token" to "shared-device-token", "platform" to "ANDROID")).andExpect(status().isNoContent)
+        authedPost(secondUserToken, "/api/v1/me/device-tokens", mapOf("token" to "shared-device-token", "platform" to "ANDROID")).andExpect(status().isNoContent)
+
+        // Both users get a 204 either way (delete-shaped endpoints are idempotent here, same
+        // posture as everywhere else in this app) -- the actual reassignment behavior (that this
+        // call is now a no-op for the first user, scoped away by deleteByTokenAndUserId) is what
+        // MeServiceTest's unit-level "reassigns it to the new caller" test asserts on directly.
+        authedPost(firstUserToken, "/api/v1/me/device-tokens/unregister", mapOf("token" to "shared-device-token")).andExpect(status().isNoContent)
+        authedPost(secondUserToken, "/api/v1/me/device-tokens/unregister", mapOf("token" to "shared-device-token")).andExpect(status().isNoContent)
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private fun authedGet(token: String, path: String) =

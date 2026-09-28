@@ -1,17 +1,12 @@
 package com.crichere.backend.auth
 
-import com.google.auth.oauth2.GoogleCredentials
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
+import com.crichere.backend.notification.FirebaseAppProvider
 import com.google.firebase.auth.FirebaseAuth
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
-import java.io.FileInputStream
-import java.nio.file.Files
-import java.nio.file.Path
 
 /**
  * Configuration for [FirebaseAdminTokenVerifier].
@@ -40,22 +35,24 @@ class FirebaseConfiguration
  * production, taking every integration test down with it, including tests that have nothing
  * to do with Firebase.
  *
- * So the [FirebaseAuth] handle is built on first use, behind a `lazy` delegate. The bean is
- * always present and the context always starts; a request that actually needs Firebase fails
- * with a 401 (and a logged error) if credentials are absent. That confines the blast radius of
- * a missing credential file to the endpoint that needs it.
+ * So the [FirebaseAuth] handle is built on first use, behind a `lazy` delegate, from the shared
+ * [FirebaseAppProvider] (which does the actual lazy `FirebaseApp` init -- see its own doc; that
+ * logic used to live here directly before docs/PHASE8.md's push-notification sender needed the
+ * same `FirebaseApp`). The bean is always present and the context always starts; a request that
+ * actually needs Firebase fails with a 401 (and a logged error) if credentials are absent. That
+ * confines the blast radius of a missing credential file to the endpoint that needs it.
  *
  * Integration tests replace this bean with a mock of the [FirebaseTokenVerifier] interface, so
  * no test in this codebase ever reaches the real Admin SDK.
  */
 @Component
 class FirebaseAdminTokenVerifier(
-    private val properties: FirebaseProperties,
+    private val firebaseAppProvider: FirebaseAppProvider,
 ) : FirebaseTokenVerifier {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val firebaseAuth: FirebaseAuth by lazy { initialiseFirebaseAuth() }
+    private val firebaseAuth: FirebaseAuth by lazy { FirebaseAuth.getInstance(firebaseAppProvider.app) }
 
     override fun verify(idToken: String): VerifiedFirebaseToken {
         val auth =
@@ -90,28 +87,5 @@ class FirebaseAdminTokenVerifier(
         }
 
         return VerifiedFirebaseToken(uid = decoded.uid, phoneNumber = phoneNumber)
-    }
-
-    private fun initialiseFirebaseAuth(): FirebaseAuth {
-        val path = properties.serviceAccountPath
-        check(path.isNotBlank()) {
-            "crichere.firebase.service-account-path is not configured; set FIREBASE_SERVICE_ACCOUNT_PATH"
-        }
-        check(Files.isReadable(Path.of(path))) {
-            "Firebase service account file is missing or unreadable at the configured path"
-        }
-
-        val existing = FirebaseApp.getApps().firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
-        val app =
-            existing
-                ?: FileInputStream(path).use { stream ->
-                    FirebaseApp.initializeApp(
-                        FirebaseOptions.builder()
-                            .setCredentials(GoogleCredentials.fromStream(stream))
-                            .build(),
-                    )
-                }
-        log.info("Firebase Admin SDK initialised")
-        return FirebaseAuth.getInstance(app)
     }
 }

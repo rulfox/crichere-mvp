@@ -1,5 +1,10 @@
 package com.crichere.app.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crichere.app.auth.AppStartDestination
 import com.crichere.app.auth.AppStartViewModel
@@ -222,6 +229,20 @@ private fun MainRoute(
 ) {
     var destination by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(initialTab)) }
     var screenshotBackTarget by remember { mutableStateOf<MainDestination>(MainDestination.Tabs(initialTab)) }
+
+    // Push notifications (docs/PHASE8.md) -- requested once per app entry into the authenticated
+    // area, not only right after a fresh login: a no-op if already granted or already permanently
+    // denied (Android itself makes repeat requests harmless -- no dialog shows a second time), and
+    // this also catches "granted before, revoked later in system settings" without extra state.
+    val context = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     LaunchedEffect(pendingLeagueId) {
         if (pendingLeagueId != null) {

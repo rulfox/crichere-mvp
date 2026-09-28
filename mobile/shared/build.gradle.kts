@@ -94,6 +94,9 @@ kotlin {
             // `Task<T>.await()` bridges Firebase's Play-Services-`Task`-based callback APIs
             // (`signInWithCredential`, `getIdToken`) into plain suspend functions.
             implementation(libs.kotlinx.coroutines.play.services)
+            // Push notifications (docs/PHASE8.md) -- DeviceToken.android.kt's `actual` reads the
+            // current FCM registration token to hand to KtorAuthRepository. Same BOM as firebase-auth.
+            implementation(libs.firebase.messaging)
         }
 
         val androidUnitTest by getting {

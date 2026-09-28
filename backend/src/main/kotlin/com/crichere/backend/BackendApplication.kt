@@ -3,12 +3,18 @@ package com.crichere.backend
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.time.Clock
 
-/** [EnableScheduling] backs [com.crichere.backend.auction.AuctionBroadcastService]'s SSE heartbeat. */
+/**
+ * [EnableScheduling] backs [com.crichere.backend.auction.AuctionBroadcastService]'s SSE heartbeat.
+ * [EnableAsync] backs [com.crichere.backend.notification.FcmSender] -- a push send must never
+ * block the request thread of the business action it's attached to (see docs/PHASE8.md).
+ */
 @SpringBootApplication
 @EnableScheduling
+@EnableAsync
 class BackendApplication {
 
 	/**

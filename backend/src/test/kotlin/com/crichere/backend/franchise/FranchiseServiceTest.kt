@@ -13,11 +13,13 @@ import com.crichere.backend.league.LeagueNotFoundException
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.league.NotOrganizerException
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.profile.ProfileRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.Duration
@@ -43,7 +45,8 @@ class FranchiseServiceTest {
             every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
         },
     )
-    private val service = FranchiseService(franchiseRepository, leagueRepository, profileRepository, contentRateLimiter, photoUploadService, leagueAuthorization)
+    private val fcmSender = mockk<FcmSender>(relaxed = true)
+    private val service = FranchiseService(franchiseRepository, leagueRepository, profileRepository, contentRateLimiter, photoUploadService, leagueAuthorization, fcmSender)
 
     private val organizerId: UUID = UUID.randomUUID()
     private val ownerId: UUID = UUID.randomUUID()
@@ -145,6 +148,18 @@ class FranchiseServiceTest {
     }
 
     @Test
+    fun `requestLeave notifies the organizer`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league())
+        every { franchiseRepository.findById(entityId) } returns
+            Optional.of(FranchiseEntity(id = entityId, leagueId = leagueId, ownerUserId = ownerId, name = "Chennai Kings"))
+        every { franchiseRepository.save(any()) } answers { firstArg() }
+
+        service.requestLeave(leagueId, entityId, ownerId)
+
+        verify { fcmSender.sendToUser(organizerId, "Test League", match { it.contains("Chennai Kings") }, any()) }
+    }
+
+    @Test
     fun `approveLeave requires a pending leave request`() {
         every { leagueRepository.findById(leagueId) } returns Optional.of(league())
         every { franchiseRepository.findById(entityId) } returns
@@ -153,6 +168,18 @@ class FranchiseServiceTest {
         assertFailsWith<NoLeaveRequestPendingException> {
             service.approveLeave(leagueId, entityId, organizerId)
         }
+    }
+
+    @Test
+    fun `approveLeave notifies the franchise owner`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league())
+        every { franchiseRepository.findById(entityId) } returns
+            Optional.of(FranchiseEntity(id = entityId, leagueId = leagueId, ownerUserId = ownerId, name = "Chennai Kings", leaveRequestedAt = Instant.now()))
+        every { franchiseRepository.save(any()) } answers { firstArg() }
+
+        service.approveLeave(leagueId, entityId, organizerId)
+
+        verify { fcmSender.sendToUser(ownerId, "Test League", any(), any()) }
     }
 
     @Test

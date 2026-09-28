@@ -1,5 +1,7 @@
 package com.crichere.app.auth
 
+import com.crichere.app.notification.DeviceTokenProvider
+import com.crichere.app.notification.DeviceTokenRepository
 import com.crichere.app.storage.SecureStore
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -104,6 +106,16 @@ internal class KtorAuthRepository(
      * the actual organizer's account, with no other visible symptom pointing at the cause.
      */
     private val authenticatedHttpClientProvider: () -> HttpClient,
+    /**
+     * Push notifications (docs/PHASE8.md) -- registered on sign-in, unregistered on sign-out.
+     * Both best-effort; see that doc's Decisions Made. Defaulted to a no-op pair so every existing
+     * call site (this class's own extensive pre-Phase-8 test coverage included) that doesn't care
+     * about push notifications doesn't need updating -- `currentToken()` returning `null` already
+     * means "nothing to register" on a real platform, so a no-op provider is a legitimate,
+     * behavior-preserving default, not a test-only shortcut.
+     */
+    private val deviceTokenProvider: DeviceTokenProvider = NoopDeviceTokenProvider,
+    private val deviceTokenRepository: DeviceTokenRepository = NoopDeviceTokenRepository,
 ) : AuthRepository {
 
     private fun clearCachedBearerToken() {
@@ -130,6 +142,9 @@ internal class KtorAuthRepository(
         // same app process -- so any bearer token Ktor's Auth plugin already has cached must be
         // dropped, not just SecureStore's copy. See [authenticatedHttpClientProvider]'s doc.
         clearCachedBearerToken()
+        // Best-effort, never blocks sign-in on failure -- see docs/PHASE8.md. `null` on iOS (no
+        // FCM wired yet) is a normal, expected outcome, not an error.
+        deviceTokenProvider.currentToken()?.let { deviceTokenRepository.register(it, "ANDROID") }
         return result
     }
 
@@ -162,6 +177,11 @@ internal class KtorAuthRepository(
     }
 
     override suspend fun logout() {
+        // Must run before the bearer token is cleared below -- unregister is itself an
+        // authenticated call (docs/PHASE8.md). Best-effort: a failure here must not block signing
+        // out, same posture as the backend /auth/logout call just below.
+        runCatching { deviceTokenProvider.currentToken()?.let { deviceTokenRepository.unregister(it) } }
+
         val storedRefreshToken = secureStorage.get(SecureStorageKeys.REFRESH_TOKEN)
         if (storedRefreshToken != null) {
             // Best-effort: the backend answers 204 regardless of whether the token existed, and
@@ -189,4 +209,15 @@ internal class KtorAuthRepository(
         secureStorage.set(SecureStorageKeys.REFRESH_TOKEN, result.refreshToken)
         secureStorage.set(SecureStorageKeys.USER_ID, result.userId)
     }
+}
+
+/** See [KtorAuthRepository]'s constructor doc -- the default when a caller doesn't care about push notifications. */
+private object NoopDeviceTokenProvider : DeviceTokenProvider {
+    override suspend fun currentToken(): String? = null
+}
+
+/** Never actually invoked in practice -- [NoopDeviceTokenProvider] always returns `null`, which short-circuits before this would be called. Exists only to satisfy the type. */
+private object NoopDeviceTokenRepository : DeviceTokenRepository {
+    override suspend fun register(token: String, platform: String): Boolean = false
+    override suspend fun unregister(token: String): Boolean = false
 }

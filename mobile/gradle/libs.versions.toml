@@ -77,6 +77,7 @@ androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTes
 
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
 
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }

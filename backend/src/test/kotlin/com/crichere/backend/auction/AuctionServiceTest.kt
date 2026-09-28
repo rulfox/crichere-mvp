@@ -11,6 +11,7 @@ import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.league.NotOrganizerException
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.AuctionOutcome
 import com.crichere.backend.player.PlayerEntity
 import com.crichere.backend.player.PlayerRepository
@@ -20,6 +21,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -39,9 +41,19 @@ class AuctionServiceTest {
         // display -- default to "not found" so tests that don't care about display names don't
         // each need their own stub; tests that do (the id used is one they control) override it.
         every { it.findById(any()) } returns Optional.empty()
+        // notifyAuctionStarted()'s recipient fan-out -- default to "no one else."
+        every { it.findByLeagueIdAndRemovedAtIsNull(any()) } returns emptyList()
+        // unsold()'s own notification lookup (findPlayerOrThrow) -- default to a synthetic player
+        // matching whatever id/league was actually queried, so tests that don't care about player
+        // identity (most of them) don't each need their own stub.
+        every { it.findByIdAndLeagueId(any(), any()) } answers {
+            Optional.of(PlayerEntity(id = firstArg(), leagueId = secondArg(), userId = UUID.randomUUID()))
+        }
     }
     private val franchiseRepository = mockk<FranchiseRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
+        // notifyAuctionStarted()'s recipient fan-out -- default to "no one else."
+        every { it.findByLeagueIdAndRemovedAtIsNull(any()) } returns emptyList()
     }
     private val auctionBidRepository = mockk<AuctionBidRepository>().also {
         // toStateResponse() always looks up the current player's bid ticker -- default to empty
@@ -64,9 +76,10 @@ class AuctionServiceTest {
             every { it.existsByLeagueIdAndUserIdAndRevokedAtIsNull(any(), any()) } returns false
         },
     )
+    private val fcmSender = mockk<FcmSender>(relaxed = true)
     private val service = AuctionService(
         leagueRepository, playerRepository, franchiseRepository, auctionBidRepository,
-        profileRepository, contentRateLimiter, broadcastService, leagueAuthorization,
+        profileRepository, contentRateLimiter, broadcastService, leagueAuthorization, fcmSender,
     )
 
     private val organizerId: UUID = UUID.randomUUID()
@@ -173,6 +186,25 @@ class AuctionServiceTest {
         val result = service.start(leagueId, organizerId)
 
         assertEquals(AuctionStatus.IN_PROGRESS, result.auctionStatus)
+    }
+
+    @Test
+    fun `start notifies every active player and franchise owner in the league`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(status = AuctionStatus.NOT_STARTED, squadMax = 1))
+        every { playerRepository.countByLeagueIdAndRemovedAtIsNull(leagueId) } returns 1L
+        every { franchiseRepository.countByLeagueIdAndRemovedAtIsNull(leagueId) } returns 1L
+        val playerUserId = UUID.randomUUID()
+        val franchiseOwnerId = UUID.randomUUID()
+        every { playerRepository.findByLeagueIdAndRemovedAtIsNull(leagueId) } returns
+            listOf(PlayerEntity(id = playerId, leagueId = leagueId, userId = playerUserId))
+        every { franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId) } returns
+            listOf(FranchiseEntity(id = franchiseId, leagueId = leagueId, ownerUserId = franchiseOwnerId, name = "Chennai Kings"))
+        mockSaves()
+
+        service.start(leagueId, organizerId)
+
+        verify { fcmSender.sendToUser(playerUserId, "Test League", any(), any()) }
+        verify { fcmSender.sendToUser(franchiseOwnerId, "Test League", any(), any()) }
     }
 
     // ---------------------------------------------------------------- nextPlayer
@@ -311,6 +343,22 @@ class AuctionServiceTest {
 
         assertEquals(AuctionStatus.COMPLETED, result.auctionStatus)
         assertNull(result.currentPlayerId)
+    }
+
+    @Test
+    fun `sold notifies the winning player`() {
+        val soldPlayerUserId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns
+            Optional.of(league(currentPlayerId = playerId, currentBidAmount = BigDecimal("100"), currentLeadingFranchiseId = franchiseId))
+        every { playerRepository.findByIdAndLeagueId(playerId, leagueId) } returns
+            Optional.of(PlayerEntity(id = playerId, leagueId = leagueId, userId = soldPlayerUserId))
+        every { playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING) } returns 1L
+        every { franchiseRepository.findById(franchiseId) } returns Optional.of(FranchiseEntity(id = franchiseId, leagueId = leagueId, ownerUserId = UUID.randomUUID(), name = "Chennai Kings"))
+        mockSaves()
+
+        service.sold(leagueId, organizerId)
+
+        verify { fcmSender.sendToUser(soldPlayerUserId, "Test League", match { it.contains("Chennai Kings") }, any()) }
     }
 
     @Test

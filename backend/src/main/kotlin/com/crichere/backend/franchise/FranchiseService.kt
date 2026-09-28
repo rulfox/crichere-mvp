@@ -15,6 +15,7 @@ import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.league.requireAuctionNotStarted
+import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.profile.ProfileRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -36,6 +37,7 @@ class FranchiseService(
     private val contentRateLimiter: ContentRateLimiter,
     private val photoUploadService: PhotoUploadService,
     private val leagueAuthorization: LeagueAuthorization,
+    private val fcmSender: FcmSender,
 ) {
 
     /**
@@ -109,7 +111,10 @@ class FranchiseService(
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.ownerUserId != callerId) throw NotFranchiseOwnerException()
         franchise.leaveRequestedAt = Instant.now()
-        return franchiseRepository.save(franchise).toResponse(callerId, league.organizerUserId)
+        val response = franchiseRepository.save(franchise).toResponse(callerId, league.organizerUserId)
+
+        fcmSender.sendToUser(league.organizerUserId, league.name, "${franchise.name} requested to leave", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
@@ -128,7 +133,10 @@ class FranchiseService(
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         franchise.removedAt = Instant.now()
-        return franchiseRepository.save(franchise).toResponse(callerId, league.organizerUserId)
+        val response = franchiseRepository.save(franchise).toResponse(callerId, league.organizerUserId)
+
+        fcmSender.sendToUser(franchise.ownerUserId, league.name, "Your request to leave was approved", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
@@ -145,7 +153,10 @@ class FranchiseService(
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (franchise.leaveRequestedAt == null) throw NoLeaveRequestPendingException()
         franchise.leaveRequestedAt = null
-        return franchiseRepository.save(franchise).toResponse(callerId, league.organizerUserId)
+        val response = franchiseRepository.save(franchise).toResponse(callerId, league.organizerUserId)
+
+        fcmSender.sendToUser(franchise.ownerUserId, league.name, "Your request to leave was dismissed", mapOf("leagueId" to leagueId.toString()))
+        return response
     }
 
     /**
