@@ -92,3 +92,10 @@ tasks.withType<Test> {
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 	jvmArgs = listOf("-Duser.timezone=UTC")
 }
+
+// Spring Boot's Gradle plugin builds both the executable boot jar and a "-plain.jar" with no
+// main manifest. Railway's Railpack auto-detected deploy command (`java -jar build/libs/*.jar`)
+// globs both and can pick either — disable the plain jar so only the executable one exists.
+tasks.named<Jar>("jar") {
+	enabled = false
+}
