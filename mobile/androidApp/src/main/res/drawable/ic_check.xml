@@ -3,6 +3,9 @@
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
+    <group android:translateY="960">
     <path
-        android:pathData="M378-332l363-363q9-9 21.5-9t21.5 9q9 9 9 21.5t-9 21.5L399-267q-9 9-21 9t-21-9L175-449q-9-9-8.5-21.5T176-492q9-9 21.5-9t21.5 9l159 160Z"/>
+            android:fillColor="#FF000000"
+            android:pathData="M378-332l363-363q9-9 21.5-9t21.5 9q9 9 9 21.5t-9 21.5L399-267q-9 9-21 9t-21-9L175-449q-9-9-8.5-21.5T176-492q9-9 21.5-9t21.5 9l159 160Z"/>
+    </group>
 </vector>

@@ -9,7 +9,6 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,9 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,10 +55,10 @@ import com.crichere.app.R
 import com.crichere.app.auth.PhoneEntryState
 import com.crichere.app.auth.PhoneEntryViewModel
 import com.crichere.app.ui.theme.ArchivoFamily
-import com.crichere.app.ui.theme.CrichereDisabledContainer
 import com.crichere.app.ui.theme.CrichereFieldDisabled
 import com.crichere.app.ui.theme.CrichereInkSubtle
 import com.crichere.app.ui.theme.InstrumentSansFamily
+import com.crichere.app.ui.theme.LocalCrichereExtraColors
 import com.crichere.app.ui.theme.JetBrainsMonoFamily
 
 /**
@@ -73,13 +69,14 @@ import com.crichere.app.ui.theme.JetBrainsMonoFamily
  *
  * The green hero only shows on first launch (empty, unfocused field); once the user engages the
  * field it collapses to a compact wordmark header so the form fits above the keyboard (A1 vs A2-A4).
+ * [showLockoutNotice] is the design's B6: the user was bounced here after 5 wrong OTP attempts.
  */
 @Composable
-fun PhoneEntryScreen(viewModel: PhoneEntryViewModel) {
+fun PhoneEntryScreen(viewModel: PhoneEntryViewModel, showLockoutNotice: Boolean = false) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val showHero = state.phoneNumber.isEmpty() && !isFocused
+    val showHero = state.phoneNumber.isEmpty() && !isFocused && !showLockoutNotice
 
     LightStatusBarIcons(enabled = showHero)
 
@@ -101,10 +98,17 @@ fun PhoneEntryScreen(viewModel: PhoneEntryViewModel) {
                 .padding(bottom = 30.dp),
         ) {
             if (!showHero) {
-                Text(
-                    text = "Crichere",
-                    style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 28.sp),
-                    color = MaterialTheme.colorScheme.primary,
+                CrichereWordmark()
+                Spacer(Modifier.height(14.dp))
+            }
+            if (showLockoutNotice) {
+                NoticeCard(
+                    icon = R.drawable.ic_lock_clock,
+                    title = "Too many incorrect attempts",
+                    body = "For your security, request a new code to continue.",
+                    containerColor = LocalCrichereExtraColors.current.warningContainer,
+                    titleColor = LocalCrichereExtraColors.current.onWarning,
+                    bodyColor = LocalCrichereExtraColors.current.onWarning,
                 )
                 Spacer(Modifier.height(14.dp))
             }
@@ -114,12 +118,14 @@ fun PhoneEntryScreen(viewModel: PhoneEntryViewModel) {
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.height(14.dp))
-            Text(
-                text = "Enter your phone number to receive a verification code.",
-                style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.5.sp, lineHeight = 18.9.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(14.dp))
+            if (!showLockoutNotice) {
+                Text(
+                    text = "Enter your phone number to receive a verification code.",
+                    style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.5.sp, lineHeight = 18.9.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(14.dp))
+            }
 
             PhoneField(state = state, onValueChange = viewModel::onPhoneNumberChanged, interactionSource = interactionSource)
 
@@ -135,10 +141,12 @@ fun PhoneEntryScreen(viewModel: PhoneEntryViewModel) {
             Spacer(Modifier.height(20.dp))
             Spacer(Modifier.weight(1f))
 
-            SendCodeButton(
-                enabled = state.phoneNumber.isNotBlank(),
-                isSubmitting = state.isSubmitting,
+            CricherePrimaryButton(
+                text = "Send code",
                 onClick = viewModel::requestCode,
+                enabled = state.phoneNumber.isNotBlank(),
+                loading = state.isSubmitting,
+                loadingText = "Sending code…",
             )
         }
     }
@@ -226,7 +234,7 @@ private fun PhoneField(
                     .height(56.dp)
                     .background(if (state.isSubmitting) CrichereFieldDisabled else colors.surface, shape)
                     .border(borderWidth, borderColor, shape)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp + borderWidth),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(modifier = Modifier.weight(1f)) {
@@ -250,40 +258,6 @@ private fun PhoneField(
             }
         },
     )
-}
-
-@Composable
-private fun SendCodeButton(enabled: Boolean, isSubmitting: Boolean, onClick: () -> Unit) {
-    val labelStyle = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-    Button(
-        // Stays visually enabled while submitting (design A3); the ViewModel already ignores repeat taps.
-        onClick = onClick,
-        enabled = enabled || isSubmitting,
-        shape = RoundedCornerShape(26.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContainerColor = CrichereDisabledContainer,
-            disabledContentColor = CrichereInkSubtle,
-        ),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp),
-    ) {
-        if (isSubmitting) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text("Sending code…", style = labelStyle)
-            }
-        } else {
-            Text("Send code", style = labelStyle)
-        }
-    }
 }
 
 /** White status-bar icons over the green hero; restores dark icons for every other screen on exit. */

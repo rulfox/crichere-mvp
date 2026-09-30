@@ -1,5 +1,7 @@
 package com.crichere.app.ui
 
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,7 +36,7 @@ class OtpVerifyScreenTest {
             authRepository = authRepository,
         )
 
-        composeRule.setContent { OtpVerifyScreen(viewModel) }
+        composeRule.setContent { OtpVerifyScreen(viewModel, phoneNumber = "+919876543210") }
 
         composeRule.onNodeWithText("6-digit code").performTextInput("123456")
         composeRule.onNodeWithText("Verify").performClick()
@@ -47,7 +49,7 @@ class OtpVerifyScreenTest {
     }
 
     @Test
-    fun aShortCodeIsRejectedWithoutCallingVerifyOtp() {
+    fun verifyStaysDisabledUntilSixDigitsAreEntered() {
         val authRepository = FakeAuthRepository()
         val viewModel = OtpVerifyViewModel(
             phoneNumber = "+919876543210",
@@ -56,13 +58,12 @@ class OtpVerifyScreenTest {
             authRepository = authRepository,
         )
 
-        composeRule.setContent { OtpVerifyScreen(viewModel) }
+        composeRule.setContent { OtpVerifyScreen(viewModel, phoneNumber = "+919876543210") }
 
         composeRule.onNodeWithText("6-digit code").performTextInput("123")
-        composeRule.onNodeWithText("Verify").performClick()
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithText("Enter the 6-digit code.").assertExists()
+        composeRule.onNodeWithText("Verify").assertIsNotEnabled()
+        composeRule.onNodeWithText("6-digit code").performTextInput("456")
+        composeRule.onNodeWithText("Verify").assertIsEnabled()
         assert(authRepository.verifyOtpCalls.isEmpty())
     }
 }

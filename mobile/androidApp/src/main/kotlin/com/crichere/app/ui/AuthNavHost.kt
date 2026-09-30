@@ -63,7 +63,8 @@ import org.koin.core.parameter.parametersOf
  */
 private sealed interface AuthDestination {
     data object Starting : AuthDestination
-    data object PhoneEntry : AuthDestination
+    /** [lockedOut]: arrived via the 5-wrong-attempts bounce-back, so show the lockout notice (design B6). */
+    data class PhoneEntry(val lockedOut: Boolean = false) : AuthDestination
     data class OtpVerify(val phoneNumber: String, val verificationId: String, val resendToken: Any?) : AuthDestination
     data class ProfileSetup(val isEditMode: Boolean) : AuthDestination
     // initialTab exists so that returning from an edit-mode ProfileSetup (always reached from
@@ -89,13 +90,13 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
     when (val current = destination) {
         AuthDestination.Starting -> AppStartRoute { resolved ->
             destination = when (resolved) {
-                AppStartDestination.PhoneEntry -> AuthDestination.PhoneEntry
+                AppStartDestination.PhoneEntry -> AuthDestination.PhoneEntry()
                 AppStartDestination.ProfileSetup -> AuthDestination.ProfileSetup(isEditMode = false)
                 AppStartDestination.Main -> AuthDestination.Main()
             }
         }
 
-        is AuthDestination.PhoneEntry -> PhoneEntryRoute { event ->
+        is AuthDestination.PhoneEntry -> PhoneEntryRoute(showLockoutNotice = current.lockedOut) { event ->
             when (event) {
                 is PhoneEntryNavigationEvent.NavigateToOtpVerify -> {
                     destination = AuthDestination.OtpVerify(
@@ -111,11 +112,11 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
             phoneNumber = current.phoneNumber,
             verificationId = current.verificationId,
             resendToken = current.resendToken,
-        ) { event ->
+        ) { event, lockedOut ->
             destination = when (event) {
                 AuthNavigationEvent.NavigateToProfileSetup -> AuthDestination.ProfileSetup(isEditMode = false)
                 AuthNavigationEvent.NavigateToOwnProfile -> AuthDestination.Main()
-                AuthNavigationEvent.NavigateToPhoneEntry -> AuthDestination.PhoneEntry
+                AuthNavigationEvent.NavigateToPhoneEntry -> AuthDestination.PhoneEntry(lockedOut = lockedOut)
             }
         }
 
@@ -130,7 +131,7 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
             pendingLeagueId = pendingLeagueId,
             onPendingLeagueIdConsumed = { pendingLeagueId = null },
             onNavigateToEditProfile = { destination = AuthDestination.ProfileSetup(isEditMode = true) },
-            onNavigateToPhoneEntry = { destination = AuthDestination.PhoneEntry },
+            onNavigateToPhoneEntry = { destination = AuthDestination.PhoneEntry() },
         )
     }
 }
@@ -151,29 +152,30 @@ private fun AppStartRoute(onResolved: (AppStartDestination) -> Unit) {
 }
 
 @Composable
-private fun PhoneEntryRoute(onNavigate: (PhoneEntryNavigationEvent) -> Unit) {
+private fun PhoneEntryRoute(showLockoutNotice: Boolean, onNavigate: (PhoneEntryNavigationEvent) -> Unit) {
     val viewModel: PhoneEntryViewModel = koinViewModel()
     LaunchedEffect(viewModel) {
         viewModel.navigationEvents.collect { event -> onNavigate(event) }
     }
-    PhoneEntryScreen(viewModel)
+    PhoneEntryScreen(viewModel, showLockoutNotice = showLockoutNotice)
 }
 
+/** [onNavigate]'s second argument: true when the bounce-back is the 5-wrong-attempts lockout, not a voluntary "start over". */
 @Composable
 private fun OtpVerifyRoute(
     phoneNumber: String,
     verificationId: String,
     resendToken: Any?,
-    onNavigate: (AuthNavigationEvent) -> Unit,
+    onNavigate: (AuthNavigationEvent, Boolean) -> Unit,
 ) {
     val viewModel: OtpVerifyViewModel = koinViewModel(
         key = "otp-verify:$phoneNumber:$verificationId",
         parameters = { parametersOf(phoneNumber, verificationId, resendToken) },
     )
     LaunchedEffect(viewModel) {
-        viewModel.navigationEvents.collect { event -> onNavigate(event) }
+        viewModel.navigationEvents.collect { event -> onNavigate(event, viewModel.state.value.attemptsRemaining == 0) }
     }
-    OtpVerifyScreen(viewModel)
+    OtpVerifyScreen(viewModel, phoneNumber = phoneNumber)
 }
 
 @Composable

@@ -79,6 +79,14 @@ whether to add it to the app or drop it from the design.
   reads "Send code" regardless of how it was reached — change the design's label to match, unless
   a decision is made to special-case it (low priority either way).
 
+**Implemented (2026-10-01):** back arrow and inline "Edit" both call `startOver()` (back to Sign
+in, number kept). Verify is disabled until 6 digits. A "New code sent" snackbar shows after each
+resend (B4). Resends exhausted shows the red notice + outlined "Request a new code" (B5). The
+5-wrong-attempts bounce lands on Sign in with the "Too many incorrect attempts" banner (B6), keyed off
+`attemptsRemaining == 0` in `AuthNavHost` so a voluntary start-over shows no banner. Kept from the
+app: the system keyboard (no custom keypad), the "N attempts remaining" copy, and "Edit" in every
+non-verifying state (the board only shows it in B1).
+
 **Already correct, no change needed:** the 3-resend cap (B3/B4 show "1/3 used," "2/3 used" —
 matches `MAX_RESENDS = 3`), the resends-exhausted dead-end state (B5), and the forced bounce-back
 to sign-in after repeated wrong codes (B6) — all three match real `OtpVerifyViewModel` behavior.
