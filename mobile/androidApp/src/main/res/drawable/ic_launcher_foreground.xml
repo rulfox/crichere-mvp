@@ -3,7 +3,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Placeholder mark: a plain "C". This task is a toolchain proof, not a branding pass. -->
+    <!-- Crichere brand mark, matches assets/brand/ic_launcher_foreground.svg exactly. -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M70,34 C58,26 40,30 34,44 C28,58 34,76 50,80 C60,82 68,78 72,72 L64,66 C61,70 56,72 51,71 C42,69 39,58 42,50 C45,42 55,38 63,42 C66,44 68,46 70,50 L78,44 C76,40 73,37 70,34 Z" />

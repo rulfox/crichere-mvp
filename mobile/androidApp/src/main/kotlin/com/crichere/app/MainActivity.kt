@@ -6,13 +6,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.crichere.app.ui.AuthNavHost
+import com.crichere.app.ui.theme.CrichereTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         pendingDeepLinkLeagueId = leagueIdFrom(intent)
         setContent {
-            MaterialTheme {
+            CrichereTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AuthNavHost(pendingDeepLinkLeagueId = pendingDeepLinkLeagueId)
                 }
