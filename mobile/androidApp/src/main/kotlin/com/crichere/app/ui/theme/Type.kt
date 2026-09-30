@@ -1,18 +1,28 @@
 package com.crichere.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.crichere.app.R
 
 // Archivo (headlines, 700/800), Instrument Sans (UI text), JetBrains Mono (money, phone, OTP) --
-// see assets/README.md. Variable fonts, referenced as a single weight-agnostic FontFamily;
-// FontWeight on individual TextStyles below drives the rendered weight.
-val ArchivoFamily = FontFamily(Font(R.font.archivo_variable))
-val InstrumentSansFamily = FontFamily(Font(R.font.instrument_sans_variable))
-val JetBrainsMonoFamily = FontFamily(Font(R.font.jetbrains_mono_variable))
+// see assets/README.md. A variable font loaded as one weightless Font renders its default
+// instance and gets fake-bolded, so each weight is declared with its own `wght` axis value.
+@OptIn(ExperimentalTextApi::class)
+private fun variableFamily(resId: Int, vararg weights: Int) =
+    FontFamily(
+        weights.map { w ->
+            Font(resId, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+        },
+    )
+
+val ArchivoFamily = variableFamily(R.font.archivo_variable, 400, 500, 600, 700, 800)
+val InstrumentSansFamily = variableFamily(R.font.instrument_sans_variable, 400, 500, 600, 700)
+val JetBrainsMonoFamily = variableFamily(R.font.jetbrains_mono_variable, 400, 500, 600, 700)
 
 val CrichereTypography =
     Typography(

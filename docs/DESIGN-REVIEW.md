@@ -54,6 +54,12 @@ a Back button — no Approve/Reject actions anywhere in it.
 - A4's error copy "Enter a valid 10-digit mobile number." → change to the app's real message:
   "Enter a valid phone number with country code, e.g. +919876543210."
 
+**Implemented (2026-10-01):** hero banner built (confirmed absent from `AuthNavHost` before this).
+It shows only in the first-launch state (empty, unfocused field) and collapses to the compact
+28sp wordmark header once the field is engaged, matching A1 vs A2–A4. The custom in-app numeric
+keypad in A2 is **not** built: the system phone keyboard stays (MVP scope decision). Send is
+disabled only while the field is empty; number validity is still checked on tap (A4).
+
 **Verify, don't assume:** every state (A1–A4) shows a green "Crichere" hero banner + tagline above
 the sign-in card. The Android code agent's read of `PhoneEntryScreen.kt` alone found no such
 banner — but that agent only read the one screen file, not any shared root/Scaffold wrapper. Check

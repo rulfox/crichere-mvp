@@ -20,6 +20,10 @@ val CrichereOutlineVariant = Color(0xFFE2E5DC)
 
 val CrichereInk = Color(0xFF15201A)
 val CrichereInkMuted = Color(0xFF5A665D)
+val CrichereInkSubtle = Color(0xFF8A948C)
+
+val CrichereDisabledContainer = Color(0xFFDCE0D7)
+val CrichereFieldDisabled = Color(0xFFF1F3EE)
 
 val CrichereError = Color(0xFFB3261E)
 val CrichereErrorContainer = Color(0xFFFBE3DF)
