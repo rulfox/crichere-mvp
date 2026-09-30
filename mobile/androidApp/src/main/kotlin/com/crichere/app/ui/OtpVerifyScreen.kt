@@ -266,7 +266,8 @@ private data class FieldLook(val border: Dp, val borderColor: Color, val fill: C
 
 @Composable
 private fun ErrorRow(message: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(23.dp)) {
+    // Icon pinned to the first line so longer (wrapping) messages stay fully visible.
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.5.dp)) {
         Icon(
             painter = painterResource(R.drawable.ic_error),
             contentDescription = null,

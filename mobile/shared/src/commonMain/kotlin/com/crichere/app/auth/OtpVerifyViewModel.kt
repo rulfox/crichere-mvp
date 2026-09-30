@@ -122,13 +122,10 @@ class OtpVerifyViewModel(
                     },
                 )
             }
-            .onFailure { throwable ->
-                _state.update {
-                    it.copy(
-                        isVerifying = false,
-                        errorMessage = throwable.message ?: "Sign-in failed. Please try again.",
-                    )
-                }
+            // Never surface the cause: it's a backend status or a local storage/Keystore exception,
+            // neither of which the user can act on beyond retrying.
+            .onFailure {
+                _state.update { it.copy(isVerifying = false, errorMessage = SIGN_IN_FAILED_MESSAGE) }
             }
     }
 
@@ -243,5 +240,6 @@ class OtpVerifyViewModel(
         const val RESEND_COOLDOWN_SECONDS = 60
         const val MAX_RESENDS = 3
         const val MAX_WRONG_ATTEMPTS = 5
+        const val SIGN_IN_FAILED_MESSAGE = "Sign-in failed. Please try again."
     }
 }

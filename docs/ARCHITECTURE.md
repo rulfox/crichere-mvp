@@ -201,6 +201,12 @@ All four items previously flagged here are now locked, per user confirmation:
 2. **Backend test framework**: JUnit5 + MockK + Testcontainers.
 3. **Backend serialization**: Jackson.
 4. **Android secure-storage backend**: Preferences DataStore + Tink (not `EncryptedSharedPreferences`).
+   The keyset prefs and DataStore file are excluded from Auto Backup and device transfer
+   (`res/xml/data_extraction_rules.xml`, `backup_rules.xml`): the Keystore master key that wraps the
+   keyset never leaves the device, so a restored keyset is undecryptable. If the keyset can't be
+   unwrapped anyway (older installs, or uninstall), `SecureStorage` wipes that state and starts a
+   fresh keyset, so the user just signs in again. Found on-device 2026-10-01: sign-in failed with
+   "Keystore cannot load the key" after a reinstall restored the old keyset.
 
 No open forks remain in this document. Local DB choice (SQLDelight vs Room 3.0 KMP) stays deferred — not needed until a phase requires offline storage.
 

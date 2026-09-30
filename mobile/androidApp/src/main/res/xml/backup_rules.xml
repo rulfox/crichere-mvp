@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below. See data_extraction_rules.xml for why these are excluded. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="crichere_secure_storage_keyset_prefs.xml" />
+    <exclude domain="file" path="datastore/crichere_secure_storage.preferences_pb" />
+</full-backup-content>
