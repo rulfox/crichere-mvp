@@ -54,6 +54,7 @@ Every `PHASEn.md` follows this structure, in order:
 ## Related Docs
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — backend (Spring Boot Kotlin) and frontend (KMP) coding patterns/architecture, applies project-wide. Status: locked.
+- [DESIGN-REVIEW.md](DESIGN-REVIEW.md) — screen-by-screen gap analysis between the Claude Design comp and the implemented app (2026-09-30). Organizer-facing screens unverified (design's Tweaks panel didn't work in the shared view) — needs a follow-up pass.
 
 ## Phase Index
 
