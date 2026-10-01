@@ -4,6 +4,11 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import com.crichere.app.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -193,5 +198,24 @@ fun CrichereSnackbar(message: String, modifier: Modifier = Modifier, actionLabel
                 modifier = Modifier.clickable(onClick = onAction),
             )
         }
+    }
+}
+
+/** Back arrow + 16sp title, 52dp under the status bar (boards J, K). */
+@Composable
+fun BackTitleBar(title: String, onBack: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 5.dp).height(52.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
+            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(
+            title,
+            style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 19.2.sp),
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     }
 }

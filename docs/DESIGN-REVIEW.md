@@ -379,6 +379,14 @@ PHASE4 Decisions Made.
   league...") before the actual grant happens. This is real, deliberate app behavior the design
   should represent, not simplify away.
 
+**Implemented (2026-10-02), board K1-K8.** Back-arrow top bar and intro; phone field + Look up
+pill (widens to "Looking up…" with a spinner, K6); found card with initials avatar and Grant pill
+("Granting…", K7); Grant confirmation dialog (K3); inline not-found error on the field (K4);
+current co-organizers card with initials and outlined Revoke pills, now behind a confirmation
+dialog, then "Revoking…" in place (K5); grant-failure banner (K8). Messages for undrawn states
+(rate limit, already granted, organizer, revoke failure) are in PHASE7 Decisions Made. Rows show
+names only, as decided. Load failure reuses the "Couldn't load" + Retry view.
+
 ---
 
 ## L — Live auction
@@ -586,6 +594,14 @@ Open items found while implementing the redesign, not yet scheduled.
   the owner on CPH2487. Still unverified: the J5 failure bar + Retry live, the
   AUCTION_ALREADY_STARTED message, load failure view, franchises list with real claims, iOS
   AuctionSettingsView (not compiled).
+
+- [ ] **Co-organizers (K) partly unverified** (2026-10-02). Verified on CPH2487 against the real
+  backend: empty list (K1 without rows) and a real not-found lookup (K4), both matching the board;
+  3 UI tests (lookup found / not found / revoke confirmation) pass on the phone. Not verified live:
+  found user + Grant + dialog, Looking up… / Granting… / Revoking… frames, grant failure banner,
+  rate-limit message (needs a second registered account; a live grant changes who manages the
+  league), iOS ManageRolesView (not compiled). Known gap: a co-organizer who revokes their own
+  access stays on the screen; their next action fails with a generic error instead of leaving.
 
 ## Decisions made during implementation
 

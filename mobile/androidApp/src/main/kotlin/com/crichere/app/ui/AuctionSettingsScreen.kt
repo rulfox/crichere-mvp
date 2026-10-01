@@ -89,7 +89,7 @@ internal fun AuctionSettingsRoute(
 private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel, onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxSize().background(colors.background).imePadding()) {
-        TopBar(onBack)
+        BackTitleBar("Auction Settings", onBack)
         val league = state.league
         when {
             state.isLoading && league == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -129,20 +129,6 @@ private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Auctio
                 SaveBar(state, onSave = viewModel::submit)
             }
         }
-    }
-}
-
-@Composable
-private fun TopBar(onBack: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 5.dp).height(52.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(24.dp))
-        }
-        Spacer(Modifier.width(6.dp))
-        Text("Auction Settings", style = pText(16.sp, FontWeight.SemiBold, 19.2.sp), color = MaterialTheme.colorScheme.onBackground)
     }
 }
 

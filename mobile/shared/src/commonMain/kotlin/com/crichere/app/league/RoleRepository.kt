@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.network.problemCode
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -12,7 +13,7 @@ import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
 
 /** Thrown by [RoleRepository]'s grant/revoke calls for anything other than a clean 2xx -- also lookup, but only for a non-404 failure (see [RoleRepository.lookup]'s own doc). */
-class RoleActionFailedException(message: String) : Exception(message)
+class RoleActionFailedException(message: String, val code: String? = null) : Exception(message)
 
 @Serializable
 internal data class GrantRoleRequestDto(val userId: String)
@@ -45,7 +46,7 @@ internal class KtorRoleRepository(
             setBody(PhoneNumberLookupRequestDto(phoneNumber))
         }
         if (response.status == HttpStatusCode.NotFound) return null
-        if (!response.status.isSuccess()) throw RoleActionFailedException("Lookup failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw RoleActionFailedException("Lookup failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 
@@ -54,13 +55,13 @@ internal class KtorRoleRepository(
             contentType(ContentType.Application.Json)
             setBody(GrantRoleRequestDto(userId))
         }
-        if (!response.status.isSuccess()) throw RoleActionFailedException("Grant failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw RoleActionFailedException("Grant failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 
     override suspend fun revoke(leagueId: String, roleId: String): LeagueDto {
         val response = httpClient.delete("/api/v1/leagues/$leagueId/roles/$roleId")
-        if (!response.status.isSuccess()) throw RoleActionFailedException("Revoke failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw RoleActionFailedException("Revoke failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 }

@@ -1,12 +1,14 @@
 package com.crichere.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.crichere.app.league.FakeLeagueRepository
 import com.crichere.app.league.FakeRoleRepository
 import com.crichere.app.league.LeagueDto
+import com.crichere.app.league.LeagueRoleDto
 import com.crichere.app.league.LeagueStatus
 import com.crichere.app.league.ManageRolesViewModel
 import com.crichere.app.league.RoleLookupResultDto
@@ -64,5 +66,27 @@ class ManageRolesScreenTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("No user found with that phone number.").assertExists()
+    }
+
+    @Test
+    fun revokeAsksForConfirmationBeforeRevoking() {
+        val withDelegate = fixtureLeague.copy(coOrganizers = listOf(LeagueRoleDto(id = "r1", userId = "u2", name = "Amit Jadhav", grantedAt = "2026-09-13T00:00:00Z")))
+        val roleRepository = FakeRoleRepository().apply { nextLeague = fixtureLeague }
+        val viewModel = ManageRolesViewModel(leagueId = "league-1", FakeLeagueRepository(leaguesByArea = listOf(withDelegate)), roleRepository)
+
+        composeRule.setContent { ManageRolesRoute(leagueId = "league-1", onBack = {}, viewModel = viewModel) }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Revoke").performClick()
+        composeRule.onNodeWithText("Revoke Amit Jadhav?").assertExists()
+        assert(roleRepository.revokeCalls.isEmpty()) { "revoked before confirming" }
+
+        // Dialog open: the row's pill and the dialog's button both read "Revoke"; the dialog's is last.
+        val revokeButtons = composeRule.onAllNodesWithText("Revoke")
+        revokeButtons[revokeButtons.fetchSemanticsNodes().size - 1].performClick()
+        composeRule.waitForIdle()
+
+        assert(roleRepository.revokeCalls == listOf("r1")) { "expected one revoke of r1, got ${roleRepository.revokeCalls}" }
+        composeRule.onNodeWithText("No co-organizers yet.").assertExists()
     }
 }

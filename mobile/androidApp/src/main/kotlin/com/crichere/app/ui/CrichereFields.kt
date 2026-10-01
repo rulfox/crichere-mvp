@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
@@ -165,6 +166,7 @@ fun CrichereTextField(
     label: String,
     modifier: Modifier = Modifier,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     look: FieldVariant = FieldVariant(),
     error: String? = null,
     placeholder: String? = null,
@@ -184,6 +186,7 @@ fun CrichereTextField(
         textStyle = if (multiLine) valueStyle(13.5.sp).copy(fontWeight = FontWeight.Normal, lineHeight = 18.9.sp) else valueStyle(14.5.sp, mono),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
         readOnly = readOnly,
         interactionSource = interactionSource,
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {},

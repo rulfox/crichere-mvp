@@ -37,6 +37,7 @@ struct ManageRolesView: View {
 
     @StateObject private var wrapper: ManageRolesViewModelWrapper
     @State private var showGrantConfirm = false
+    @State private var pendingRevoke: LeagueRoleDto?
 
     init(leagueId: String) {
         self.leagueId = leagueId
@@ -56,29 +57,28 @@ struct ManageRolesView: View {
                         Button(wrapper.state.isLookingUp ? "Looking up..." : "Look up") { wrapper.lookup() }
                             .disabled(wrapper.state.isLookingUp || wrapper.state.phoneNumberInput.isEmpty)
 
-                        if wrapper.state.lookupAttempted {
-                            if let result = wrapper.state.lookupResult {
-                                Text("Found: \(result.name ?? "Unnamed user")")
-                                Button(wrapper.state.isGranting ? "Granting..." : "Grant") { showGrantConfirm = true }
-                                    .disabled(wrapper.state.isGranting)
-                                    .confirmationDialog(
-                                        "Grant co-organizer access to \(result.name ?? "this user")?",
-                                        isPresented: $showGrantConfirm,
-                                        titleVisibility: .visible,
-                                    ) {
-                                        Button("Grant", role: .destructive) { wrapper.grant() }
-                                        Button("Cancel", role: .cancel) {}
-                                    } message: {
-                                        Text("They will be able to do everything you can do for this league, including editing it and running the auction.")
-                                    }
-                            } else {
-                                Text("No user found with that phone number.").foregroundColor(.red)
-                            }
+                        if let lookupError = wrapper.state.lookupError {
+                            Text(lookupError).foregroundColor(.red)
+                        }
+                        if let result = wrapper.state.lookupResult {
+                            Text("Found: \(result.name ?? "Unnamed user")")
+                            Button(wrapper.state.isGranting ? "Granting..." : "Grant") { showGrantConfirm = true }
+                                .disabled(wrapper.state.isGranting)
+                                .confirmationDialog(
+                                    "Grant co-organizer access to \(result.name ?? "this user")?",
+                                    isPresented: $showGrantConfirm,
+                                    titleVisibility: .visible,
+                                ) {
+                                    Button("Grant", role: .destructive) { wrapper.grant() }
+                                    Button("Cancel", role: .cancel) {}
+                                } message: {
+                                    Text("They will be able to do everything you can do for this league, including editing it and running the auction.")
+                                }
                         }
                     }
 
-                    if let error = wrapper.state.errorMessage {
-                        Text(error).foregroundColor(.red)
+                    if let error = wrapper.state.grantError ?? wrapper.state.revokeError {
+                        Text("\(error.title) \(error.message)").foregroundColor(.red)
                     }
 
                     Section("Current co-organizers") {
@@ -89,8 +89,8 @@ struct ManageRolesView: View {
                                 HStack {
                                     Text(role.name ?? "Unnamed user")
                                     Spacer()
-                                    Button(wrapper.state.revokingRoleIds.contains(role.id) ? "Revoking..." : "Revoke") {
-                                        wrapper.revoke(role.id)
+                                    Button(wrapper.state.revokingRoleIds.contains(role.id) ? "Revoking…" : "Revoke") {
+                                        pendingRevoke = role
                                     }
                                     .disabled(wrapper.state.revokingRoleIds.contains(role.id))
                                 }
@@ -99,8 +99,20 @@ struct ManageRolesView: View {
                     }
                 }
             } else {
-                Text(wrapper.state.errorMessage ?? "Couldn't load this league.").foregroundColor(.red)
+                Text("Couldn't load this league. Check your connection and try again.").foregroundColor(.red)
             }
+        }
+        .alert(
+            "Revoke \(pendingRevoke?.name ?? "this co-organizer")?",
+            isPresented: Binding(get: { pendingRevoke != nil }, set: { if !$0 { pendingRevoke = nil } })
+        ) {
+            Button("Cancel", role: .cancel) { pendingRevoke = nil }
+            Button("Revoke", role: .destructive) {
+                if let role = pendingRevoke { wrapper.revoke(role.id) }
+                pendingRevoke = nil
+            }
+        } message: {
+            Text("They'll lose co-organizer access to this league right away.")
         }
         .navigationTitle("Manage Co-Organizers")
         .onAppear { wrapper.retry() }

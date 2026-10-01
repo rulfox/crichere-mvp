@@ -9,17 +9,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Design K8's red banner: a bold [title] over a [message]. */
+data class RoleNotice(val title: String, val message: String)
+
 data class ManageRolesState(
     val isLoading: Boolean = true,
+    val loadFailed: Boolean = false,
     val league: LeagueDto? = null,
     val phoneNumberInput: String = "",
     val isLookingUp: Boolean = false,
-    /** `null` before a lookup, or after one that found nobody -- [lookupAttempted] distinguishes the two so the UI only shows "no user found" once a lookup has actually run. */
+    /** The user a lookup found, ready to grant (K2); `null` before a lookup or after one that failed. */
     val lookupResult: RoleLookupResultDto? = null,
-    val lookupAttempted: Boolean = false,
+    /** Inline under the phone field (K4): nobody found, rate-limited, or the lookup itself failed. */
+    val lookupError: String? = null,
     val isGranting: Boolean = false,
+    /** K8: under the found card. */
+    val grantError: RoleNotice? = null,
     val revokingRoleIds: Set<String> = emptySet(),
-    val errorMessage: String? = null,
+    /** Above the co-organizer list when a revoke fails. */
+    val revokeError: RoleNotice? = null,
 )
 
 /**
@@ -43,64 +51,80 @@ class ManageRolesViewModel(
 
     fun retry() {
         loadJob?.cancel()
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true, loadFailed = false) }
         loadJob = viewModelScope.launch {
             runCatching { leagueRepository.getLeague(leagueId) }
                 .onSuccess { league -> _state.update { it.copy(isLoading = false, league = league) } }
-                .onFailure { throwable ->
-                    _state.update { it.copy(isLoading = false, errorMessage = throwable.message ?: "Couldn't load this league. Please try again.") }
-                }
+                .onFailure { _state.update { it.copy(isLoading = false, loadFailed = true) } }
         }
     }
 
     fun onPhoneNumberChanged(value: String) =
-        _state.update { it.copy(phoneNumberInput = value, lookupResult = null, lookupAttempted = false) }
+        _state.update { it.copy(phoneNumberInput = value, lookupResult = null, lookupError = null, grantError = null) }
 
     fun lookup() {
-        val phoneNumber = _state.value.phoneNumberInput
-        if (phoneNumber.isBlank() || _state.value.isLookingUp) return
+        val phoneNumber = _state.value.phoneNumberInput.trim()
+        if (phoneNumber.isEmpty() || _state.value.isLookingUp) return
 
-        _state.update { it.copy(isLookingUp = true, errorMessage = null) }
+        _state.update { it.copy(isLookingUp = true, lookupResult = null, lookupError = null, grantError = null) }
         viewModelScope.launch {
             runCatching { roleRepository.lookup(leagueId, phoneNumber) }
-                .onSuccess { result -> _state.update { it.copy(isLookingUp = false, lookupResult = result, lookupAttempted = true) } }
-                .onFailure { throwable ->
-                    _state.update { it.copy(isLookingUp = false, errorMessage = throwable.message ?: "That lookup couldn't be completed. Please try again.") }
+                .onSuccess { result ->
+                    _state.update {
+                        it.copy(isLookingUp = false, lookupResult = result, lookupError = if (result == null) "No user found with that phone number." else null)
+                    }
                 }
+                .onFailure { throwable -> _state.update { it.copy(isLookingUp = false, lookupError = lookupErrorFor(throwable)) } }
         }
     }
 
     fun grant() {
-        val targetUserId = _state.value.lookupResult?.userId ?: return
+        val target = _state.value.lookupResult ?: return
         if (_state.value.isGranting) return
 
-        _state.update { it.copy(isGranting = true, errorMessage = null) }
+        _state.update { it.copy(isGranting = true, grantError = null) }
         viewModelScope.launch {
-            runCatching { roleRepository.grant(leagueId, targetUserId) }
+            runCatching { roleRepository.grant(leagueId, target.userId) }
                 .onSuccess { league ->
-                    _state.update {
-                        it.copy(isGranting = false, league = league, phoneNumberInput = "", lookupResult = null, lookupAttempted = false)
-                    }
+                    _state.update { it.copy(isGranting = false, league = league, phoneNumberInput = "", lookupResult = null) }
                 }
-                .onFailure { throwable ->
-                    _state.update { it.copy(isGranting = false, errorMessage = throwable.message ?: "That grant couldn't be completed. Please try again.") }
-                }
+                .onFailure { throwable -> _state.update { it.copy(isGranting = false, grantError = grantErrorFor(throwable, target.name)) } }
         }
     }
 
     fun revoke(roleId: String) {
         if (roleId in _state.value.revokingRoleIds) return
 
-        _state.update { it.copy(revokingRoleIds = it.revokingRoleIds + roleId, errorMessage = null) }
+        _state.update { it.copy(revokingRoleIds = it.revokingRoleIds + roleId, revokeError = null) }
         viewModelScope.launch {
             runCatching { roleRepository.revoke(leagueId, roleId) }
                 .onSuccess { league -> _state.update { it.copy(revokingRoleIds = it.revokingRoleIds - roleId, league = league) } }
                 .onFailure { throwable ->
-                    _state.update {
-                        it.copy(revokingRoleIds = it.revokingRoleIds - roleId, errorMessage = throwable.message ?: "That revoke couldn't be completed. Please try again.")
+                    if ((throwable as? RoleActionFailedException)?.code == "NOT_FOUND") {
+                        // Someone else already revoked it -- the outcome the user wanted; just refresh the list.
+                        _state.update { it.copy(revokingRoleIds = it.revokingRoleIds - roleId) }
+                        retry()
+                    } else {
+                        _state.update {
+                            it.copy(
+                                revokingRoleIds = it.revokingRoleIds - roleId,
+                                revokeError = RoleNotice("Couldn't revoke access.", "Check your connection and try again."),
+                            )
+                        }
                     }
                 }
         }
+    }
+
+    private fun lookupErrorFor(throwable: Throwable): String = when ((throwable as? RoleActionFailedException)?.code) {
+        "RATE_LIMIT_EXCEEDED" -> "Too many lookups. Try again in a few minutes."
+        else -> "Couldn't look up that number. Check your connection and try again."
+    }
+
+    private fun grantErrorFor(throwable: Throwable, name: String?): RoleNotice = when ((throwable as? RoleActionFailedException)?.code) {
+        "ROLE_ALREADY_GRANTED" -> RoleNotice("Already a co-organizer.", "${name ?: "This user"} already has access to this league.")
+        "CANNOT_GRANT_ROLE_TO_ORGANIZER" -> RoleNotice("That's the league's organizer.", "They already have full access.")
+        else -> RoleNotice("Couldn't grant access.", "Check your connection and try again.")
     }
 
     override fun onCleared() {
