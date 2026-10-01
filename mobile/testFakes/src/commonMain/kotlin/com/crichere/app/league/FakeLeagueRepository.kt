@@ -43,10 +43,15 @@ class FakeLeagueRepository(
     var updateAuctionSettingsError: Throwable? = null
     val updateAuctionSettingsRequests = mutableListOf<AuctionSettingsSaveRequestDto>()
 
+    /** Optional per-filter answer/latency, for tests about overlapping requests; defaults to [leaguesByArea], no delay. */
+    var leaguesForArea: ((state: String?, district: String?, city: String?) -> List<LeagueDto>)? = null
+    var listByAreaDelayMillis: (state: String?) -> Long = { 0 }
+
     override suspend fun listByArea(state: String?, district: String?, city: String?): List<LeagueDto> {
         listByAreaCalls += Triple(state, district, city)
+        listByAreaDelayMillis(state).takeIf { it > 0 }?.let { delay(it) }
         listByAreaError?.let { throw it }
-        return leaguesByArea
+        return leaguesForArea?.invoke(state, district, city) ?: leaguesByArea
     }
 
     override suspend fun listNearest(latitude: Double, longitude: Double): List<LeagueDto> {

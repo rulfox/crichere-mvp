@@ -65,6 +65,25 @@ class LeagueDashboardViewModelTest {
     }
 
     @Test
+    fun `a slow older load never overwrites the list for a newer filter`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository().apply {
+            leaguesForArea = { state, _, _ -> if (state == null) listOf(sampleLeague()) else emptyList() }
+            listByAreaDelayMillis = { state -> if (state == null) 5_000 else 0 }
+        }
+        val viewModel = newViewModel(leagueRepository = leagueRepository)
+        advanceUntilIdle()
+
+        viewModel.refresh() // slow, unfiltered
+        viewModel.onStateSelected(karnataka) // fast, filtered -- the user's latest intent
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state.leagues.isEmpty(), "stale unfiltered results must not replace the Karnataka list")
+        assertEquals(null, state.errorMessage, "a superseded load must not surface as a load error")
+        assertFalse(state.isLoading)
+    }
+
+    @Test
     fun `constructing the ViewModel alone does not load leagues -- the route calls refresh on each visit`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         newViewModel(leagueRepository = leagueRepository)

@@ -7,9 +7,12 @@ import Shared
 @MainActor
 final class AppStartViewModelWrapper: ObservableObject {
     @Published var destination: AppStartDestination?
+    @Published var isOffline = false
+    private let viewModel: AppStartViewModel
 
     init() {
         let viewModel = KoinHelper().appStartViewModel
+        self.viewModel = viewModel
         self.destination = viewModel.destination.value
 
         Task { [weak self] in
@@ -17,7 +20,14 @@ final class AppStartViewModelWrapper: ObservableObject {
                 self?.destination = newDestination
             }
         }
+        Task { [weak self] in
+            for await offline in viewModel.isOffline {
+                self?.isOffline = offline.boolValue
+            }
+        }
     }
+
+    func retry() { viewModel.retry() }
 }
 
 /// The 3 destinations reachable once signed in and past Profile Setup -- `MainTabView`'s tabs.
@@ -107,10 +117,24 @@ private struct AppStartRootView: View {
     @StateObject private var wrapper = AppStartViewModelWrapper()
 
     var body: some View {
-        ProgressView()
-            .onChange(of: wrapper.destination) { _, resolved in
-                if let resolved { onResolved(resolved) }
+        Group {
+            if wrapper.isOffline {
+                // Session still stored; the backend just couldn't be reached (see AppStartViewModel).
+                VStack(spacing: 12) {
+                    Image(systemName: "icloud.slash").font(.system(size: 36)).foregroundStyle(.secondary)
+                    Text("Couldn't connect").font(.headline)
+                    Text("Check your internet connection and try again.")
+                        .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Button("Try again") { wrapper.retry() }.buttonStyle(.bordered)
+                }
+                .padding(40)
+            } else {
+                ProgressView()
             }
+        }
+        .onChange(of: wrapper.destination) { _, resolved in
+            if let resolved { onResolved(resolved) }
+        }
     }
 }
 

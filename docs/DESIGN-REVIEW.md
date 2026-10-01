@@ -119,6 +119,16 @@ the design to match today's plain "pick photo → label changes to 'Photo select
 
 ## D — Dashboard
 
+**Implemented (2026-10-01):** the board's decided rich cards are built from data the list endpoint
+already returns (no backend change): logo or short-code tile, "Starts d MMM", format, entry fee
+("Free" when none), and players joined / players required bar. Header avatar (initials or photo)
+opens My Profile. Area chips open a searchable bottom-sheet picker (D2) and are dimmed while near-me
+owns the list (D3/D4). Empty state (D6) and location-off banner (D7, shown after the permission is
+denied; not verified on-device because ColorOS blocks revoking permissions over adb). Bottom nav
+restyled (tinted bar, pill indicator, filled icon when selected). Fixed along the way: a slow older
+list request could overwrite the list for a newer filter; near-me asked only the network location
+provider (often no fix) -- it now uses a recent fix from any provider, then fused/network/GPS.
+
 **Change the design:**
 - Filter row: replace the icon-only "Near me" toggle with the app's real full-label button that
   cycles through "Show nearest to me" → "Finding your location..." → "Showing nearest leagues --
@@ -359,3 +369,18 @@ Open items found while implementing the redesign, not yet scheduled.
 - [ ] **Profile Setup subtitle kept on filled forms** (screen C). "So organizers know who's joining
   their league." stays visible after a name is typed. The design hides it in the filled states
   (C4, C6), but hiding it makes the whole form jump on the first keystroke. Revisit with the design.
+- [ ] **C1 (empty new-user Profile setup) not verified on-device** -- needs a second Firebase test
+  number for a fresh account.
+- [ ] **Stale refresh token -> 401 after reinstall** (2026-10-01, 10:08 IST). App start presented an
+  already-rotated refresh token and the session was wiped, although the previous rotation (04:30
+  UTC) had succeeded. Railway's HTTP log showed only 2 requests in that window despite other app
+  traffic, so the cause is unconfirmed. Investigate rotation/persistence ordering (e.g. a refresh
+  whose response is lost) and consider a short reuse grace window on the backend.
+
+## Decisions made during implementation
+
+- **App start no longer treats transient failures as signed out** (2026-10-01). A refresh that
+  fails with a network error/timeout/5xx is retried 4 times (1s/2s/4s backoff), then the splash
+  shows "Couldn't connect" + Try again. Only a real "no session" (no token or 401) goes to Sign in.
+  Found on-device: ColorOS briefly blocks network for a just-updated app, and the old code dumped
+  signed-in users on Sign in.

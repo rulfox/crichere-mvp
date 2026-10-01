@@ -137,7 +137,14 @@ val sharedModule: Module = module {
         )
     }
     factory { OwnProfileViewModel(profileRepository = get(), authRepository = get()) }
-    factory { LeagueDashboardViewModel(leagueRepository = get(), referenceRepository = get(), locationProvider = get()) }
+    factory {
+        LeagueDashboardViewModel(
+            leagueRepository = get(),
+            referenceRepository = get(),
+            locationProvider = get(),
+            profileRepository = get(),
+        )
+    }
     factory { (leagueId: String) ->
         LeagueDetailViewModel(
             leagueId = leagueId,

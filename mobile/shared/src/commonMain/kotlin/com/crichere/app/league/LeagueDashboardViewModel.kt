@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crichere.app.location.GeoPoint
 import com.crichere.app.location.LocationProvider
+import com.crichere.app.profile.ProfileRepository
 import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.ReferenceRepository
 import com.crichere.app.reference.StateDto
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +30,9 @@ data class LeagueDashboardState(
     val isNearMode: Boolean = false,
     val isLocating: Boolean = false,
     val errorMessage: String? = null,
+    /** Signed-in user's name/photo, for the header avatar -- `null` until loaded (or if unavailable). */
+    val viewerName: String? = null,
+    val viewerPhotoUrl: String? = null,
 )
 
 /**
@@ -39,12 +45,26 @@ class LeagueDashboardViewModel(
     private val leagueRepository: LeagueRepository,
     private val referenceRepository: ReferenceRepository,
     private val locationProvider: LocationProvider,
+    /** Optional: only feeds the header avatar ([LeagueDashboardState.viewerName]); the list works without it. */
+    private val profileRepository: ProfileRepository? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LeagueDashboardState())
     val state: StateFlow<LeagueDashboardState> = _state.asStateFlow()
 
     private var lastNearPoint: GeoPoint? = null
+
+    // Only the newest list request may write results: with a slow backend an older (e.g.
+    // unfiltered) request could otherwise finish last and overwrite the list for the new filter.
+    private var loadJob: Job? = null
+
+    private fun reload(before: suspend () -> Unit = {}) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            before()
+            loadLeagues()
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -60,7 +80,15 @@ class LeagueDashboardViewModel(
 
     /** Re-runs whichever list (area filters or nearest) is currently active. Also the pull-to-refresh entry point. */
     fun refresh() {
-        viewModelScope.launch { loadLeagues() }
+        reload()
+        // Re-read on every visit too: the user may have just edited their name or photo.
+        profileRepository?.let { repository ->
+            viewModelScope.launch {
+                runCatching { repository.getProfile() }.getOrNull()?.let { profile ->
+                    _state.update { it.copy(viewerName = profile.name, viewerPhotoUrl = profile.photoUrl) }
+                }
+            }
+        }
     }
 
     fun onStateSelected(stateDto: StateDto) {
@@ -74,23 +102,17 @@ class LeagueDashboardViewModel(
                 isNearMode = false,
             )
         }
-        viewModelScope.launch {
-            loadDistricts(stateDto.code)
-            loadLeagues()
-        }
+        reload { loadDistricts(stateDto.code) }
     }
 
     fun onDistrictSelected(districtDto: DistrictDto) {
         _state.update { it.copy(selectedDistrict = districtDto.name, selectedCity = null, cities = emptyList(), isNearMode = false) }
-        viewModelScope.launch {
-            loadCities(districtDto.id)
-            loadLeagues()
-        }
+        reload { loadCities(districtDto.id) }
     }
 
     fun onCitySelected(cityDto: CityDto) {
         _state.update { it.copy(selectedCity = cityDto.name, isNearMode = false) }
-        viewModelScope.launch { loadLeagues() }
+        reload()
     }
 
     fun onClearAreaFilters() {
@@ -103,7 +125,7 @@ class LeagueDashboardViewModel(
                 cities = emptyList(),
             )
         }
-        viewModelScope.launch { loadLeagues() }
+        reload()
     }
 
     /** User-initiated -- never auto-triggered (that would fire an unprompted permission dialog). */
@@ -111,11 +133,12 @@ class LeagueDashboardViewModel(
         if (_state.value.isNearMode) {
             lastNearPoint = null
             _state.update { it.copy(isNearMode = false) }
-            viewModelScope.launch { loadLeagues() }
+            reload()
             return
         }
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _state.update {
                 it.copy(
                     isLocating = true,
@@ -127,7 +150,7 @@ class LeagueDashboardViewModel(
                     cities = emptyList(),
                 )
             }
-            val point = runCatching { locationProvider.getCurrentLocation() }.getOrNull()
+            val point = attempt { locationProvider.getCurrentLocation() }
             if (point == null) {
                 lastNearPoint = null
                 _state.update { it.copy(isLocating = false, isNearMode = false, errorMessage = "Couldn't get your location.") }
@@ -140,12 +163,12 @@ class LeagueDashboardViewModel(
     }
 
     private suspend fun loadDistricts(stateCode: String) {
-        val districts = runCatching { referenceRepository.getDistrictsForState(stateCode) }.getOrDefault(emptyList())
+        val districts = attempt { referenceRepository.getDistrictsForState(stateCode) } ?: emptyList()
         _state.update { it.copy(districts = districts) }
     }
 
     private suspend fun loadCities(districtId: String) {
-        val cities = runCatching { referenceRepository.getCitiesForDistrict(districtId) }.getOrDefault(emptyList())
+        val cities = attempt { referenceRepository.getCitiesForDistrict(districtId) } ?: emptyList()
         _state.update { it.copy(cities = cities) }
     }
 
@@ -154,18 +177,29 @@ class LeagueDashboardViewModel(
         val current = _state.value
         val near = lastNearPoint
 
-        runCatching {
+        val leagues = attempt {
             if (current.isNearMode && near != null) {
                 leagueRepository.listNearest(near.latitude, near.longitude)
             } else {
                 leagueRepository.listByArea(current.selectedState, current.selectedDistrict, current.selectedCity)
             }
         }
-            .onSuccess { leagues -> _state.update { it.copy(isLoading = false, leagues = leagues) } }
-            .onFailure { throwable ->
-                _state.update {
-                    it.copy(isLoading = false, errorMessage = throwable.message ?: "Couldn't load leagues. Please try again.")
-                }
+        _state.update {
+            if (leagues != null) {
+                it.copy(isLoading = false, leagues = leagues)
+            } else {
+                it.copy(isLoading = false, errorMessage = "Couldn't load leagues. Please try again.")
             }
+        }
     }
+
+    /** [block]'s result, or `null` if it failed -- but never swallows cancellation of a superseded load. */
+    private suspend fun <T> attempt(block: suspend () -> T): T? =
+        try {
+            block()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            null
+        }
 }

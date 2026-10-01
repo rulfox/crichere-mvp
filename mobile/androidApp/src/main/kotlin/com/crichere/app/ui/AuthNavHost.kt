@@ -5,14 +5,30 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.crichere.app.R
+import com.crichere.app.ui.theme.InstrumentSansFamily
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -136,18 +152,87 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
     }
 }
 
+/** Bottom navigation per the design board (screen D): tinted bar, pill indicator, filled icon when selected. */
+@Composable
+private fun MainBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
+    val selectedInk = MaterialTheme.colorScheme.onPrimaryContainer
+    val unselectedInk = Color(0xFF4A564D)
+    NavigationBar(containerColor = Color(0xFFEDF0E8), tonalElevation = 0.dp) {
+        listOf(
+            Triple(MainTab.DASHBOARD, "Dashboard", R.drawable.ic_sports_cricket to R.drawable.ic_sports_cricket_filled),
+            Triple(MainTab.MY_LEAGUES, "My Leagues", R.drawable.ic_groups to R.drawable.ic_groups_filled),
+            Triple(MainTab.MY_PROFILE, "My Profile", R.drawable.ic_account_circle to R.drawable.ic_account_circle_filled),
+        ).forEach { (tab, label, icons) ->
+            val isSelected = tab == selected
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onSelect(tab) },
+                icon = {
+                    Icon(
+                        painterResource(if (isSelected) icons.second else icons.first),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
+                label = {
+                    Text(
+                        label,
+                        style = TextStyle(
+                            fontFamily = InstrumentSansFamily,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.5.sp,
+                        ),
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = selectedInk,
+                    selectedTextColor = selectedInk,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = unselectedInk,
+                    unselectedTextColor = unselectedInk,
+                ),
+            )
+        }
+    }
+}
+
 /** The minimal loading/splash state while the silent app-start check is in flight -- not a design task. */
 @Composable
 private fun AppStartRoute(onResolved: (AppStartDestination) -> Unit) {
     val viewModel: AppStartViewModel = koinViewModel()
     val resolvedDestination by viewModel.destination.collectAsStateWithLifecycle()
+    val isOffline by viewModel.isOffline.collectAsStateWithLifecycle()
 
     LaunchedEffect(resolvedDestination) {
         resolvedDestination?.let(onResolved)
     }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+    Box(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 40.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isOffline) {
+            // The stored session is fine; the backend just couldn't be reached (see AppStartViewModel).
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(painterResource(R.drawable.ic_cloud_off), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "Couldn't connect",
+                    style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Check your internet connection and try again.",
+                    style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.sp, lineHeight = 18.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(20.dp))
+                CrichereOutlinedButton(text = "Try again", onClick = viewModel::retry)
+            }
+        } else {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 
@@ -255,27 +340,9 @@ private fun MainRoute(
 
     when (val current = destination) {
         is MainDestination.Tabs -> Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                NavigationBar {
-                    NavigationBarItem(
-                        selected = current.tab == MainTab.DASHBOARD,
-                        onClick = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
-                        icon = {},
-                        label = { Text("Dashboard") },
-                    )
-                    NavigationBarItem(
-                        selected = current.tab == MainTab.MY_LEAGUES,
-                        onClick = { destination = MainDestination.Tabs(MainTab.MY_LEAGUES) },
-                        icon = {},
-                        label = { Text("My Leagues") },
-                    )
-                    NavigationBarItem(
-                        selected = current.tab == MainTab.MY_PROFILE,
-                        onClick = { destination = MainDestination.Tabs(MainTab.MY_PROFILE) },
-                        icon = {},
-                        label = { Text("My Profile") },
-                    )
-                }
+                MainBottomBar(selected = current.tab, onSelect = { tab -> destination = MainDestination.Tabs(tab) })
             },
         ) { contentPadding ->
             Box(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
@@ -283,6 +350,7 @@ private fun MainRoute(
                     MainTab.DASHBOARD -> LeagueDashboardRoute(
                         onOpenLeague = { leagueId -> destination = MainDestination.LeagueDetail(leagueId) },
                         onCreateLeague = { destination = MainDestination.LeagueCreation(editingLeagueId = null) },
+                        onOpenProfile = { destination = MainDestination.Tabs(MainTab.MY_PROFILE) },
                     )
                     MainTab.MY_LEAGUES -> MyLeaguesRoute(
                         onOpenLeague = { leagueId -> destination = MainDestination.LeagueDetail(leagueId) },

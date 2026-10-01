@@ -8,6 +8,7 @@ import android.location.Geocoder
 import android.location.LocationManager
 import android.os.Build
 import android.os.CancellationSignal
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -43,9 +44,28 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
 
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             ?: return null
-        val provider = bestAvailableProvider(locationManager) ?: return null
 
-        return runCatching { requestLocation(locationManager, provider) }.getOrNull()
+        // City-level precision is all this feature needs, so a recent fix from any provider beats
+        // waiting on a fresh one. Only the network provider used to be asked, and it often has no
+        // fix at all (found on-device: fused and GPS had recent fixes, network had none), which
+        // surfaced as "Couldn't get your location."
+        lastKnown(locationManager, maxAgeMillis = RECENT_FIX_MAX_AGE_MILLIS)?.let { return it }
+
+        val fresh = bestAvailableProvider(locationManager)?.let { provider ->
+            runCatching { requestLocation(locationManager, provider) }.getOrNull()
+        }
+        return fresh ?: lastKnown(locationManager, maxAgeMillis = Long.MAX_VALUE)
+    }
+
+    /** Most recent last-known fix across enabled providers, if it is at most [maxAgeMillis] old. */
+    @SuppressLint("MissingPermission") // Guarded by getCurrentLocation()'s permission check.
+    private fun lastKnown(locationManager: LocationManager, maxAgeMillis: Long): GeoPoint? {
+        val newest = locationManager.getProviders(true)
+            .mapNotNull { provider -> runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull() }
+            .maxByOrNull { it.elapsedRealtimeNanos }
+            ?: return null
+        val ageMillis = (SystemClock.elapsedRealtimeNanos() - newest.elapsedRealtimeNanos) / 1_000_000
+        return if (ageMillis <= maxAgeMillis) GeoPoint(newest.latitude, newest.longitude) else null
     }
 
     // Lint's MissingPermission check can't trace the ACCESS_COARSE_LOCATION guard in
@@ -111,7 +131,14 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
     // request returned null in under a millisecond, not after any real GPS search. NETWORK_PROVIDER
     // is the one coarse permission actually authorizes.
     private fun bestAvailableProvider(locationManager: LocationManager): String? = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            locationManager.isProviderEnabled(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
         locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
         else -> null
+    }
+
+    private companion object {
+        const val RECENT_FIX_MAX_AGE_MILLIS = 10 * 60 * 1000L
     }
 }

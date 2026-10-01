@@ -5,12 +5,13 @@ package com.crichere.app.auth
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
- * App-start routing's four cases, tested against a fake [AuthRepository] per this task's Testing
- * Strategy -- no-token -> Phone Entry; token-present-refresh-fails -> Phone Entry; token-present-
- * refresh-succeeds-incomplete -> Profile Setup; token-present-refresh-succeeds-complete -> Own
- * Profile View.
+ * App-start routing, tested against a fake [AuthRepository]: no-token / invalid-token -> Phone
+ * Entry; refresh succeeds -> Profile Setup or Main by `profileComplete`; a transient failure is
+ * retried and then reported as offline (never Phone Entry -- the session is still stored).
  */
 class AppStartViewModelTest {
 
@@ -96,12 +97,45 @@ class AppStartViewModelTest {
     }
 
     @Test
-    fun `a transient refresh failure - 5xx or network - falls back to Phone Entry rather than getting stuck`() = viewModelTest {
+    fun `a transient failure is retried and, if it persists, shows offline -- never Phone Entry`() = viewModelTest {
         val repository = StubAuthRepository { throw SessionRefreshFailedException("503") }
         val viewModel = AppStartViewModel(repository)
 
         advanceUntilIdle()
 
-        assertEquals(AppStartDestination.PhoneEntry, viewModel.destination.value)
+        assertEquals(AppStartViewModel.MAX_ATTEMPTS, repository.refreshCallCount)
+        assertEquals(null, viewModel.destination.value, "a signed-in user must not be sent to Phone Entry")
+        assertTrue(viewModel.isOffline.value)
+    }
+
+    @Test
+    fun `a transient failure that recovers on a later attempt routes normally`() = viewModelTest {
+        var calls = 0
+        val repository = StubAuthRepository {
+            calls++
+            if (calls == 1) throw SessionRefreshFailedException("timeout") else authResult(profileComplete = true)
+        }
+        val viewModel = AppStartViewModel(repository)
+
+        advanceUntilIdle()
+
+        assertEquals(AppStartDestination.Main, viewModel.destination.value)
+        assertFalse(viewModel.isOffline.value)
+    }
+
+    @Test
+    fun `retry after offline re-runs the check`() = viewModelTest {
+        var failing = true
+        val repository = StubAuthRepository { if (failing) throw SessionRefreshFailedException("503") else authResult(profileComplete = false) }
+        val viewModel = AppStartViewModel(repository)
+        advanceUntilIdle()
+        assertTrue(viewModel.isOffline.value)
+
+        failing = false
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isOffline.value)
+        assertEquals(AppStartDestination.ProfileSetup, viewModel.destination.value)
     }
 }
