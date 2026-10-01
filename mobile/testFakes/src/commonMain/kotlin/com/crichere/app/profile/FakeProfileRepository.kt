@@ -62,7 +62,25 @@ class FakeProfileRepository(
         return photoUploadInfo
     }
 
-    override suspend fun uploadPhoto(uploadInfo: PhotoUploadInfoDto, bytes: ByteArray, contentType: String): String {
+    /** Progress fractions reported to the caller before the upload completes (or fails). */
+    var uploadProgressSteps: List<Float> = listOf(0.5f, 1f)
+
+    /** Suspends mid-upload this long after the first progress step -- lets tests cancel an in-flight upload. */
+    var uploadDelayMillis: Long = 0
+    var uploadPhotoCallCount = 0
+        private set
+
+    override suspend fun uploadPhoto(
+        uploadInfo: PhotoUploadInfoDto,
+        bytes: ByteArray,
+        contentType: String,
+        onProgress: (Float) -> Unit,
+    ): String {
+        uploadPhotoCallCount++
+        uploadProgressSteps.forEachIndexed { index, step ->
+            onProgress(step)
+            if (index == 0 && uploadDelayMillis > 0) delay(uploadDelayMillis)
+        }
         uploadPhotoError?.let { throw it }
         return uploadedPhotoUrl
     }

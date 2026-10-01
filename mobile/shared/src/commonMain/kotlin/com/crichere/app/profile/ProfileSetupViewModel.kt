@@ -7,6 +7,7 @@ import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.ReferenceRepository
 import com.crichere.app.reference.StateDto
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,11 @@ data class ProfileSetupState(
     val districts: List<DistrictDto> = emptyList(),
     val cities: List<CityDto> = emptyList(),
     val isUploadingPhoto: Boolean = false,
+    /** Fraction of the photo body sent, 0..1 -- only meaningful while [isUploadingPhoto]. */
+    val photoUploadProgress: Float = 0f,
+    /** Name/size of the photo being uploaded (or that just failed), for the upload row's caption. */
+    val uploadingPhotoName: String? = null,
+    val uploadingPhotoSizeBytes: Long? = null,
     val isLocating: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -119,6 +125,8 @@ class ProfileSetupViewModel(
     // retry() itself on every entry instead -- see that composable, same convention
     // LeagueDetailViewModel/AuctionSettingsViewModel already use.
     private var loadJob: Job? = null
+    private var uploadJob: Job? = null
+    private var lastPhoto: PendingPhoto? = null
 
     fun retry() = load()
 
@@ -205,14 +213,30 @@ class ProfileSetupViewModel(
      * setup returns) surfaces as a clear, non-crashing [ProfileSetupState.photoUploadErrorMessage]
      * rather than a silent failure, per this task's environment note.
      */
-    fun uploadPhoto(bytes: ByteArray, contentType: String) {
+    fun uploadPhoto(bytes: ByteArray, contentType: String) = uploadPhoto(bytes, contentType, fileName = null)
+
+    fun uploadPhoto(bytes: ByteArray, contentType: String, fileName: String?) {
         if (_state.value.isUploadingPhoto) return
-        viewModelScope.launch {
-            _state.update { it.copy(isUploadingPhoto = true, photoUploadErrorMessage = null) }
+        lastPhoto = PendingPhoto(bytes, contentType, fileName)
+        uploadJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isUploadingPhoto = true,
+                    photoUploadProgress = 0f,
+                    uploadingPhotoName = fileName,
+                    uploadingPhotoSizeBytes = bytes.size.toLong(),
+                    photoUploadErrorMessage = null,
+                )
+            }
             try {
                 val uploadInfo = profileRepository.requestPhotoUploadUrl()
-                val photoUrl = profileRepository.uploadPhoto(uploadInfo, bytes, contentType)
-                _state.update { it.copy(isUploadingPhoto = false, photoUrl = photoUrl) }
+                val photoUrl = profileRepository.uploadPhoto(uploadInfo, bytes, contentType) { fraction ->
+                    _state.update { it.copy(photoUploadProgress = fraction) }
+                }
+                lastPhoto = null
+                _state.update { it.copy(isUploadingPhoto = false, photoUploadProgress = 1f, photoUrl = photoUrl) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (unavailable: PhotoUploadUnavailableException) {
                 _state.update { it.copy(isUploadingPhoto = false, photoUploadErrorMessage = unavailable.message) }
             } catch (other: Exception) {
@@ -225,6 +249,30 @@ class ProfileSetupViewModel(
             }
         }
     }
+
+    /** Re-uploads the photo whose upload last failed; no-op if there's nothing to retry. */
+    fun retryPhotoUpload() {
+        val photo = lastPhoto ?: return
+        uploadPhoto(photo.bytes, photo.contentType, photo.fileName)
+    }
+
+    /** Abandons an in-flight upload; any previously uploaded [ProfileSetupState.photoUrl] is kept. */
+    fun cancelPhotoUpload() {
+        uploadJob?.cancel()
+        uploadJob = null
+        lastPhoto = null
+        _state.update {
+            it.copy(
+                isUploadingPhoto = false,
+                photoUploadProgress = 0f,
+                uploadingPhotoName = null,
+                uploadingPhotoSizeBytes = null,
+                photoUploadErrorMessage = null,
+            )
+        }
+    }
+
+    private class PendingPhoto(val bytes: ByteArray, val contentType: String, val fileName: String?)
 
     /**
      * User-initiated "use my location" -- never auto-triggered on screen load (that would fire an
@@ -301,13 +349,9 @@ class ProfileSetupViewModel(
                         _navigationEvents.send(ProfileSetupNavigationEvent.NavigateToOwnProfile)
                     }
                 }
-                .onFailure { throwable ->
-                    _state.update {
-                        it.copy(
-                            isSaving = false,
-                            errorMessage = throwable.message ?: "Couldn't save your profile. Please try again.",
-                        )
-                    }
+                // The cause is a backend status or transport error -- nothing the user can act on beyond retrying.
+                .onFailure {
+                    _state.update { it.copy(isSaving = false, errorMessage = SAVE_FAILED_MESSAGE) }
                 }
         }
     }
@@ -336,6 +380,10 @@ class ProfileSetupViewModel(
     private suspend fun loadCities(districtId: String) {
         val cities = runCatching { referenceRepository.getCitiesForDistrict(districtId) }.getOrDefault(emptyList())
         _state.update { it.copy(cities = cities) }
+    }
+
+    companion object {
+        const val SAVE_FAILED_MESSAGE = "Couldn't save your profile. Please try again."
     }
 
     /**

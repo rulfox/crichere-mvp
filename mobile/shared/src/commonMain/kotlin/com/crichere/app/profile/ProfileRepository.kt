@@ -44,8 +44,16 @@ interface ProfileRepository {
     /** `POST /api/v1/profiles/me/photo-upload-url`. Throws [PhotoUploadUnavailableException] on a `503`. */
     suspend fun requestPhotoUploadUrl(): PhotoUploadInfoDto
 
-    /** See [uploadPhotoViaPresignedPost] -- this is that function, scoped to a profile photo's filename. */
-    suspend fun uploadPhoto(uploadInfo: PhotoUploadInfoDto, bytes: ByteArray, contentType: String): String
+    /**
+     * See [uploadPhotoViaPresignedPost] -- this is that function, scoped to a profile photo's
+     * filename. [onProgress] receives the fraction of the body sent, 0..1.
+     */
+    suspend fun uploadPhoto(
+        uploadInfo: PhotoUploadInfoDto,
+        bytes: ByteArray,
+        contentType: String,
+        onProgress: (Float) -> Unit = {},
+    ): String
 }
 
 /**
@@ -86,6 +94,10 @@ internal class KtorProfileRepository(
         return response.body()
     }
 
-    override suspend fun uploadPhoto(uploadInfo: PhotoUploadInfoDto, bytes: ByteArray, contentType: String): String =
-        uploadPhotoViaPresignedPost(uploadClient, uploadInfo, bytes, contentType, filename = "profile.jpg")
+    override suspend fun uploadPhoto(
+        uploadInfo: PhotoUploadInfoDto,
+        bytes: ByteArray,
+        contentType: String,
+        onProgress: (Float) -> Unit,
+    ): String = uploadPhotoViaPresignedPost(uploadClient, uploadInfo, bytes, contentType, filename = "profile.jpg", onProgress = onProgress)
 }

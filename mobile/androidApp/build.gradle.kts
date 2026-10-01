@@ -97,6 +97,8 @@ dependencies {
 
     implementation(libs.play.services.maps)
     implementation(libs.maps.compose)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     // Push notifications (docs/PHASE8.md). CrichereFirebaseMessagingService lives in this module
     // (not shared/androidMain, where firebase-auth lives) since it's a real Android Service class,

@@ -2,7 +2,6 @@
 
 package com.crichere.app.auth
 
-import com.crichere.app.storage.SecureStore
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -235,27 +234,18 @@ class OtpVerifyViewModelTest {
 
     @Test
     fun `a failure after a correct code shows a friendly message, never the raw cause`() = viewModelTest {
-        val brokenStorage = object : SecureStore {
-            override suspend fun get(key: String): String? = null
-            override suspend fun set(key: String, value: String) =
-                throw IllegalStateException("Keystore cannot load the key with ID: crichere_secure_storage_master_key")
-            override suspend fun remove(key: String) = Unit
+        val repository = FakeAuthRepository().apply {
+            nextVerifyOtpResult = Result.success("firebase-id-token")
+            exchangeSessionError = IllegalStateException("Keystore cannot load the key with ID: crichere_secure_storage_master_key")
         }
-        val repository = KtorAuthRepository(
-            sessionHttpClient(profileComplete = true),
-            FakePhoneAuthClient(),
-            brokenStorage,
-            authenticatedHttpClientProvider = { unusedHttpClient() },
-        )
         val viewModel = OtpVerifyViewModel("+919876543210", "initial-verification-id", null, repository)
 
         viewModel.onCodeChanged("123456")
         viewModel.verifyCode()
-        // MockEngine runs on a real dispatcher, so wait for the outcome rather than advanceUntilIdle().
-        val settled = viewModel.state.first { it.errorMessage != null }
+        advanceUntilIdle()
 
-        assertEquals(OtpVerifyViewModel.SIGN_IN_FAILED_MESSAGE, settled.errorMessage)
-        assertFalse(settled.isVerifying)
+        assertEquals(OtpVerifyViewModel.SIGN_IN_FAILED_MESSAGE, viewModel.state.value.errorMessage)
+        assertFalse(viewModel.state.value.isVerifying)
     }
 
     @Test

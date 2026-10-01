@@ -11,6 +11,7 @@ import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.FakeReferenceRepository
 import com.crichere.app.reference.StateDto
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlin.test.Test
@@ -452,7 +453,93 @@ class ProfileSetupViewModelTest {
         assertFalse(viewModel.state.value.isUploadingPhoto)
     }
 
+    @Test
+    fun `uploadPhoto reports progress and the file caption while in flight`() = viewModelTest {
+        val profileRepository = FakeProfileRepository().apply {
+            uploadProgressSteps = listOf(0.63f, 1f)
+            uploadDelayMillis = 1_000
+        }
+        val viewModel = newViewModel(profileRepository = profileRepository)
+        advanceUntilIdle()
+
+        viewModel.uploadPhoto(ByteArray(2_048), "image/jpeg", fileName = "profile-photo.jpg")
+        runCurrent()
+
+        val inFlight = viewModel.state.value
+        assertTrue(inFlight.isUploadingPhoto)
+        assertEquals(0.63f, inFlight.photoUploadProgress)
+        assertEquals("profile-photo.jpg", inFlight.uploadingPhotoName)
+        assertEquals(2_048L, inFlight.uploadingPhotoSizeBytes)
+
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isUploadingPhoto)
+        assertEquals(profileRepository.uploadedPhotoUrl, viewModel.state.value.photoUrl)
+    }
+
+    @Test
+    fun `cancelPhotoUpload abandons the upload without an error and keeps the previous photo`() = viewModelTest {
+        val profileRepository = FakeProfileRepository(
+            profile = ProfileDto(userId = "11111111-1111-1111-1111-111111111111", photoUrl = "https://example.com/old.jpg"),
+        ).apply { uploadDelayMillis = 1_000 }
+        val viewModel = newViewModel(profileRepository = profileRepository)
+        advanceUntilIdle()
+
+        viewModel.uploadPhoto(byteArrayOf(1), "image/jpeg")
+        runCurrent()
+        viewModel.cancelPhotoUpload()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertFalse(state.isUploadingPhoto)
+        assertNull(state.photoUploadErrorMessage)
+        assertEquals("https://example.com/old.jpg", state.photoUrl)
+    }
+
+    @Test
+    fun `retryPhotoUpload re-sends the photo whose upload failed`() = viewModelTest {
+        val profileRepository = FakeProfileRepository().apply { uploadPhotoError = RuntimeException("S3 down") }
+        val viewModel = newViewModel(profileRepository = profileRepository)
+        advanceUntilIdle()
+
+        viewModel.uploadPhoto(byteArrayOf(1, 2), "image/jpeg")
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.photoUploadErrorMessage != null)
+
+        profileRepository.uploadPhotoError = null
+        viewModel.retryPhotoUpload()
+        advanceUntilIdle()
+
+        assertEquals(2, profileRepository.uploadPhotoCallCount)
+        assertEquals(profileRepository.uploadedPhotoUrl, viewModel.state.value.photoUrl)
+        assertNull(viewModel.state.value.photoUploadErrorMessage)
+    }
+
     // ---- Save flow ----
+
+    @Test
+    fun `a failed save shows a friendly message, never the raw cause`() = viewModelTest {
+        val profileRepository = FakeProfileRepository().apply {
+            saveProfileError = ProfileSaveFailedException("Profile save failed with status 500 Internal Server Error")
+        }
+        val viewModel = newViewModel(profileRepository = profileRepository)
+        advanceUntilIdle()
+        viewModel.onNameChanged("Rahul Sharma")
+        viewModel.uploadPhoto(byteArrayOf(1), "image/jpeg")
+        advanceUntilIdle()
+        viewModel.onStateSelected(karnataka)
+        advanceUntilIdle()
+        viewModel.onDistrictSelected(bengaluruUrban)
+        advanceUntilIdle()
+        viewModel.onCitySelected(bengaluru)
+        viewModel.onRoleSelected(PlayingRole.BATSMAN)
+        viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
+
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals(ProfileSetupViewModel.SAVE_FAILED_MESSAGE, viewModel.state.value.errorMessage)
+        assertFalse(viewModel.state.value.isSaving)
+    }
 
     @Test
     fun `save sends the full accumulated snapshot and navigates when the profile becomes complete`() = viewModelTest {

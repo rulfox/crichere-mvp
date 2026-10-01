@@ -347,3 +347,15 @@ explicitly before cutting all of it.
 - Auction Settings' "locked once started" guard (screen J) — check the code directly.
 - Live Auction's overall scope (screen L) — see that section; leaning toward "simplify the design"
   given the timer was named explicitly, but the size of the gap is worth an explicit confirmation.
+
+## Follow-ups (todo)
+
+Open items found while implementing the redesign, not yet scheduled.
+
+- [ ] **Uploads go live before Save** (found on screen C, 2026-10-01). Photo uploads use a fixed
+  S3 key per owner (`users/{userId}/profile.jpg`, `leagues/{id}/logo.jpg`, ...), so the live image
+  is replaced the moment the upload finishes, even if the user then cancels or never taps Save.
+  Backend change: upload to a fresh key and only point the record at it on save.
+- [ ] **Profile Setup subtitle kept on filled forms** (screen C). "So organizers know who's joining
+  their league." stays visible after a name is typed. The design hides it in the filled states
+  (C4, C6), but hiding it makes the whole form jump on the first keystroke. Revisit with the design.

@@ -1,12 +1,14 @@
 package com.crichere.app.upload
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.serialization.Serializable
+import kotlin.random.Random
 
 /**
  * Mirrors the backend's `PhotoUploadUrlResponse`
@@ -48,6 +50,7 @@ suspend fun uploadPhotoViaPresignedPost(
     bytes: ByteArray,
     contentType: String,
     filename: String,
+    onProgress: (Float) -> Unit = {},
 ): String {
     val response = uploadClient.submitFormWithBinaryData(
         url = uploadInfo.uploadUrl,
@@ -67,9 +70,15 @@ suspend fun uploadPhotoViaPresignedPost(
                 },
             )
         },
-    )
+    ) {
+        onUpload { sent, total ->
+            if (total != null && total > 0) onProgress((sent.toFloat() / total).coerceIn(0f, 1f))
+        }
+    }
     if (!response.status.isSuccess()) {
         throw PhotoUploadFailedException("S3 upload failed with status ${response.status}")
     }
-    return uploadInfo.uploadUrl + uploadInfo.key
+    // Keys are fixed per owner (e.g. users/{id}/profile.jpg), so a new upload would otherwise get the
+    // same URL and image caches would keep serving the old picture. S3 ignores the extra query param.
+    return "${uploadInfo.uploadUrl}${uploadInfo.key}?v=${Random.nextLong().toULong().toString(36)}"
 }

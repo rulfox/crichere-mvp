@@ -61,6 +61,8 @@ class ProfileRepositoryTest {
                 }
                 channel.readRemaining().readByteArray()
             }
+            // Upload-progress tracking (onUpload) wraps the multipart body in an ObservableContent.
+            is OutgoingContent.ReadChannelContent -> body.readFrom().readRemaining().readByteArray()
             else -> error("Unsupported outgoing content type: $body")
         }
 
@@ -198,8 +200,11 @@ class ProfileRepositoryTest {
         val repository = KtorProfileRepository(mockHttpClient { error("no backend call expected") }, uploadClient)
 
         val photoUrl = repository.uploadPhoto(uploadInfo, byteArrayOf(1, 2, 3, 4), "image/jpeg")
+        val secondUrl = repository.uploadPhoto(uploadInfo, byteArrayOf(5), "image/jpeg")
 
-        assertEquals("https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/u1/profile.jpg", photoUrl)
+        assertTrue(photoUrl.startsWith("https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/u1/profile.jpg?v="), photoUrl)
+        // Same S3 key every time, so each upload must still yield a distinct URL for image caches.
+        assertTrue(photoUrl != secondUrl)
     }
 
     @Test
