@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -814,8 +817,9 @@ private fun LazyListScope.awardsSection(awards: List<LeagueAwardDto>, horizontal
     item {
         Column(Modifier.padding(horizontal = horizontal.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             awards.sortedBy { it.displayOrder }.withIndex().chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (index, award) -> AwardCard(award, index, Modifier.weight(1f)) }
+                // Equal-height tiles that grow with their content -- a long amount or name wraps.
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { (index, award) -> AwardCard(award, index, Modifier.weight(1f).fillMaxHeight()) }
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
@@ -832,7 +836,7 @@ private fun AwardCard(award: LeagueAwardDto, index: Int, modifier: Modifier) {
     }
     Column(
         modifier
-            .height(108.dp)
+            .heightIn(min = 108.dp)
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
             .padding(11.dp),
@@ -842,7 +846,7 @@ private fun AwardCard(award: LeagueAwardDto, index: Int, modifier: Modifier) {
         Text(award.name, style = body(13.sp, FontWeight.SemiBold, 14.3.sp), color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
         award.cashAmount?.let {
             Spacer(Modifier.height(4.dp))
-            Text("Cash ${rupees(it)}", style = TextStyle(fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, lineHeight = 11.5.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Cash ${rupees(it)}", style = TextStyle(fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Medium, fontSize = 11.5.sp, lineHeight = 14.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (award.hasTrophy) {
             Spacer(Modifier.height(4.dp))
