@@ -222,6 +222,29 @@ label through "Uploading..." → "Screenshot attached." Decide build-vs-strip.
 
 ## G — Claim a franchise
 
+**Implemented (2026-10-01).** Name card with a square logo tile: dashed "Logo" placeholder, then
+initials once a name is typed, then the cropped logo with an edit badge + "Remove logo" (G1/G3/G4).
+The name field is a boxed placeholder while empty and switches to the label + underline style once
+filled; clearing it shows "Enter a franchise name" (G1). Logo picks go through the crop sheet in
+its rounded-square mode with the 32/48dp "At auction and roster sizes" previews (G2;
+`PhotoCropSheet(square = true)`). Fee card: "Franchise fee ₹5,000" header, Pay via UPI and a dashed
+"Attach payment screenshot / Required" row, which collapses to the compact attached row with
+Replace/Remove once the screenshot is in (G1/G3). The screenshot goes through the same
+tick-the-checklist sheet as F. Free franchise note (G4). Cards dim to 55% and the button shows
+"Claiming…" while submitting (G5). Friendly failure banner keyed on the problem `code`, e.g.
+CAPACITY_FULL -> "All franchise slots are taken." (G6). League load failure (G7).
+Verified by rendering each state with fakes on-device; G2 shares the C3 crop sheet's code.
+
+Verified live on CPH2487 against the real backend: logo crop and upload, screenshot checklist and
+upload with progress, and the LEAGUE_COMPLETED banner from a real claim on a completed league.
+
+Decisions taken where the board has no frame (confirmed by the owner 2026-10-01):
+- Uploading and failed screenshot states reuse the compact row: a % overlay with Cancel, or "Upload
+  failed" with Retry/Remove.
+- The no-UPI-app and no-UPI-ID fallbacks reuse F2/F9's notes.
+- A failed logo upload drops the logo and shows "Couldn't upload the logo." in the bottom banner.
+- The disclaimer shows once a screenshot is attached, as on G3; G1/G5/G6 omit it.
+
 **Change the design:**
 - Button label "Send claim" → "Claim Franchise" to match the app.
 - The disclaimer currently reads (per All Screens' own intro paragraph, correctly): *"The claim

@@ -62,6 +62,9 @@ struct ClaimFranchiseView: View {
                         get: { wrapper.state.name },
                         set: { wrapper.onNameChanged($0) }
                     ))
+                    if wrapper.state.nameError {
+                        Text("Enter a franchise name").font(.caption).foregroundColor(.red)
+                    }
 
                     PhotosPicker(wrapper.state.logoUrl != nil ? "Logo selected" : "Choose a logo (optional)", selection: $logoPickerItem, matching: .images)
 

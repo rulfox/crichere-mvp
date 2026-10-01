@@ -45,8 +45,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -80,6 +82,7 @@ private const val MaxDecodeDimension = 2048
 private const val OutputSize = 512
 private const val MaxZoom = 5f
 private val CropCircle = 230.dp
+private val CropSquareSide = 220.dp
 
 /** Decodes [uri] (EXIF-rotated on API 28+), downsampled so its longest side is at most 2048px. */
 fun decodePickedPhoto(context: Context, uri: Uri): PickedPhoto? = runCatching {
@@ -132,7 +135,8 @@ private fun DrawScope.drawCrop(image: ImageBitmap, square: CropSquare) {
 
 /**
  * Design screen C3: circle-crop preview shown after picking a photo, before anything uploads. Drag
- * or pinch to position; "Use photo" hands back the JPEG bytes of the crop.
+ * or pinch to position; "Use photo" hands back the JPEG bytes of the crop. [square] switches to the
+ * rounded-square window used for franchise logos (design G2).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,11 +147,14 @@ fun PhotoCropSheet(
     onDismiss: () -> Unit,
     onChooseAnother: () -> Unit,
     onUsePhoto: (CropSquare) -> Unit,
+    square: Boolean = false,
+    useLabel: String = "Use photo",
 ) {
     val image = remember(photo) { photo.bitmap.asImageBitmap() }
     val bitmapW = photo.bitmap.width.toFloat()
     val bitmapH = photo.bitmap.height.toFloat()
-    val circlePx = with(LocalDensity.current) { CropCircle.toPx() }
+    val circlePx = with(LocalDensity.current) { (if (square) CropSquareSide else CropCircle).toPx() }
+    val windowRadiusPx = with(LocalDensity.current) { 28.dp.toPx() }
     val baseScale = circlePx / min(bitmapW, bitmapH)
 
     var zoom by remember(photo) { mutableFloatStateOf(1f) }
@@ -160,7 +167,7 @@ fun PhotoCropSheet(
         return Offset(p.x.coerceIn(-maxX, maxX), p.y.coerceIn(-maxY, maxY))
     }
 
-    val square = run {
+    val crop = run {
         val s = baseScale * zoom
         val side = circlePx / s
         CropSquare(
@@ -234,24 +241,41 @@ fun PhotoCropSheet(
                         dstOffset = IntOffset(topLeft.x.roundToInt(), topLeft.y.roundToInt()),
                         dstSize = IntSize(drawW.roundToInt(), drawH.roundToInt()),
                     )
+                    val window = Rect(center, circlePx / 2f)
                     val hole = Path().apply {
                         fillType = PathFillType.EvenOdd
                         addRect(Rect(Offset.Zero, size))
-                        addOval(Rect(center, circlePx / 2f))
+                        if (square) addRoundRect(RoundRect(window, CornerRadius(windowRadiusPx))) else addOval(window)
                     }
                     drawPath(hole, Color(0x9E0A0E0A))
-                    drawCircle(Color.White, radius = circlePx / 2f, center = center, style = Stroke(2.dp.toPx()))
+                    if (square) {
+                        drawRoundRect(Color.White, window.topLeft, window.size, CornerRadius(windowRadiusPx), style = Stroke(2.dp.toPx()))
+                    } else {
+                        drawCircle(Color.White, radius = circlePx / 2f, center = center, style = Stroke(2.dp.toPx()))
+                    }
                 }
             }
 
             Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (square) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+                    Canvas(Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))) { drawCrop(image, crop) }
+                    Spacer(Modifier.width(10.dp))
+                    Canvas(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))) { drawCrop(image, crop) }
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "At auction and roster sizes",
+                        style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 12.sp, lineHeight = 16.2.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else Row(verticalAlignment = Alignment.CenterVertically) {
                 Canvas(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                ) { drawCrop(image, square) }
+                ) { drawCrop(image, crop) }
                 Spacer(Modifier.width(16.dp))
                 Text(
                     "How it will look on rosters and the auction screen",
@@ -259,7 +283,7 @@ fun PhotoCropSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.height(19.dp))
+            Spacer(Modifier.height(if (square) 14.dp else 19.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
                 val label = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                 OutlinedButton(
@@ -271,12 +295,12 @@ fun PhotoCropSheet(
                     modifier = Modifier.weight(1f).height(48.dp),
                 ) { Text("Choose another", style = label) }
                 Button(
-                    onClick = { onUsePhoto(square) },
+                    onClick = { onUsePhoto(crop) },
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.weight(1f).height(48.dp),
-                ) { Text("Use photo", style = label) }
+                ) { Text(useLabel, style = label) }
             }
         }
     }

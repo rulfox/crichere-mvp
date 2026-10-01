@@ -1,8 +1,11 @@
 package com.crichere.app.ui
 
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.crichere.app.league.ClaimFranchiseViewModel
 import com.crichere.app.league.FakeFranchiseRepository
@@ -44,7 +47,7 @@ class ClaimFranchiseScreenTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Franchise name").performTextInput("Thunder Kings")
+        composeRule.onNode(hasSetTextAction()).performTextInput("Thunder Kings")
         composeRule.onNodeWithText("Claim Franchise").performClick()
         composeRule.waitForIdle()
 
@@ -54,7 +57,7 @@ class ClaimFranchiseScreenTest {
     }
 
     @Test
-    fun claimingWithoutANameShowsAValidationErrorAndDoesNotCallTheRepository() {
+    fun clearingTheNameShowsAValidationErrorAndBlocksTheClaim() {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(fixtureLeague))
         val franchiseRepository = FakeFranchiseRepository()
         val viewModel = ClaimFranchiseViewModel(leagueId = "league-1", leagueRepository, franchiseRepository)
@@ -62,10 +65,12 @@ class ClaimFranchiseScreenTest {
         composeRule.setContent { ClaimFranchiseRoute(leagueId = "league-1", onDone = {}, onCancel = {}, viewModel = viewModel) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Claim Franchise").performClick()
+        composeRule.onNode(hasSetTextAction()).performTextInput("T")
+        composeRule.onNode(hasSetTextAction()).performTextClearance()
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Franchise name is required.").assertExists()
+        composeRule.onNodeWithText("Enter a franchise name").assertExists()
+        composeRule.onNodeWithText("Claim Franchise").assertIsNotEnabled()
         assert(franchiseRepository.claimRequests.isEmpty())
     }
 }

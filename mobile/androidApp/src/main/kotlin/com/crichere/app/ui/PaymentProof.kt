@@ -176,29 +176,7 @@ internal fun PayToCard(
             noUpiApp -> {
                 InfoNote(title = null, body = "No UPI app found on this phone. Copy the UPI ID and pay from any app, or ask the organizer.")
                 Spacer(Modifier.height(10.dp))
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .border(2.dp, colors.primary, RoundedCornerShape(12.dp))
-                        .padding(start = 14.dp, end = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(upiId, style = TextStyle(fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp), color = colors.onBackground, modifier = Modifier.weight(1f))
-                    Row(
-                        Modifier
-                            .height(34.dp)
-                            .clip(RoundedCornerShape(17.dp))
-                            .background(colors.primaryContainer)
-                            .clickable(onClick = onCopyUpiId)
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(painterResource(if (copied) R.drawable.ic_check else R.drawable.ic_content_copy), null, tint = colors.primary, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (copied) "Copied" else "Copy", style = pText(12.5.sp, FontWeight.SemiBold), color = colors.primary)
-                    }
-                }
+                UpiIdCopyRow(upiId, copied, onCopyUpiId)
             }
             else -> {
                 Row(
@@ -227,8 +205,37 @@ internal fun PayToCard(
     }
 }
 
+/** The organizer's UPI ID with a Copy chip -- the no-UPI-app fallback (F2/G). */
 @Composable
-private fun InfoNote(title: String?, body: String) {
+internal fun UpiIdCopyRow(upiId: String, copied: Boolean, onCopyUpiId: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .border(2.dp, colors.primary, RoundedCornerShape(12.dp))
+            .padding(start = 14.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(upiId, style = TextStyle(fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp), color = colors.onBackground, modifier = Modifier.weight(1f))
+        Row(
+            Modifier
+                .height(34.dp)
+                .clip(RoundedCornerShape(17.dp))
+                .background(colors.primaryContainer)
+                .clickable(onClick = onCopyUpiId)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(if (copied) R.drawable.ic_check else R.drawable.ic_content_copy), null, tint = colors.primary, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(if (copied) "Copied" else "Copy", style = pText(12.5.sp, FontWeight.SemiBold), color = colors.primary)
+        }
+    }
+}
+
+@Composable
+internal fun InfoNote(title: String?, body: String) {
     val extra = LocalCrichereExtraColors.current
     Row(Modifier.fillMaxWidth().background(extra.warningContainer, RoundedCornerShape(12.dp)).padding(12.dp)) {
         Icon(painterResource(R.drawable.ic_info), contentDescription = null, tint = extra.onWarning, modifier = Modifier.padding(top = 1.dp).size(18.dp))
