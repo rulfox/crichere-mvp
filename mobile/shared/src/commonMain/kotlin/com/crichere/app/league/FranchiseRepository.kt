@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.network.problemCode
 import com.crichere.app.upload.PhotoUploadInfoDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -13,7 +14,8 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 
 /** Thrown by [FranchiseRepository]'s claim/remove/leave-request calls for anything other than a clean 2xx. */
-class LeagueFranchiseActionFailedException(message: String) : Exception(message)
+/** [code] is the backend's problem `code` (e.g. `CAPACITY_FULL`) when it sent one -- lets the UI explain why. */
+class LeagueFranchiseActionFailedException(message: String, val code: String? = null) : Exception(message)
 
 /** `commonMain` use cases for claiming a franchise in a league, and its request-and-approve leave flow (see docs/PHASE3.md). Follows [LeagueRepository]'s established interface+`Ktor*Impl` pattern. */
 interface FranchiseRepository {
@@ -40,7 +42,7 @@ internal class KtorFranchiseRepository(
             contentType(ContentType.Application.Json)
             setBody(request)
         }
-        if (!response.status.isSuccess()) throw LeagueFranchiseActionFailedException("Claim failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw LeagueFranchiseActionFailedException("Claim failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 

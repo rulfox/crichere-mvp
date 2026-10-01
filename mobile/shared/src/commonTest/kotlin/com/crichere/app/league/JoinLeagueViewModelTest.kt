@@ -80,9 +80,9 @@ class JoinLeagueViewModelTest {
     }
 
     @Test
-    fun `a join failure surfaces an error message instead of crashing`() = viewModelTest {
+    fun `a join failure shows friendly copy, never the raw cause`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
-        val playerRepository = FakePlayerRepository().apply { joinError = RuntimeException("already joined") }
+        val playerRepository = FakePlayerRepository().apply { joinError = RuntimeException("Join failed with status 500") }
         val viewModel = JoinLeagueViewModel("l1", leagueRepository, playerRepository)
         viewModel.retry()
         advanceUntilIdle()
@@ -91,6 +91,59 @@ class JoinLeagueViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.joined)
-        assertEquals("already joined", viewModel.state.value.errorMessage)
+        assertEquals("Couldn't join.", viewModel.state.value.errorTitle)
+        assertEquals("Check your connection and try again.", viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun `a full league explains that registration is full`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val playerRepository = FakePlayerRepository().apply {
+            joinError = LeaguePlayerActionFailedException("Join failed with status 409 Conflict", code = "CAPACITY_FULL")
+        }
+        val viewModel = JoinLeagueViewModel("l1", leagueRepository, playerRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        assertEquals("Registration is full.", viewModel.state.value.errorTitle)
+        assertEquals("This league isn't taking more players.", viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun `a failed screenshot upload can be retried, and an attached one removed`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague(playerFee = 100.0))).apply {
+            uploadPhotoError = RuntimeException("S3 down")
+        }
+        val viewModel = JoinLeagueViewModel("l1", leagueRepository, FakePlayerRepository())
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.uploadScreenshot(ByteArray(10), "image/jpeg", "proof.jpg")
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.uploadFailed)
+
+        leagueRepository.uploadPhotoError = null
+        viewModel.retryUpload()
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.uploadFailed)
+        assertEquals(leagueRepository.uploadedPhotoUrl, viewModel.state.value.screenshotUrl)
+        assertEquals(2, leagueRepository.uploadPhotoCallCount)
+
+        viewModel.removeScreenshot()
+        assertEquals(null, viewModel.state.value.screenshotUrl)
+    }
+
+    @Test
+    fun `a league that fails to load is flagged separately from a failed join`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = emptyList())
+        val viewModel = JoinLeagueViewModel("l1", leagueRepository, FakePlayerRepository())
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.loadFailed)
+        assertEquals(null, viewModel.state.value.errorTitle)
     }
 }

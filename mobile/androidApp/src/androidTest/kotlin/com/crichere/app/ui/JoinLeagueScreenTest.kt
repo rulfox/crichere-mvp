@@ -44,7 +44,9 @@ class JoinLeagueScreenTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Join Riverside Premier League as a Player").assertExists()
+        composeRule.onNodeWithText("Join as player").assertExists()
+        composeRule.onNodeWithText("Riverside Premier League").assertExists()
+        composeRule.onNodeWithText("No entry fee").assertExists()
         composeRule.onNodeWithText("Join").performClick()
         composeRule.waitForIdle()
 

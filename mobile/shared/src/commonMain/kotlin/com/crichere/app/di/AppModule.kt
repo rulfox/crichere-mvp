@@ -163,7 +163,9 @@ val sharedModule: Module = module {
             locationProvider = get(),
         )
     }
-    factory { (leagueId: String) -> JoinLeagueViewModel(leagueId = leagueId, leagueRepository = get(), playerRepository = get()) }
+    factory { (leagueId: String) ->
+        JoinLeagueViewModel(leagueId = leagueId, leagueRepository = get(), playerRepository = get(), profileRepository = get())
+    }
     factory { (leagueId: String) -> ClaimFranchiseViewModel(leagueId = leagueId, leagueRepository = get(), franchiseRepository = get()) }
     factory { MyLeaguesViewModel(myLeaguesRepository = get()) }
     factory { (leagueId: String) -> AuctionSettingsViewModel(leagueId = leagueId, leagueRepository = get()) }

@@ -84,8 +84,28 @@ class FakeLeagueRepository(
 
     override suspend fun requestBannerUploadUrl(leagueId: String): PhotoUploadInfoDto = photoUploadInfo
 
-    override suspend fun uploadPhoto(uploadInfo: PhotoUploadInfoDto, bytes: ByteArray, contentType: String, filename: String): String =
-        uploadedPhotoUrl
+    /** Progress reported before the upload finishes; [uploadDelayMillis] pauses after the first step so tests can cancel mid-upload. */
+    var uploadProgressSteps: List<Float> = listOf(0.5f, 1f)
+    var uploadDelayMillis: Long = 0
+    var uploadPhotoError: Throwable? = null
+    var uploadPhotoCallCount = 0
+        private set
+
+    override suspend fun uploadPhoto(
+        uploadInfo: PhotoUploadInfoDto,
+        bytes: ByteArray,
+        contentType: String,
+        filename: String,
+        onProgress: (Float) -> Unit,
+    ): String {
+        uploadPhotoCallCount++
+        uploadProgressSteps.forEachIndexed { index, step ->
+            onProgress(step)
+            if (index == 0 && uploadDelayMillis > 0) delay(uploadDelayMillis)
+        }
+        uploadPhotoError?.let { throw it }
+        return uploadedPhotoUrl
+    }
 
     override suspend fun addAward(leagueId: String, request: LeagueAwardSaveRequestDto): LeagueAwardDto {
         addAwardRequests += request

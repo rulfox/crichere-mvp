@@ -890,7 +890,7 @@ private fun Pill(
 }
 
 @Composable
-private fun LoadError(onRetry: () -> Unit) {
+internal fun LoadError(onRetry: () -> Unit, title: String = "Couldn't load this league") {
     Column(
         Modifier.fillMaxSize().padding(horizontal = 40.dp),
         verticalArrangement = Arrangement.Center,
@@ -898,7 +898,7 @@ private fun LoadError(onRetry: () -> Unit) {
     ) {
         Icon(painterResource(R.drawable.ic_cloud_off), contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(10.dp))
-        Text("Couldn't load this league", style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp), color = MaterialTheme.colorScheme.onBackground)
+        Text(title, style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 17.sp), color = MaterialTheme.colorScheme.onBackground)
         Spacer(Modifier.height(10.dp))
         Text("Check your connection and try again.", style = body(13.sp, lineHeight = 18.85.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(14.dp))

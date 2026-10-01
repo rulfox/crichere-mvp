@@ -59,7 +59,13 @@ interface LeagueRepository {
     suspend fun requestBannerUploadUrl(leagueId: String): PhotoUploadInfoDto
 
     /** See [uploadPhotoViaPresignedPost] -- this is that function, scoped to [filename]. */
-    suspend fun uploadPhoto(uploadInfo: PhotoUploadInfoDto, bytes: ByteArray, contentType: String, filename: String): String
+    suspend fun uploadPhoto(
+        uploadInfo: PhotoUploadInfoDto,
+        bytes: ByteArray,
+        contentType: String,
+        filename: String,
+        onProgress: (Float) -> Unit = {},
+    ): String
 
     suspend fun addAward(leagueId: String, request: LeagueAwardSaveRequestDto): LeagueAwardDto
 
@@ -148,8 +154,13 @@ internal class KtorLeagueRepository(
         return response.body()
     }
 
-    override suspend fun uploadPhoto(uploadInfo: PhotoUploadInfoDto, bytes: ByteArray, contentType: String, filename: String): String =
-        uploadPhotoViaPresignedPost(uploadClient, uploadInfo, bytes, contentType, filename)
+    override suspend fun uploadPhoto(
+        uploadInfo: PhotoUploadInfoDto,
+        bytes: ByteArray,
+        contentType: String,
+        filename: String,
+        onProgress: (Float) -> Unit,
+    ): String = uploadPhotoViaPresignedPost(uploadClient, uploadInfo, bytes, contentType, filename, onProgress)
 
     override suspend fun addAward(leagueId: String, request: LeagueAwardSaveRequestDto): LeagueAwardDto {
         val response = httpClient.post("/api/v1/leagues/$leagueId/awards") {

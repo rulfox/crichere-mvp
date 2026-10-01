@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.network.problemCode
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -10,7 +11,8 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 
 /** Thrown by [PlayerRepository]'s join/remove/leave-request calls for anything other than a clean 2xx. */
-class LeaguePlayerActionFailedException(message: String) : Exception(message)
+/** [code] is the backend's problem `code` (e.g. `CAPACITY_FULL`) when it sent one -- lets the UI explain why. */
+class LeaguePlayerActionFailedException(message: String, val code: String? = null) : Exception(message)
 
 /** `commonMain` use cases for joining a league as a player, and the request-and-approve leave flow (see docs/PHASE3.md). Follows [LeagueRepository]'s established interface+`Ktor*Impl` pattern. */
 interface PlayerRepository {
@@ -34,7 +36,7 @@ internal class KtorPlayerRepository(
             contentType(ContentType.Application.Json)
             setBody(request)
         }
-        if (!response.status.isSuccess()) throw LeaguePlayerActionFailedException("Join failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw LeaguePlayerActionFailedException("Join failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 

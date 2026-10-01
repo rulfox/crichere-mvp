@@ -191,6 +191,15 @@ Originally found (sent to Claude Design as update request #2):
 
 ## F — Join as player
 
+**Implemented (2026-10-01).** Fee card with Pay via UPI + copy UPI ID (F1); no-UPI-app fallback
+with "Copied" + snackbar (F2); screenshot preview with a tick-what-you-see checklist, "Use this"
+enabled only when all are ticked (F3/F4, decided instead of receipt detection); upload progress,
+Cancel, failed + Retry, attached + Replace/Remove (F5); free league "Joining as / Role" from the
+viewer's profile (F6); friendly join-failure banner keyed on the backend's problem `code`, e.g.
+CAPACITY_FULL -> "Registration is full." (F7); load failure (F8); fee but no UPI ID (F9). The
+fee/UPI card, proof card and checklist sheet live in `PaymentProof.kt` for reuse by screen G.
+Verified by rendering each state with fakes on-device (the test account can't join its own league).
+
 **Change the design:**
 - Remove the numbered "Step 1 / Step 2" structure — the app's fields are just inline, no step
   chrome.
