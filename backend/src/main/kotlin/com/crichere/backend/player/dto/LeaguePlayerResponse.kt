@@ -1,5 +1,6 @@
 package com.crichere.backend.player.dto
 
+import com.crichere.backend.profile.PlayingRole
 import java.time.Instant
 import java.util.UUID
 
@@ -18,4 +19,6 @@ data class LeaguePlayerResponse(
     val joinedAt: Instant,
     val paymentScreenshotUrl: String?,
     val leaveRequestedAt: Instant?,
+    /** The player's profile role, shown on roster rows; `null` if their profile has none yet. */
+    val playingRole: PlayingRole? = null,
 )

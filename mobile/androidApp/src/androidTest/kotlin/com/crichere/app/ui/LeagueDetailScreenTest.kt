@@ -1,6 +1,7 @@
 package com.crichere.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.crichere.app.auth.FakeAuthRepository
@@ -58,7 +59,7 @@ class LeagueDetailScreenTest {
 
         composeRule.onNodeWithText("Riverside Premier League").assertExists()
         composeRule.onNodeWithText("Bengaluru, Bengaluru Urban, Karnataka").assertExists()
-        composeRule.onNodeWithText("Back").performClick()
+        composeRule.onNodeWithContentDescription("Back").performClick()
 
         assert(backTapped)
     }

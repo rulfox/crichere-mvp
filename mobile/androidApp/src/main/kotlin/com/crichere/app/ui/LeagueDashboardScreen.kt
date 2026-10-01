@@ -70,11 +70,6 @@ import com.crichere.app.ui.theme.InstrumentSansFamily
 import com.crichere.app.ui.theme.JetBrainsMonoFamily
 import com.crichere.app.ui.theme.LocalCrichereExtraColors
 import org.koin.compose.viewmodel.koinViewModel
-import java.text.NumberFormat
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import kotlin.math.abs
 
 /** Resolves [LeagueDashboardViewModel] via Koin -- the app's post-login landing content (see `AuthNavHost`'s `Main` destination). */
 @Composable
@@ -436,8 +431,6 @@ private fun CreateLeagueFab(onClick: () -> Unit, modifier: Modifier = Modifier) 
     }
 }
 
-private val TilePalette = listOf(Color(0xFF1B5E20), Color(0xFF2B5FB5), Color(0xFF7A5B12), Color(0xFFB5462B), Color(0xFF5B2A86))
-
 @Composable
 private fun LeagueCard(league: LeagueDto, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -455,7 +448,7 @@ private fun LeagueCard(league: LeagueDto, onClick: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(TilePalette[abs(league.id.hashCode()) % TilePalette.size]),
+                .background(tileColor(league.id)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -486,7 +479,7 @@ private fun LeagueCard(league: LeagueDto, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                InfoChip("Starts ${formatStartDate(league.startsOn)}")
+                InfoChip("Starts ${shortDate(league.startsOn)}")
                 league.format?.takeIf { it.isNotBlank() }?.let { InfoChip(it) }
                 InfoChip(entryLabel(league.playerFee), highlighted = true)
             }
@@ -545,18 +538,3 @@ private fun PlayerProgress(joined: Int, required: Int?) {
         )
     }
 }
-
-/** First letters of the first three words that start with a letter: "Kolhapur Premier League 2026" -> "KPL". */
-private fun shortCode(name: String): String =
-    name.split(' ').filter { it.firstOrNull()?.isLetter() == true }.take(3).joinToString("") { it.first().uppercase() }
-        .ifEmpty { name.take(2).uppercase() }
-
-private fun initials(name: String?): String =
-    name?.split(' ')?.filter { it.isNotBlank() }?.take(2)?.joinToString("") { it.first().uppercase() }.orEmpty()
-
-private val StartDateFormat = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
-
-private fun formatStartDate(iso: String): String = runCatching { LocalDate.parse(iso).format(StartDateFormat) }.getOrDefault(iso)
-
-private fun entryLabel(fee: Double?): String =
-    if (fee == null || fee <= 0.0) "Free" else "₹${NumberFormat.getIntegerInstance(Locale.forLanguageTag("en-IN")).format(fee)} entry"

@@ -167,6 +167,28 @@ to build the richer cards or simplify the design to match today's plain rows.
 
 ---
 
+**Implemented (2026-10-01), after design update #2.** One page for everyone: banner + logo tile (or
+a compact header when there's no banner), facts, capacity/fees, then role-specific actions. E2
+"You're registered" card + Request to leave (dialog), E3 leave-requested notice, E5 completed +
+"Watch link copied", E6 full / load error. Organizers: the board's E4 still shows only management,
+so by decision organizers see the same league info first, then the menu (incl. Mark completed),
+Share / Copy, and rosters with Remove / Approve leave / Dismiss and empty-roster text. Backend
+now returns each player's `playingRole` on roster rows. Player-only states (E1-E3) not verified
+on-device (the test account organizes the only league).
+
+Originally found (sent to Claude Design as update request #2):
+- Organizer view (E4): league info (name, location, ground, start date, format, status,
+  description), capacity/fees card, banner/logo, awards, Share / Copy watch link, and a "Mark
+  completed" menu row (organizer-only today). Also: completed-league organizer view, empty roster
+  ("No players yet"), an error line for failed Remove/Approve, and a "Removing…" in-flight row.
+- Player view: league description; a loaded league *without* a banner (most leagues -- only the
+  E6 error frame shows a banner-less header); the "Request to leave" entry point for a joined
+  player and "Leave franchise" for a franchise owner (E3 only shows the already-requested state);
+  Follow's "Following" state; Claim a Franchise when franchises are full; a joined player's own
+  payment screenshot link; franchise logo (not only initials) in roster rows; initial loading state.
+- Already handled without a design change: player role on roster rows (backend now returns it),
+  "paid ₹500" (derived from screenshot + league fee).
+
 ## F — Join as player
 
 **Change the design:**
@@ -357,6 +379,63 @@ explicitly before cutting all of it.
 - Auction Settings' "locked once started" guard (screen J) — check the code directly.
 - Live Auction's overall scope (screen L) — see that section; leaning toward "simplify the design"
   given the timer was named explicitly, but the size of the gap is worth an explicit confirmation.
+
+## Design update request #2 (2026-10-01) -- screens E to N
+
+Found while implementing (E) and by checking the F-N frames against the app's screens, ViewModels
+and data. Three kinds of item: (a) things the app has that no frame shows, (b) design items that
+need data the app doesn't have, (c) design items that need a decision. E's list is in its section
+above.
+
+**F -- Join as player**
+- (a) Failure after tapping Join (league full, rate-limited, network) -- no error frame.
+- (a) League failed to load -- no error frame. Missing UPI ID (organizer set a fee but no UPI) --
+  no frame.
+- (c) F4 "doesn't look like a payment receipt" needs image recognition (OCR/ML) the app doesn't
+  have. Drop it, or make it a manual checklist only?
+- Build items, not gaps: F2 no-UPI-app fallback; F6 "Joining as / Role" (needs the profile on
+  this screen).
+
+**G -- Claim a franchise**
+- (a) Free franchise (no franchise fee: no payment step) -- only the paid variant is drawn.
+- (a) Claim failure (franchises full, rate-limited, network) and league load failure.
+- (a) "Claiming…" in-flight state.
+
+**H -- Payment screenshot viewer**
+- (a) Image failed to load ("Couldn't load this screenshot.").
+
+**I -- Create / edit league**
+- (a) **Location section (State / District / City + Use my location)** -- required fields, absent
+  from every I frame (I1 only shows "City · start date" in the preview).
+- (a) Edit mode ("Edit league" title, pre-filled form, cancel/back).
+- (a) Ground registration errors ("Set the league's State/District/City before registering a
+  ground", "Drag the pin…") and save failure.
+- (c) I7 "At least 11 per franchise" -- no such rule exists in the app. Add the rule, or drop the hint?
+
+**J -- Auction settings**
+- (a) Auction pool with no franchises yet ("No franchises have claimed yet.").
+- (a) "Saving…" state and save success / failure feedback.
+
+**K -- Co-organizers**
+- (a) **Revoke** on each current co-organizer (plus "Revoking…") -- the list has no action.
+- (a) "Looking up…" / "Granting…" states and grant failure.
+- (b) The list shows each co-organizer's phone number -- the API returns only name, user id and
+  granted date. Add phone to the API, or drop it from the design? (It is personal data.)
+
+**L -- Live auction**
+- (a) Bid rejected (invalid amount, below current bid, over purse) and "Placing…".
+- (a) Live but nobody on the block (after Sold/Unsold, before Next Player).
+- (a) Not started, as seen by a non-organizer; initial loading.
+
+**M -- My leagues**
+- No gaps found (M2 empty state is already an app-fix build item).
+
+**N -- My profile**
+- (b) N1 shows the phone number -- the profile API doesn't return it (the backend stores it
+  encrypted). Add it to the API, or drop the row?
+- (c) N2 "Remove photo": a photo is required for a complete profile, so removing it would make the
+  profile incomplete. Keep Remove (and what happens then), or drop it?
+- (a) Profile failed to load.
 
 ## Follow-ups (todo)
 

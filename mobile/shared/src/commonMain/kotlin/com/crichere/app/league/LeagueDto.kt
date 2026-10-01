@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.profile.PlayingRole
 import kotlinx.serialization.Serializable
 
 /** Mirrors the backend's `LeagueStatus` (`backend/.../league/LeagueEntity.kt`). No `DRAFT` -- see that file's doc. */
@@ -36,6 +37,8 @@ data class LeaguePlayerDto(
     val joinedAt: String,
     val paymentScreenshotUrl: String? = null,
     val leaveRequestedAt: String? = null,
+    /** From the player's profile; `null` if unset (or from a backend older than this field). */
+    val playingRole: PlayingRole? = null,
 )
 
 /** Body of `POST /leagues/{id}/players`. */

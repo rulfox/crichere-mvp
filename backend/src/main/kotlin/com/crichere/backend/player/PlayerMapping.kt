@@ -15,12 +15,14 @@ import java.util.UUID
  */
 fun PlayerEntity.toResponse(callerId: UUID?, organizerUserId: UUID, profileRepository: ProfileRepository): LeaguePlayerResponse {
     val visible = callerId != null && (callerId == organizerUserId || callerId == userId)
+    val profile = profileRepository.findById(userId).orElse(null)
     return LeaguePlayerResponse(
         id = requireNotNull(id),
         userId = userId,
-        name = profileRepository.findById(userId).orElse(null)?.name,
+        name = profile?.name,
         joinedAt = joinedAt,
         paymentScreenshotUrl = if (visible) paymentScreenshotUrl else null,
         leaveRequestedAt = if (visible) leaveRequestedAt else null,
+        playingRole = profile?.playingRole,
     )
 }
