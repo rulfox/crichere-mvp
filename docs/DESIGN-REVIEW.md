@@ -257,6 +257,22 @@ Decisions taken where the board has no frame (confirmed by the owner 2026-10-01)
 
 ---
 
+## H — Screenshot viewer
+
+**Implemented (2026-10-01):** H1 dark viewer (top bar with back arrow, fitted image with 6dp
+corners, outlined Back pill), H2 zoomed state (top bar and Back hide; a zoom chip and a minimap
+with the visible area outlined in gold appear), H3 failed load with Retry. The image now loads via
+Coil instead of URL/BitmapFactory, so Retry is a real reload; the https-only check stays. Panning
+is clamped so a zoomed image can't be dragged off screen. Verified live on CPH2487 with a real
+uploaded proof (H1, H2 via an injected pinch) and an unreachable URL (H3).
+
+Decisions taken where the board has no frame:
+- Loading shows a white spinner on the dark background.
+- System bar icons switch to white while the viewer is open.
+- iOS gets the dark styling, Retry and the https-only check, but not the zoom chip or minimap.
+
+---
+
 ## I — Create / edit league
 
 **Already correct, no change needed:** the UPI ID field (I6) and the map-based ground picker (I4)
@@ -487,6 +503,18 @@ Open items found while implementing the redesign, not yet scheduled.
   UTC) had succeeded. Railway's HTTP log showed only 2 requests in that window despite other app
   traffic, so the cause is unconfirmed. Investigate rotation/persistence ordering (e.g. a refresh
   whose response is lost) and consider a short reuse grace window on the backend.
+- [ ] **Orphaned test uploads in S3** (screens G/H, 2026-10-01). On-device verification uploaded the
+  generated test logo and payment receipt (twice) without attaching them to any franchise or
+  player. Delete them, or add a cleanup for uploads that are never referenced.
+- [ ] **Not yet verified on-device** -- scenarios built but not exercised on CPH2487:
+  - G: success path of a claim (needs a league that is open, with a test account that isn't the
+    organizer); CAPACITY_FULL and RATE_LIMIT_EXCEEDED banners; logo-upload failure banner;
+    screenshot upload failure (Retry/Remove) and Cancel mid-upload; no-UPI-ID and no-UPI-app
+    fallbacks; free league (G4).
+  - H: Retry going through the loading spinner (the test URL failed instantly); opening the viewer
+    from League Detail with a real proof (the harness opened it directly); pan clamping by touch
+    (covered by tests only); nav-bar icons hard to see when zoomed into a white image.
+  - iOS: ClaimFranchiseView and ScreenshotViewerView changes are not compiled (no Xcode here).
 
 ## Decisions made during implementation
 

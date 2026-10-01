@@ -260,15 +260,22 @@ private fun PhoneField(
     )
 }
 
-/** White status-bar icons over the green hero; restores dark icons for every other screen on exit. */
+/**
+ * White system-bar icons over a dark or green surface (status bar, and the navigation bar too when
+ * [navigationBar] is set); restores dark icons for every other screen on exit.
+ */
 @Composable
-private fun LightStatusBarIcons(enabled: Boolean) {
+internal fun LightStatusBarIcons(enabled: Boolean, navigationBar: Boolean = false) {
     val view = LocalView.current
     if (view.isInEditMode) return
-    DisposableEffect(enabled) {
+    DisposableEffect(enabled, navigationBar) {
         val window = (view.context as? Activity)?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, view) }
         controller?.isAppearanceLightStatusBars = !enabled
-        onDispose { controller?.isAppearanceLightStatusBars = true }
+        if (navigationBar) controller?.isAppearanceLightNavigationBars = !enabled
+        onDispose {
+            controller?.isAppearanceLightStatusBars = true
+            if (navigationBar) controller?.isAppearanceLightNavigationBars = true
+        }
     }
 }
