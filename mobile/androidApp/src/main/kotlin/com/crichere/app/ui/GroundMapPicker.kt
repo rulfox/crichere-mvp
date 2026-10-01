@@ -1,12 +1,15 @@
 package com.crichere.app.ui
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,90 +17,230 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.crichere.app.BuildConfig
 import com.crichere.app.R
 import com.crichere.app.league.LeagueCreationState
 import com.crichere.app.league.LeagueCreationViewModel
+import com.crichere.app.location.GeoPoint
+import com.crichere.app.location.GeocoderPlaceSearch
+import com.crichere.app.location.GooglePlacesSearch
+import com.crichere.app.location.PlaceResult
+import com.crichere.app.location.PlaceSearch
+import com.crichere.app.location.searchNear
 import com.crichere.app.ui.theme.CrichereErrorStrong
 import com.crichere.app.ui.theme.JetBrainsMonoFamily
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 private val DEFAULT_CAMERA_POSITION = CameraPosition.fromLatLngZoom(LatLng(20.5937, 78.9629), 4f) // India, whole-country zoom
+private const val CITY_ZOOM = 13f
+private const val GROUND_ZOOM = 16f
+private const val AS_YOU_TYPE_MIN_CHARS = 3
+private const val AS_YOU_TYPE_DEBOUNCE_MS = 300L
 
 /**
- * Design I5/I11: registering a new ground, full screen. The map fills the screen with a draggable
- * pin; a sheet at the bottom takes the ground's name, shows the pin's coordinates and any error
- * (missing name inline, everything else in a banner), with Cancel / Register ground.
+ * Design I5/I11: registering a new ground, full screen. The map fills the screen under a fixed
+ * centre pin -- the user moves the map, not the pin (owner decision 2026-10-02: Google Maps only
+ * drags a marker after a long-press, which read as "the pin can't be moved"). A search box on top
+ * jumps the map to a typed place; a sheet at the bottom takes the ground's name, shows the pin's
+ * coordinates and any error (missing name inline, everything else in a banner), with Cancel /
+ * Register ground.
+ *
+ * The location is reported to the ViewModel each time the map comes to rest, but only once the
+ * user has actually placed it (a gesture, a search pick, or an existing seed) -- the camera's
+ * starting point (India, or the league's city) is not a location anyone chose.
  */
 @Composable
 internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: LeagueCreationViewModel) {
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
     BackHandler(onBack = viewModel::onCancelRegisteringNewGround)
 
+    val placeSearch = remember { createPlaceSearch(context) }
+    val seed = remember {
+        val lat = state.newGroundLatitude
+        val lng = state.newGroundLongitude
+        if (lat != null && lng != null) LatLng(lat, lng) else null
+    }
+    val cameraPositionState = rememberCameraPositionState {
+        position = seed?.let { CameraPosition.fromLatLngZoom(it, GROUND_ZOOM) } ?: DEFAULT_CAMERA_POSITION
+    }
+    var pinPlaced by remember { mutableStateOf(seed != null) }
+    val areaName = listOfNotNull(state.city, state.district, state.state).joinToString(", ").ifBlank { null }
+    var areaCentre by remember { mutableStateOf<GeoPoint?>(null) }
+
+    // Open on the league's city rather than all of India. Always the free platform geocoder --
+    // one lookup per open isn't worth a billed Places session.
+    LaunchedEffect(Unit) {
+        if (seed != null || areaName == null) return@LaunchedEffect
+        val point = GeocoderPlaceSearch(context).search(areaName, near = null).firstOrNull()?.point ?: return@LaunchedEffect
+        areaCentre = point
+        if (!pinPlaced && !cameraPositionState.isMoving) {
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), CITY_ZOOM), 700)
+        }
+    }
+
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (cameraPositionState.isMoving) {
+            if (cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) pinPlaced = true
+        } else if (pinPlaced) {
+            val target = cameraPositionState.position.target
+            viewModel.onNewGroundPositionChanged(target.latitude, target.longitude)
+        }
+    }
+
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<PlaceResult>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+    var noMatch by remember { mutableStateOf(false) }
+    var searchJob by remember { mutableStateOf<Job?>(null) }
+
+    fun runSearch(text: String, debounce: Boolean) {
+        searchJob?.cancel()
+        searchJob = scope.launch {
+            if (debounce) delay(AS_YOU_TYPE_DEBOUNCE_MS)
+            isSearching = true
+            try {
+                val found = placeSearch.searchNear(text, areaName, areaCentre)
+                results = found
+                noMatch = found.isEmpty()
+            } finally {
+                isSearching = false
+            }
+        }
+    }
+
+    fun pick(result: PlaceResult) {
+        searchJob?.cancel()
+        focusManager.clearFocus()
+        results = emptyList()
+        noMatch = false
+        query = result.title
+        scope.launch {
+            val point = placeSearch.locate(result)
+            if (point == null) {
+                noMatch = true
+                return@launch
+            }
+            pinPlaced = true
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), GROUND_ZOOM), 700)
+        }
+    }
+
+    // The pin sits at the centre of the map area left between the search box and the sheet; the
+    // map's content padding matches, so the camera target is exactly what the pin points at.
+    var mapTopPx by remember { mutableIntStateOf(0) }
+    var sheetHeightPx by remember { mutableIntStateOf(0) }
+    val mapPadding = with(density) { PaddingValues(top = mapTopPx.toDp(), bottom = sheetHeightPx.toDp()) }
+
     Box(Modifier.fillMaxSize().background(colors.background).clickable(enabled = false) {}) {
-        GroundMapPicker(
-            initialLatitude = state.newGroundLatitude,
-            initialLongitude = state.newGroundLongitude,
-            onPositionChanged = viewModel::onNewGroundPositionChanged,
+        GoogleMap(
             modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            contentPadding = mapPadding,
+            uiSettings = MapUiSettings(zoomControlsEnabled = false, mapToolbarEnabled = false, myLocationButtonEnabled = false),
+            onMapClick = { focusManager.clearFocus() },
         )
 
-        Row(
+        CentrePin(lifted = cameraPositionState.isMoving, modifier = Modifier.fillMaxSize().padding(mapPadding))
+
+        Column(
             Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .padding(start = 13.dp, end = 13.dp, top = 1.dp)
-                .fillMaxWidth()
-                .height(44.dp)
-                .shadow(8.dp, RoundedCornerShape(22.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
-                .background(Color.White, RoundedCornerShape(22.dp))
-                .padding(start = 14.dp, end = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .fillMaxWidth(),
         ) {
-            Icon(painterResource(R.drawable.ic_pan_tool), contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Drag the pin to the ground's exact location", style = pText(13.sp, FontWeight.Medium, 15.6.sp), color = colors.onBackground)
+            MapSearchBar(
+                query = query,
+                isSearching = isSearching,
+                searchesAsYouType = placeSearch.searchesAsYouType,
+                onQueryChange = { text ->
+                    query = text
+                    noMatch = false
+                    results = emptyList()
+                    searchJob?.cancel()
+                    isSearching = false
+                    if (placeSearch.searchesAsYouType && text.trim().length >= AS_YOU_TYPE_MIN_CHARS) runSearch(text, debounce = true)
+                },
+                onSearch = { if (query.isNotBlank()) runSearch(query, debounce = false) },
+                onClear = {
+                    searchJob?.cancel()
+                    query = ""
+                    results = emptyList()
+                    noMatch = false
+                    isSearching = false
+                },
+                modifier = Modifier.onGloballyPositioned { mapTopPx = (it.positionInRoot().y + it.size.height).toInt() },
+            )
+            Spacer(Modifier.height(8.dp))
+            when {
+                results.isNotEmpty() -> SearchResults(results, onPick = ::pick)
+                noMatch -> SearchMessage("No match. Try a nearby landmark, or move the map by hand.")
+                else -> MoveMapHint()
+            }
         }
 
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .onSizeChanged { sheetHeightPx = it.height }
                 .background(colors.background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .navigationBarsPadding()
                 .imePadding()
@@ -167,63 +310,144 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
 }
 
 /**
- * The map with a draggable green pin, backed by [GoogleMap] (`com.google.maps.android:maps-compose`)
- * -- without an API key it renders a blank map rather than crashing.
- *
- * [initialLatitude]/[initialLongitude] seed the pin; every drag calls [onPositionChanged] with the
- * pin's new coordinates so the ViewModel always reflects exactly where the pin sits.
+ * `PLACE_SEARCH_PROVIDER` in local.properties picks the search backend (see androidApp's
+ * build.gradle.kts). "places" without a Maps key falls back to the geocoder rather than a
+ * search box that silently never answers.
  */
+private fun createPlaceSearch(context: Context): PlaceSearch =
+    if (BuildConfig.PLACE_SEARCH_PROVIDER == "places" && BuildConfig.MAPS_API_KEY.isNotBlank()) {
+        GooglePlacesSearch(context, BuildConfig.MAPS_API_KEY)
+    } else {
+        GeocoderPlaceSearch(context)
+    }
+
+/** The green pin, its tip on the centre of [modifier]'s area; it lifts while the map moves. */
 @Composable
-internal fun GroundMapPicker(
-    initialLatitude: Double?,
-    initialLongitude: Double?,
-    onPositionChanged: (latitude: Double, longitude: Double) -> Unit,
+private fun CentrePin(lifted: Boolean, modifier: Modifier) {
+    val lift by animateDpAsState(if (lifted) (-10).dp else 0.dp, label = "pinLift")
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(14.dp, 5.dp).background(Color.Black.copy(alpha = 0.25f), CircleShape))
+        // ic_location_on's tip is at 22/24 of the icon's height: 20dp below its centre at 48dp.
+        Icon(
+            painterResource(R.drawable.ic_location_on_filled),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.offset(y = (-20).dp + lift).size(48.dp),
+        )
+    }
+}
+
+@Composable
+private fun MapSearchBar(
+    query: String,
+    isSearching: Boolean,
+    searchesAsYouType: Boolean,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val initialLatLng = remember(initialLatitude, initialLongitude) {
-        if (initialLatitude != null && initialLongitude != null) LatLng(initialLatitude, initialLongitude) else null
-    }
-
-    val cameraPositionState = rememberCameraPositionState {
-        position = initialLatLng?.let { CameraPosition.fromLatLngZoom(it, 15f) } ?: DEFAULT_CAMERA_POSITION
-    }
-    val markerState = rememberMarkerState(position = initialLatLng ?: DEFAULT_CAMERA_POSITION.target)
-
-    // A GPS fix that arrives after this composable is already up should move the existing
-    // pin/camera, not just seed the initial one.
-    LaunchedEffect(initialLatLng) {
-        if (initialLatLng != null && markerState.position != initialLatLng) {
-            markerState.position = initialLatLng
-            cameraPositionState.centerOn(initialLatLng)
-        }
-    }
-
-    // The very first emission fires on initial composition, before the user has done anything --
-    // if there's no real seed yet, that first position is just DEFAULT_CAMERA_POSITION's
-    // placeholder, not a location anyone chose. Reporting it would let "register" silently save
-    // that placeholder if the user never drags the pin at all.
-    var hasEmittedInitialPosition by remember { mutableStateOf(false) }
-    LaunchedEffect(markerState.position) {
-        val isFirstEmission = !hasEmittedInitialPosition
-        hasEmittedInitialPosition = true
-        if (isFirstEmission && initialLatLng == null) return@LaunchedEffect
-        onPositionChanged(markerState.position.latitude, markerState.position.longitude)
-    }
-
-    GoogleMap(
-        modifier = modifier,
-        cameraPositionState = cameraPositionState,
-        uiSettings = MapUiSettings(zoomControlsEnabled = false, mapToolbarEnabled = false),
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .shadow(8.dp, RoundedCornerShape(22.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .background(Color.White, RoundedCornerShape(22.dp))
+            .padding(start = 14.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        MarkerComposable(state = markerState, draggable = true) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(painterResource(R.drawable.ic_location_on_filled), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
-                Box(Modifier.size(14.dp, 5.dp).background(Color.Black.copy(alpha = 0.25f), CircleShape))
+        Icon(painterResource(R.drawable.ic_search), contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (query.isEmpty()) {
+                Text(
+                    if (searchesAsYouType) "Search a ground, college or area" else "Search a ground, college or area, then press search",
+                    style = pText(13.sp, lineHeight = 15.6.sp),
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = pText(13.sp, FontWeight.Medium, 15.6.sp).copy(color = colors.onBackground),
+                cursorBrush = SolidColor(colors.primary),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+            when {
+                isSearching -> CircularProgressIndicator(color = colors.primary, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                query.isNotEmpty() -> Icon(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = "Clear search",
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp).clip(CircleShape).clickable(onClick = onClear).padding(7.dp),
+                )
             }
         }
     }
 }
 
-private fun CameraPositionState.centerOn(latLng: LatLng) {
-    position = CameraPosition.fromLatLngZoom(latLng, 15f)
+@Composable
+private fun SearchResults(results: List<PlaceResult>, onPick: (PlaceResult) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .background(Color.White, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp)),
+    ) {
+        results.forEachIndexed { index, result ->
+            if (index > 0) HorizontalDivider(color = colors.outlineVariant, thickness = 1.dp)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onPick(result) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Text(result.title, style = pText(13.5.sp, FontWeight.SemiBold, 17.sp), color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                result.subtitle?.let {
+                    Spacer(Modifier.height(2.dp))
+                    Text(it, style = pText(12.sp, lineHeight = 15.sp), color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchMessage(message: String) {
+    Text(
+        message,
+        style = pText(12.5.sp, lineHeight = 16.sp),
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .background(Color.White, RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    )
+}
+
+@Composable
+private fun MoveMapHint() {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .shadow(6.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
+            .background(Color.White, RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_pan_tool), contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Move the map to put the pin on the ground", style = pText(12.sp, FontWeight.Medium, 14.sp), color = colors.onBackground)
+    }
 }

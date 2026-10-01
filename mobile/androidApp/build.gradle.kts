@@ -28,10 +28,19 @@ if (file("google-services.json").exists()) {
 // `sdk.dir` already lives in) rather than committing a real key; blank means the manifest
 // placeholder resolves to an empty string, which lets Maps SDK initialize (and fail
 // gracefully at runtime -- a blank/watermarked map, not a crash) instead of failing the build.
-val mapsApiKey: String = Properties().apply {
-    val localProperties = rootProject.file("local.properties")
-    if (localProperties.exists()) localProperties.inputStream().use { load(it) }
-}.getProperty("MAPS_API_KEY", "")
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY", "")
+
+// Register-ground map search (docs/PHASE2.md "Ground map search"): "geocoder" (default; Android's
+// built-in Geocoder, no API or billing) or "places" (Google Places autocomplete; needs Places API
+// (New) enabled on MAPS_API_KEY, billed per session). Set PLACE_SEARCH_PROVIDER in local.properties.
+val placeSearchProvider: String = localProperties.getProperty("PLACE_SEARCH_PROVIDER", "geocoder")
+require(placeSearchProvider in setOf("geocoder", "places")) {
+    "PLACE_SEARCH_PROVIDER must be 'geocoder' or 'places', was '$placeSearchProvider'"
+}
 
 android {
     namespace = "com.crichere.app"
@@ -44,6 +53,8 @@ android {
         versionCode = 1
         versionName = "0.1.0-toolchain-proof"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+        buildConfigField("String", "PLACE_SEARCH_PROVIDER", "\"$placeSearchProvider\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Runs each @Test in its own instrumentation process -- an app crash or leaked static
         // state in one test can't take the rest of the suite down with it. Real device/emulator
@@ -58,6 +69,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -97,6 +109,8 @@ dependencies {
 
     implementation(libs.play.services.maps)
     implementation(libs.maps.compose)
+    implementation(libs.places)
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 

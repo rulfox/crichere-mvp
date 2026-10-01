@@ -557,9 +557,16 @@ Open items found while implementing the redesign, not yet scheduled.
     re-captured, its tests pass).
   - iOS: ClaimFranchiseView, ScreenshotViewerView and LeagueCreationView changes are not compiled
     (no Xcode here).
-- [ ] **Register-ground map opens on all of India** (screen I, 2026-10-01). With no seed the pin
+- [x] **Register-ground map opens on all of India** (screen I, 2026-10-01). With no seed the pin
   starts at the country centre and has to be dragged across the map. Consider centring on the
   league's city or the device location (only if location permission is already granted).
+  Done 2026-10-02: opens on the league's city (geocoded), see PHASE2 Decisions "fixed centre pin".
+- [ ] **Register-ground map: centre pin + search** (screen I, 2026-10-02). Verified on CPH2487 by
+  the owner: panning places the pin and updates the coordinates, map opens on the league's city,
+  geocoder search ("Komalapuram" -> 9.5315, 76.3413) flies there and sets the location, register.
+  Still not verified: Places mode (needs Places API (New) on the key); iOS centre pin (not
+  compiled). Known, not fixed: with the keyboard up for the ground name, the sheet covers nearly
+  the whole map and the pin is pushed to the top edge (the saved location is unaffected).
 
 ## Decisions made during implementation
 

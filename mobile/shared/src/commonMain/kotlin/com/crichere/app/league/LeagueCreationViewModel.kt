@@ -420,7 +420,7 @@ class LeagueCreationViewModel(
             return
         }
         if (latitude == null || longitude == null) {
-            _state.update { it.copy(groundErrorTitle = "Place the pin first.", groundErrorMessage = "Drag the pin to the ground's exact location.") }
+            _state.update { it.copy(groundErrorTitle = "Place the pin first.", groundErrorMessage = "Move the map until the pin sits on the ground.") }
             return
         }
 

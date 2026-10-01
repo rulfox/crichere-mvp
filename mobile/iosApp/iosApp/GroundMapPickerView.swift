@@ -2,18 +2,15 @@ import SwiftUI
 import MapKit
 
 /// New-ground registration's map-pin picker -- MapKit equivalent of
-/// `androidApp/.../ui/GroundMapPicker.kt` (`GoogleMap`/draggable `Marker`). Uses `MKMapView` via
-/// `UIViewRepresentable` rather than SwiftUI's native `Map`, since programmatic draggable-pin
-/// handling (`MKMapViewDelegate.mapView(_:annotationView:didChange:fromOldState:)`) is the more
-/// reliably documented cross-iOS-version approach; confirm against Apple's current MapKit docs at
-/// build time, same discipline this repo applies to every other dependency choice.
+/// `androidApp/.../ui/GroundMapPicker.kt`. A fixed pin sits at the map's centre and the user moves
+/// the map under it (owner decision 2026-10-02, replacing the draggable pin); the location is the
+/// map's centre each time it comes to rest after a user gesture. Uses `MKMapView` via
+/// `UIViewRepresentable` for `regionDidChangeAnimated`.
 ///
-/// [initialLatitude]/[initialLongitude] seed the pin (e.g. from a "use my location" fix resolved
-/// by the caller before this view is shown); every drag calls [onPositionChanged] with the pin's
-/// new coordinates so `LeagueCreationViewModel.onNewGroundPositionChanged` always reflects exactly
-/// where it sits. Matches the Kotlin file's own documented rule: the very first position is only
-/// reported if it was actually seeded -- otherwise that first callback would just be the
-/// placeholder India-centroid default, not something the user chose.
+/// [initialLatitude]/[initialLongitude] seed the camera; once seeded or moved by the user, every
+/// stop calls [onPositionChanged] so `LeagueCreationViewModel.onNewGroundPositionChanged` always
+/// reflects exactly where the pin points. The starting India-centroid camera is never reported --
+/// it isn't something the user chose. Place search is Android-only for now (docs/PHASE2.md).
 ///
 /// **Authored but unverified** -- see docs/PHASE9.md.
 struct GroundMapPickerView: View {
@@ -23,13 +20,21 @@ struct GroundMapPickerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Drag the pin to the ground's exact location")
+            Text("Move the map to put the pin on the ground")
                 .font(.caption)
-            MapKitPinPicker(
-                initialLatitude: initialLatitude,
-                initialLongitude: initialLongitude,
-                onPositionChanged: onPositionChanged
-            )
+            ZStack {
+                MapKitPinPicker(
+                    initialLatitude: initialLatitude,
+                    initialLongitude: initialLongitude,
+                    onPositionChanged: onPositionChanged
+                )
+                // Tip of the pin on the map's centre.
+                Image(systemName: "mappin")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(.green)
+                    .offset(y: -18)
+                    .allowsHitTesting(false)
+            }
             .frame(height: 240)
         }
     }
@@ -38,7 +43,7 @@ struct GroundMapPickerView: View {
 private let indiaCentroid = CLLocationCoordinate2D(latitude: 20.5937, longitude: 78.9629)
 /// Whole-country zoom -- India's real extent is roughly 8-37 deg latitude, 68-97 deg longitude.
 private let countryLevelSpan = MKCoordinateSpan(latitudeDelta: 30, longitudeDelta: 30)
-/// Street-level zoom, once a real position is seeded or the pin is dropped.
+/// Street-level zoom, once a real position is seeded.
 private let streetLevelSpan = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
 
 private struct MapKitPinPicker: UIViewRepresentable {
@@ -53,14 +58,8 @@ private struct MapKitPinPicker: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
-
         let seeded = seededCoordinate
-        let annotation = MKPointAnnotation()
-        annotation.coordinate = seeded ?? indiaCentroid
-        mapView.addAnnotation(annotation)
-        context.coordinator.annotation = annotation
-        context.coordinator.hasSeed = seeded != nil
-
+        context.coordinator.placed = seeded != nil
         mapView.setRegion(
             MKCoordinateRegion(center: seeded ?? indiaCentroid, span: seeded != nil ? streetLevelSpan : countryLevelSpan),
             animated: false
@@ -69,13 +68,10 @@ private struct MapKitPinPicker: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
-        // A GPS fix that arrives after this view is already up (e.g. "use my location" resolves
-        // mid-registration) should move the existing pin/camera -- but only once, the first time a
-        // real seed shows up; a user's own subsequent drag must not keep getting overwritten by a
-        // stale `initialLatitude`/`initialLongitude` on every SwiftUI re-render.
-        guard let seeded = seededCoordinate, !context.coordinator.hasSeed else { return }
-        context.coordinator.hasSeed = true
-        context.coordinator.annotation?.coordinate = seeded
+        // A seed that arrives after the view is up moves the camera once; never again, so it
+        // can't keep overwriting where the user has since moved the map.
+        guard let seeded = seededCoordinate, !context.coordinator.placed else { return }
+        context.coordinator.placed = true
         mapView.setRegion(MKCoordinateRegion(center: seeded, span: streetLevelSpan), animated: true)
     }
 
@@ -86,31 +82,24 @@ private struct MapKitPinPicker: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         let onPositionChanged: (Double, Double) -> Void
-        weak var annotation: MKPointAnnotation?
-        /// True once a real (non-placeholder) position exists -- either seeded externally or
-        /// reported at least once via a drag. Mirrors `GroundMapPicker.kt`'s `hasEmittedInitialPosition`.
-        var hasSeed = false
+        /// True once the centre is a real choice -- seeded, or moved by the user's own gesture.
+        var placed = false
 
         init(onPositionChanged: @escaping (Double, Double) -> Void) {
             self.onPositionChanged = onPositionChanged
         }
 
-        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            guard annotation is MKPointAnnotation else { return nil }
-            let identifier = "ground-pin"
-            let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
-                ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-            view.annotation = annotation
-            view.isDraggable = true
-            view.canShowCallout = false
-            return view
+        func mapView(_ mapView: MKMapView, regionWillChangeAnimated animated: Bool) {
+            // A pan/pinch has a gesture recognizer in a began/changed state on the map's subview.
+            let gestures = mapView.subviews.first?.gestureRecognizers ?? []
+            if gestures.contains(where: { $0.state == .began || $0.state == .changed }) {
+                placed = true
+            }
         }
 
-        func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, didChange newState: MKAnnotationView.DragState, fromOldState oldState: MKAnnotationView.DragState) {
-            guard newState == .ending, let coordinate = view.annotation?.coordinate else { return }
-            view.dragState = .none
-            hasSeed = true
-            onPositionChanged(coordinate.latitude, coordinate.longitude)
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            guard placed else { return }
+            onPositionChanged(mapView.centerCoordinate.latitude, mapView.centerCoordinate.longitude)
         }
     }
 }
