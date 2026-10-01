@@ -294,6 +294,43 @@ as missing, but All Screens already has them.
 **Needs your call:** I1/I2's live "HOW IT WILL LOOK" preview card and banner-crop step — unbuilt,
 same bucket as the other preview/crop items above.
 
+**Decided (2026-10-01, owner):**
+- **Images upload on Save.** League logo/banner presign needs a league id, and there is no
+  pending-upload endpoint. Pick → crop → the preview card shows the local image at once; the upload
+  runs as part of Save, with the Save pill showing progress. No backend change; nothing goes live
+  before Save. I3's in-form "Uploading 42%" therefore doesn't appear in create mode.
+- **Format is a dropdown + Other:** T10, T20, 50 overs, Test, Other (reveals a text field). A stored
+  value outside the list loads as Other with its text.
+- **Save is enabled once the form is edited and validates on tap:** disabled while untouched
+  (create) or unchanged (edit); on tap, missing fields get inline errors, a "N fields need attention"
+  banner appears and the form scrolls to the first one (I7, I9).
+
+**Implemented (2026-10-01):** top bar with Save pill (Cancel text in edit mode), the "How it will
+look" card (16:9 banner + logo tile + name / city · date), square logo crop and 16:9 banner crop
+(I2), Basics, Location (I9), Ground search / selected card (I4), full-screen register-ground map with
+draggable green pin and error banner (I5/I11), Schedule & format with the styled date picker (I6),
+Capacity, Fees with UPI ID (I7), Awards cards (I8), discard dialog (I10), Saving… / Uploading N% and
+the save-failure bar with Retry (I12). The error-count banner stays pinned under the top bar and a
+Save tap scrolls to the first missing field's section. A Save retried after the league was created
+but an image upload failed updates that league instead of creating a second one. Verified with
+fake-data captures for every frame and live on CPH2487 against the real backend (I1, logo crop,
+I2, filled card with real images, I10 dialog, I5 real map) -- Save was never tapped live.
+
+Decisions taken where the board has no frame or disagrees with itself (confirmed by the owner 2026-10-01):
+- "Basics" heading shown in every state (I1 has it, I3/I10 don't).
+- Fields are 52dp with a white fill everywhere (most frames; I1/I7 draw 54dp transparent).
+- Location fields stay full width in edit mode too (I9; I10 puts State/District side by side).
+- Image actions are Change/Remove for logo and banner. No "Cancel banner upload" (uploads only
+  happen inside Save) and no check badge on the logo.
+- "How it will look" label shows only while the card is empty, as in I1.
+- Register ground: a missing league location or unplaced pin shows in the sheet's error banner;
+  the coordinates line reads "Pin not placed yet" until the pin moves; "Registering…" while busy.
+- Discard copy: create "This league won't be created."; edit "Your edits won't be saved. The league
+  stays as it was."
+- Format "Other" reveals a "Format name" field (placeholder "e.g. 8 overs").
+- Fees and cash show without thousands separators (I7 shows "5,000", I12 "5000").
+- The pre-filled First/Second/Third Prize awards stay (the board shows "Winner").
+
 ---
 
 ## J — Auction settings
@@ -514,7 +551,15 @@ Open items found while implementing the redesign, not yet scheduled.
   - H: Retry going through the loading spinner (the test URL failed instantly); opening the viewer
     from League Detail with a real proof (the harness opened it directly); pan clamping by touch
     (covered by tests only); nav-bar icons hard to see when zoomed into a white image.
-  - iOS: ClaimFranchiseView and ScreenshotViewerView changes are not compiled (no Xcode here).
+  - I: a real Save end to end (create and edit, with logo/banner upload progress against S3);
+    Use my location live; ground search and registration against real data; edit mode live; the
+    discard dialog at its new 314dp width; Profile setup (C) after the shared field changes (not
+    re-captured, its tests pass).
+  - iOS: ClaimFranchiseView, ScreenshotViewerView and LeagueCreationView changes are not compiled
+    (no Xcode here).
+- [ ] **Register-ground map opens on all of India** (screen I, 2026-10-01). With no seed the pin
+  starts at the country centre and has to be dragged across the map. Consider centring on the
+  league's city or the device location (only if location permission is already granted).
 
 ## Decisions made during implementation
 

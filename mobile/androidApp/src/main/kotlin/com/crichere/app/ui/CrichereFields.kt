@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -42,7 +44,9 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.crichere.app.R
+import com.crichere.app.ui.theme.CrichereInkSubtle
 import com.crichere.app.ui.theme.InstrumentSansFamily
+import com.crichere.app.ui.theme.JetBrainsMonoFamily
 
 // Form field look from the design board (screens C, I, J, ...): 54dp box, 12dp radius, the label
 // sits inside as a placeholder until there's a value, then moves into a notch on the top border.
@@ -55,61 +59,105 @@ private val DisabledText = Color(0xFFB0B8B1)
 
 private enum class FieldMode { Idle, Active, Disabled }
 
+/**
+ * Per-screen look of a field. Profile setup (C) uses the defaults; League creation (I) uses
+ * [Form]: white fill, 52dp, and a label notch that can sit on a white card.
+ */
+data class FieldVariant(
+    val height: Dp = FieldHeight,
+    val idleFill: Color = Color.Transparent,
+    /** What the notched label masks the border with: the screen, or a card behind the field. */
+    val notchColor: Color? = null,
+) {
+    companion object {
+        val Form = FieldVariant(height = 52.dp, idleFill = Color.White)
+        val FormOnCard = FieldVariant(height = 52.dp, idleFill = Color.White, notchColor = Color.White)
+    }
+}
+
 @Composable
 private fun FieldFrame(
     label: String,
     hasValue: Boolean,
     mode: FieldMode,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    look: FieldVariant = FieldVariant(),
+    error: String? = null,
+    height: Dp = look.height,
+    topAligned: Boolean = false,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val (border, borderColor, fill) = when (mode) {
-        FieldMode.Active -> Triple(2.dp, colors.primary, colors.surface)
-        FieldMode.Disabled -> Triple(1.dp, DisabledBorder, DisabledFill)
-        FieldMode.Idle -> Triple(1.dp, colors.outline, Color.Transparent)
+    val (border, borderColor, fill) = when {
+        mode == FieldMode.Disabled -> Triple(1.dp, DisabledBorder, DisabledFill)
+        error != null -> Triple(2.dp, colors.error, if (mode == FieldMode.Active) colors.surface else look.idleFill)
+        mode == FieldMode.Active -> Triple(2.dp, colors.primary, colors.surface)
+        else -> Triple(1.dp, colors.outline, look.idleFill)
     }
-    Box(modifier = modifier.fillMaxWidth().padding(top = 7.dp)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(FieldHeight)
-                .background(fill, FieldShape)
-                .border(border, borderColor, FieldShape)
-                .padding(start = 14.dp + border, end = 11.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) { content() }
-        if (hasValue) {
-            // Background matches the screen so the label masks the top border (notched outline).
-            Text(
-                text = label,
-                style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 11.sp),
-                color = if (mode == FieldMode.Active) colors.primary else colors.onSurfaceVariant,
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth().padding(top = 7.dp)) {
+            Box(
                 modifier = Modifier
-                    .offset(x = 11.dp, y = (-6).dp)
-                    .background(colors.background)
-                    .padding(horizontal = 4.dp),
+                    .fillMaxWidth()
+                    .height(height)
+                    .background(fill, FieldShape)
+                    .border(border, borderColor, FieldShape)
+                    .padding(start = 14.dp + border, end = 11.dp, top = if (topAligned) 15.dp else 0.dp),
+                contentAlignment = if (topAligned) Alignment.TopStart else Alignment.CenterStart,
+                content = content,
+            )
+            if (hasValue || error != null) {
+                // The notch masks the top border with whatever is behind the field.
+                Text(
+                    text = label,
+                    style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 11.sp),
+                    color = when {
+                        error != null -> colors.error
+                        mode == FieldMode.Active -> colors.primary
+                        else -> colors.onSurfaceVariant
+                    },
+                    modifier = Modifier
+                        .offset(x = 11.dp, y = (-6).dp)
+                        .background(look.notchColor ?: colors.background)
+                        .padding(horizontal = 4.dp),
+                )
+            }
+        }
+        if (error != null) {
+            Text(
+                error,
+                style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 15.6.sp),
+                color = colors.error,
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
     }
 }
 
 @Composable
-private fun placeholderStyle(fontSize: TextUnit, disabled: Boolean) = TextStyle(
+private fun placeholderStyle(fontSize: TextUnit, disabled: Boolean, subtle: Boolean = false) = TextStyle(
     fontFamily = InstrumentSansFamily,
     fontSize = fontSize,
-    color = if (disabled) DisabledText else MaterialTheme.colorScheme.onSurfaceVariant,
+    color = when {
+        disabled -> DisabledText
+        subtle -> CrichereInkSubtle
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    },
 )
 
 @Composable
-private fun valueStyle(fontSize: TextUnit) = TextStyle(
-    fontFamily = InstrumentSansFamily,
+private fun valueStyle(fontSize: TextUnit, mono: Boolean = false) = TextStyle(
+    fontFamily = if (mono) JetBrainsMonoFamily else InstrumentSansFamily,
     fontWeight = FontWeight.Medium,
     fontSize = fontSize,
     color = MaterialTheme.colorScheme.onBackground,
 )
 
-/** Single-line text input in the board's notched-label style. */
+/**
+ * Text input in the board's notched-label style. [placeholder] replaces the label as the empty
+ * hint (e.g. "name@bank"); [mono] sets numbers and IDs in JetBrains Mono; [minLines] > 1 makes a
+ * top-aligned multi-line box of [multiLineHeight].
+ */
 @Composable
 fun CrichereTextField(
     value: String,
@@ -117,14 +165,22 @@ fun CrichereTextField(
     label: String,
     modifier: Modifier = Modifier,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    look: FieldVariant = FieldVariant(),
+    error: String? = null,
+    placeholder: String? = null,
+    mono: Boolean = false,
+    trailingIcon: Int? = null,
+    minLines: Int = 1,
+    multiLineHeight: Dp = 80.dp,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val multiLine = minLines > 1
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = valueStyle(14.5.sp),
+        singleLine = !multiLine,
+        textStyle = if (multiLine) valueStyle(13.5.sp).copy(fontWeight = FontWeight.Normal, lineHeight = 18.9.sp) else valueStyle(14.5.sp, mono),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         keyboardOptions = keyboardOptions,
         interactionSource = interactionSource,
@@ -132,14 +188,66 @@ fun CrichereTextField(
         decorationBox = { inner ->
             FieldFrame(
                 label = label,
-                hasValue = value.isNotEmpty() || isFocused,
+                hasValue = value.isNotEmpty() || isFocused || placeholder != null,
                 mode = if (isFocused) FieldMode.Active else FieldMode.Idle,
+                look = look,
+                error = error,
+                height = if (multiLine) multiLineHeight else look.height,
+                topAligned = multiLine,
             ) {
-                if (value.isEmpty() && !isFocused) Text(label, style = placeholderStyle(14.5.sp, disabled = false))
-                inner()
+                if (value.isEmpty() && (!isFocused || placeholder != null)) {
+                    Text(
+                        placeholder ?: label,
+                        style = placeholderStyle(if (multiLine) 13.5.sp else 14.5.sp, disabled = false, subtle = placeholder != null || error != null),
+                    )
+                }
+                Box(Modifier.padding(end = if (trailingIcon != null) 30.dp else 0.dp)) { inner() }
+                if (trailingIcon != null) {
+                    Icon(
+                        painterResource(trailingIcon),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 5.dp).size(20.dp),
+                    )
+                }
             }
         },
     )
+}
+
+/** A field that opens something on tap (a date picker) instead of taking text. */
+@Composable
+fun CrichereTapField(
+    label: String,
+    value: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    look: FieldVariant = FieldVariant(),
+    error: String? = null,
+    trailingIcon: Int? = null,
+) {
+    FieldFrame(
+        label = label,
+        hasValue = value != null,
+        mode = FieldMode.Idle,
+        look = look,
+        error = error,
+        modifier = modifier.semantics(mergeDescendants = true) {}.clickable(role = Role.Button, onClick = onClick),
+    ) {
+        if (value != null) {
+            Text(value, style = valueStyle(14.sp), maxLines = 1, modifier = Modifier.padding(end = 26.dp))
+        } else {
+            Text(label, style = placeholderStyle(14.5.sp, disabled = false, subtle = error != null), maxLines = 1)
+        }
+        if (trailingIcon != null) {
+            Icon(
+                painterResource(trailingIcon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 3.dp).size(18.dp),
+            )
+        }
+    }
 }
 
 /**
@@ -156,6 +264,8 @@ fun <T> CrichereSelectField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     fontSize: TextUnit = 14.5.sp,
+    look: FieldVariant = FieldVariant(),
+    error: String? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var widthPx by remember { mutableStateOf(0) }
@@ -178,6 +288,8 @@ fun <T> CrichereSelectField(
             label = label,
             hasValue = selected != null,
             mode = mode,
+            look = look,
+            error = error,
             modifier = Modifier.clickable(enabled = enabled, role = Role.DropdownList) { expanded = true },
         ) {
             if (selected != null) {
@@ -189,7 +301,7 @@ fun <T> CrichereSelectField(
                     modifier = Modifier.padding(end = 26.dp),
                 )
             } else {
-                Text(label, style = placeholderStyle(fontSize, disabled = !enabled), maxLines = 1)
+                Text(label, style = placeholderStyle(fontSize, disabled = !enabled, subtle = error != null), maxLines = 1)
             }
             Icon(
                 painter = painterResource(if (expanded) R.drawable.ic_arrow_drop_up else R.drawable.ic_arrow_drop_down),

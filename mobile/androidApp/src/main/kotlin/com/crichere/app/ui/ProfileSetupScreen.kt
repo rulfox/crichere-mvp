@@ -63,6 +63,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -327,10 +329,11 @@ private fun SaveBar(state: ProfileSetupState, onSave: () -> Unit) {
     }
 }
 
+/** "Use my location" pill -- Profile setup (C) at the defaults, League creation (I9) at 18dp / 13.5sp. */
 @Composable
-private fun LocationPill(isLocating: Boolean, onClick: () -> Unit) {
+internal fun LocationPill(isLocating: Boolean, onClick: () -> Unit, iconSize: Dp = 19.dp, fontSize: TextUnit = 14.sp) {
     val colors = MaterialTheme.colorScheme
-    val label = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    val label = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = fontSize)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -346,7 +349,7 @@ private fun LocationPill(isLocating: Boolean, onClick: () -> Unit) {
             Spacer(Modifier.width(9.dp))
             Text("Finding your location…", style = label, color = CrichereInkSubtle)
         } else {
-            Icon(painterResource(R.drawable.ic_my_location), contentDescription = null, tint = colors.primary, modifier = Modifier.size(19.dp))
+            Icon(painterResource(R.drawable.ic_my_location), contentDescription = null, tint = colors.primary, modifier = Modifier.size(iconSize))
             Spacer(Modifier.width(5.dp))
             Text("Use my location", style = label, color = colors.primary)
         }

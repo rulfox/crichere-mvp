@@ -74,8 +74,12 @@ class FakeLeagueRepository(
         return nextCreated ?: error("nextCreated not stubbed")
     }
 
-    override suspend fun updateLeague(id: String, request: LeagueSaveRequestDto): LeagueDto =
-        nextUpdated ?: error("nextUpdated not stubbed")
+    val updateLeagueCalls = mutableListOf<Pair<String, LeagueSaveRequestDto>>()
+
+    override suspend fun updateLeague(id: String, request: LeagueSaveRequestDto): LeagueDto {
+        updateLeagueCalls += id to request
+        return nextUpdated ?: nextCreated ?: error("nextUpdated not stubbed")
+    }
 
     override suspend fun completeLeague(id: String): LeagueDto =
         nextCompleted ?: error("nextCompleted not stubbed")

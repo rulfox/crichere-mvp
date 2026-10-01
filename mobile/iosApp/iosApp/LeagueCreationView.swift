@@ -185,6 +185,10 @@ struct LeagueCreationView: View {
                     if let error = wrapper.state.errorMessage {
                         Text(error).foregroundColor(.red)
                     }
+                    // Save is enabled once the form is edited; a tap with missing fields lists them here.
+                    ForEach(Array(wrapper.state.fieldErrors.values), id: \.self) { message in
+                        Text(message).foregroundColor(.red)
+                    }
 
                     Section {
                         Button("Cancel", action: onCancel)

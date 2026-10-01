@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -78,11 +79,18 @@ class PickedPhoto(val bitmap: Bitmap, val fileName: String)
 /** The square region of [PickedPhoto.bitmap] (in bitmap pixels) the circle currently covers. */
 data class CropSquare(val left: Float, val top: Float, val side: Float)
 
+/** A 16:9 region of [PickedPhoto.bitmap] (in bitmap pixels) -- the league banner crop (design I2). */
+data class CropBanner(val left: Float, val top: Float, val width: Float, val height: Float)
+
 private const val MaxDecodeDimension = 2048
 private const val OutputSize = 512
 private const val MaxZoom = 5f
 private val CropCircle = 230.dp
 private val CropSquareSide = 220.dp
+private val BannerWindowWidth = 300.dp
+private val BannerWindowHeight = 169.dp
+private const val BannerOutputWidth = 1280
+private const val BannerOutputHeight = 720
 
 /** Decodes [uri] (EXIF-rotated on API 28+), downsampled so its longest side is at most 2048px. */
 fun decodePickedPhoto(context: Context, uri: Uri): PickedPhoto? = runCatching {
@@ -123,6 +131,30 @@ fun encodeCrop(bitmap: Bitmap, square: CropSquare): ByteArray {
     }
 }
 
+/** Crops [region] out of [bitmap] and encodes it as a 1280x720 JPEG. */
+fun encodeBannerCrop(bitmap: Bitmap, region: CropBanner): ByteArray {
+    val left = region.left.roundToInt().coerceIn(0, bitmap.width - 1)
+    val top = region.top.roundToInt().coerceIn(0, bitmap.height - 1)
+    val width = region.width.roundToInt().coerceAtMost(bitmap.width - left).coerceAtLeast(1)
+    val height = region.height.roundToInt().coerceAtMost(bitmap.height - top).coerceAtLeast(1)
+    val cropped = Bitmap.createBitmap(bitmap, left, top, width, height)
+    val scaled = Bitmap.createScaledBitmap(cropped, BannerOutputWidth, BannerOutputHeight, true)
+    return ByteArrayOutputStream().use { out ->
+        scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        out.toByteArray()
+    }
+}
+
+/** Draws [region] of [image] scaled into this DrawScope's full bounds. */
+private fun DrawScope.drawRegion(image: ImageBitmap, region: CropBanner) {
+    drawImage(
+        image = image,
+        srcOffset = IntOffset(region.left.roundToInt(), region.top.roundToInt()),
+        srcSize = IntSize(region.width.roundToInt(), region.height.roundToInt()),
+        dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+    )
+}
+
 /** Draws [square] of [image] scaled into this DrawScope's full bounds. */
 private fun DrawScope.drawCrop(image: ImageBitmap, square: CropSquare) {
     drawImage(
@@ -136,7 +168,8 @@ private fun DrawScope.drawCrop(image: ImageBitmap, square: CropSquare) {
 /**
  * Design screen C3: circle-crop preview shown after picking a photo, before anything uploads. Drag
  * or pinch to position; "Use photo" hands back the JPEG bytes of the crop. [square] switches to the
- * rounded-square window used for franchise logos (design G2).
+ * rounded-square window used for franchise logos (design G2); [onUseBanner] switches to the 16:9
+ * league-banner window (design I2) and receives its crop instead of [onUsePhoto].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,33 +182,35 @@ fun PhotoCropSheet(
     onUsePhoto: (CropSquare) -> Unit,
     square: Boolean = false,
     useLabel: String = "Use photo",
+    onUseBanner: ((CropBanner) -> Unit)? = null,
 ) {
+    val banner = onUseBanner != null
     val image = remember(photo) { photo.bitmap.asImageBitmap() }
     val bitmapW = photo.bitmap.width.toFloat()
     val bitmapH = photo.bitmap.height.toFloat()
-    val circlePx = with(LocalDensity.current) { (if (square) CropSquareSide else CropCircle).toPx() }
-    val windowRadiusPx = with(LocalDensity.current) { 28.dp.toPx() }
-    val baseScale = circlePx / min(bitmapW, bitmapH)
+    val density = LocalDensity.current
+    val windowW = with(density) { (if (banner) BannerWindowWidth else if (square) CropSquareSide else CropCircle).toPx() }
+    val windowH = if (banner) with(density) { BannerWindowHeight.toPx() } else windowW
+    val windowRadiusPx = with(density) { (if (banner) 8.dp else 28.dp).toPx() }
+    val baseScale = max(windowW / bitmapW, windowH / bitmapH)
 
     var zoom by remember(photo) { mutableFloatStateOf(1f) }
     var pan by remember(photo) { mutableStateOf(Offset.Zero) }
 
     fun clampPan(p: Offset, z: Float): Offset {
         val s = baseScale * z
-        val maxX = (bitmapW * s - circlePx) / 2f
-        val maxY = (bitmapH * s - circlePx) / 2f
+        val maxX = (bitmapW * s - windowW) / 2f
+        val maxY = (bitmapH * s - windowH) / 2f
         return Offset(p.x.coerceIn(-maxX, maxX), p.y.coerceIn(-maxY, maxY))
     }
 
-    val crop = run {
+    val region = run {
         val s = baseScale * zoom
-        val side = circlePx / s
-        CropSquare(
-            left = bitmapW / 2f - pan.x / s - side / 2f,
-            top = bitmapH / 2f - pan.y / s - side / 2f,
-            side = side,
-        )
+        val w = windowW / s
+        val h = windowH / s
+        CropBanner(left = bitmapW / 2f - pan.x / s - w / 2f, top = bitmapH / 2f - pan.y / s - h / 2f, width = w, height = h)
     }
+    val crop = CropSquare(region.left, region.top, region.width)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -220,7 +255,7 @@ fun PhotoCropSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(320.dp)
+                    .height(if (banner) 300.dp else 320.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xFF101410))
                     .pointerInput(photo) {
@@ -241,23 +276,42 @@ fun PhotoCropSheet(
                         dstOffset = IntOffset(topLeft.x.roundToInt(), topLeft.y.roundToInt()),
                         dstSize = IntSize(drawW.roundToInt(), drawH.roundToInt()),
                     )
-                    val window = Rect(center, circlePx / 2f)
+                    val window = Rect(Offset(center.x - windowW / 2f, center.y - windowH / 2f), Size(windowW, windowH))
                     val hole = Path().apply {
                         fillType = PathFillType.EvenOdd
                         addRect(Rect(Offset.Zero, size))
-                        if (square) addRoundRect(RoundRect(window, CornerRadius(windowRadiusPx))) else addOval(window)
+                        if (square || banner) addRoundRect(RoundRect(window, CornerRadius(windowRadiusPx))) else addOval(window)
                     }
                     drawPath(hole, Color(0x9E0A0E0A))
-                    if (square) {
+                    if (square || banner) {
                         drawRoundRect(Color.White, window.topLeft, window.size, CornerRadius(windowRadiusPx), style = Stroke(2.dp.toPx()))
                     } else {
-                        drawCircle(Color.White, radius = circlePx / 2f, center = center, style = Stroke(2.dp.toPx()))
+                        drawCircle(Color.White, radius = windowW / 2f, center = center, style = Stroke(2.dp.toPx()))
                     }
                 }
             }
 
             Spacer(Modifier.height(14.dp))
-            if (square) {
+            if (banner) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .background(Color.White, RoundedCornerShape(12.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 9.dp),
+                ) {
+                    Canvas(Modifier.size(96.dp, 54.dp).clip(RoundedCornerShape(6.dp))) { drawRegion(image, region) }
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Shown on the dashboard card and league page",
+                        style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 12.sp, lineHeight = 16.2.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else if (square) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
                     Canvas(Modifier.size(32.dp).clip(RoundedCornerShape(8.dp))) { drawCrop(image, crop) }
                     Spacer(Modifier.width(10.dp))
@@ -283,7 +337,7 @@ fun PhotoCropSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.height(if (square) 14.dp else 19.dp))
+            Spacer(Modifier.height(if (square || banner) 14.dp else 19.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
                 val label = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                 OutlinedButton(
@@ -295,7 +349,7 @@ fun PhotoCropSheet(
                     modifier = Modifier.weight(1f).height(48.dp),
                 ) { Text("Choose another", style = label) }
                 Button(
-                    onClick = { onUsePhoto(crop) },
+                    onClick = { if (onUseBanner != null) onUseBanner(region) else onUsePhoto(crop) },
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     contentPadding = PaddingValues(0.dp),
