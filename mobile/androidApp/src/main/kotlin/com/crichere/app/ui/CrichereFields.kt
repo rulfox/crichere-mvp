@@ -172,6 +172,7 @@ fun CrichereTextField(
     trailingIcon: Int? = null,
     minLines: Int = 1,
     multiLineHeight: Dp = 80.dp,
+    readOnly: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -183,6 +184,7 @@ fun CrichereTextField(
         textStyle = if (multiLine) valueStyle(13.5.sp).copy(fontWeight = FontWeight.Normal, lineHeight = 18.9.sp) else valueStyle(14.5.sp, mono),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         keyboardOptions = keyboardOptions,
+        readOnly = readOnly,
         interactionSource = interactionSource,
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
         decorationBox = { inner ->
@@ -196,9 +198,11 @@ fun CrichereTextField(
                 topAligned = multiLine,
             ) {
                 if (value.isEmpty() && (!isFocused || placeholder != null)) {
+                    // An errored empty mono field shows its label in-box in mono too (board J2).
+                    val inBoxStyle = placeholderStyle(if (multiLine) 13.5.sp else 14.5.sp, disabled = false, subtle = placeholder != null || error != null)
                     Text(
                         placeholder ?: label,
-                        style = placeholderStyle(if (multiLine) 13.5.sp else 14.5.sp, disabled = false, subtle = placeholder != null || error != null),
+                        style = if (mono && error != null && placeholder == null) inBoxStyle.copy(fontFamily = JetBrainsMonoFamily) else inBoxStyle,
                     )
                 }
                 Box(Modifier.padding(end = if (trailingIcon != null) 30.dp else 0.dp)) { inner() }

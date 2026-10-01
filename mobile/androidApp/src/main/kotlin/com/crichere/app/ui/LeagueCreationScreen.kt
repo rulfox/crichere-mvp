@@ -96,7 +96,6 @@ import com.crichere.app.reference.StateDto
 import com.crichere.app.ui.theme.ArchivoFamily
 import com.crichere.app.ui.theme.CrichereDisabledContainer
 import com.crichere.app.ui.theme.CrichereErrorStrong
-import com.crichere.app.ui.theme.CrichereInk
 import com.crichere.app.ui.theme.CrichereInkSubtle
 import com.crichere.app.ui.theme.JetBrainsMonoFamily
 import kotlinx.coroutines.Dispatchers
@@ -116,7 +115,6 @@ private val LogoEmpty = Color(0xFFE3E8DD)
 private val PreviewPlaceholder = Color(0xFFA5ADA6)
 private val DialogSurface = Color(0xFFF1F4EE)
 private val DialogBody = Color(0xFF3E4A41)
-private val SnackbarAction = Color(0xFFA8D5A0)
 private const val OtherFormat = "Other"
 
 /** Resolves [LeagueCreationViewModel] via Koin, parameterized on [editingLeagueId] -- `null` is create mode. */
@@ -374,7 +372,12 @@ private fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCr
 
         val saveError = state.errorMessage
         if (saveError != null && !state.loadFailed) {
-            SaveFailedSnackbar(message = saveError, onRetry = viewModel::save, modifier = Modifier.align(Alignment.BottomCenter))
+            CrichereSnackbar(
+                message = saveError,
+                actionLabel = "Retry",
+                onAction = viewModel::save,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 13.dp, end = 13.dp, bottom = 25.dp),
+            )
         }
 
         if (state.isRegisteringNewGround) {
@@ -856,25 +859,6 @@ private fun AwardsSection(awards: List<AwardDraft>, viewModel: LeagueCreationVie
         Icon(painterResource(R.drawable.ic_add), contentDescription = null, tint = colors.primary, modifier = Modifier.padding(start = 2.dp).size(19.dp))
         Spacer(Modifier.width(6.dp))
         Text("Add another award", style = pText(13.5.sp, FontWeight.SemiBold, 13.5.sp), color = colors.primary)
-    }
-}
-
-/** I12: dark bar with Retry after a failed Save. */
-@Composable
-private fun SaveFailedSnackbar(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .navigationBarsPadding()
-            .padding(start = 13.dp, end = 13.dp, bottom = 25.dp)
-            .fillMaxWidth()
-            .shadow(18.dp, RoundedCornerShape(10.dp), ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
-            .background(CrichereInk, RoundedCornerShape(10.dp))
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(message, style = pText(13.5.sp, FontWeight.Medium, 18.225.sp), color = Color.White, modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(12.dp))
-        Text("Retry", style = pText(13.5.sp, FontWeight.SemiBold, 13.5.sp), color = SnackbarAction, modifier = Modifier.clickable(onClick = onRetry))
     }
 }
 

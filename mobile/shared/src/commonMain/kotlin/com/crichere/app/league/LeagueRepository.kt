@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.network.problemCode
 import com.crichere.app.upload.PhotoUploadInfoDto
 import com.crichere.app.upload.uploadPhotoViaPresignedPost
 import io.ktor.client.HttpClient
@@ -17,8 +18,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 
-/** Thrown by [LeagueRepository]'s create/edit/complete/award calls for anything other than a clean 2xx. */
-class LeagueSaveFailedException(message: String) : Exception(message)
+/**
+ * Thrown by [LeagueRepository]'s create/edit/complete/award calls for anything other than a clean 2xx.
+ * [code] is the backend's problem `code` (e.g. `AUCTION_ALREADY_STARTED`) where the caller reads it.
+ */
+class LeagueSaveFailedException(message: String, val code: String? = null) : Exception(message)
 
 /**
  * Thrown by [LeagueRepository.requestLogoUploadUrl]/[requestBannerUploadUrl] on the real `503`
@@ -130,7 +134,7 @@ internal class KtorLeagueRepository(
             contentType(ContentType.Application.Json)
             setBody(request)
         }
-        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Auction settings save failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Auction settings save failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 

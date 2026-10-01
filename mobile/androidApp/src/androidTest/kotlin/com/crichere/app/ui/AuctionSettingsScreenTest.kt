@@ -1,6 +1,7 @@
 package com.crichere.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -47,6 +48,24 @@ class AuctionSettingsScreenTest {
 
         assert(leagueRepository.updateAuctionSettingsRequests.size == 1) {
             "expected one save request, got ${leagueRepository.updateAuctionSettingsRequests}"
+        }
+    }
+
+    @Test
+    fun anInvalidAmountShowsItsErrorAndSaveSendsNothing() {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(fixtureLeague))
+        val viewModel = AuctionSettingsViewModel(leagueId = "league-1", leagueRepository)
+
+        composeRule.setContent { AuctionSettingsRoute(leagueId = "league-1", onBack = {}, viewModel = viewModel) }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Purse per franchise").performTextInput("75k")
+        composeRule.onNodeWithText("Enter a number").assertIsDisplayed()
+        composeRule.onNodeWithText("Save").performClick()
+        composeRule.waitForIdle()
+
+        assert(leagueRepository.updateAuctionSettingsRequests.isEmpty()) {
+            "expected no save request, got ${leagueRepository.updateAuctionSettingsRequests}"
         }
     }
 }

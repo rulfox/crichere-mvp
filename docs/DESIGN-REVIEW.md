@@ -351,6 +351,20 @@ Decisions taken where the board has no frame or disagrees with itself (confirmed
   (not confirmed either way in this pass) before deciding whether to build this guard or drop the
   locked-state design.
 
+**Implemented (2026-10-02), board J1-J5.** Back-arrow top bar; Base price, Purse, Squad min/max
+side by side, Bid increment as mono form fields; amber squad warning (live); Auction pool card with
+the empty-franchises line (J3); Save in a bottom bar, greyed while errors show (J2), spinner +
+fields at 55% while saving (J3); dark "Auction settings saved" bar (J4, 3s) and save-failure bar
+with Retry (J5). Whole amounts pre-fill without ".0". The board's "no locked state" note holds for
+the screen, but the server does reject saves once the auction has started -- that shows as its own
+message without Retry. Load failure reuses the "Couldn't load" + Retry view. After a successful
+Save the screen stays open with the saved bar (owner, 2026-10-02: matches J4, keeps the values and
+pool in view for repeat tweaks; Back returns to League detail). Verified on CPH2487 on
+a real league: J2 (75k -> "Enter a number", live warning 30 x 5 = 150 > 100, greyed Save, Save tap
+-> "Required" on the blank field), J3's empty pool line; field gaps checked against the DOM (the
+field's 7dp notch reserve means 5dp spacers for the board's 12dp). Rules decided by the owner, see
+PHASE4 Decisions Made.
+
 ---
 
 ## K — Co-organizers
@@ -567,6 +581,11 @@ Open items found while implementing the redesign, not yet scheduled.
   Still not verified: Places mode (needs Places API (New) on the key); iOS centre pin (not
   compiled). Known, not fixed: with the keyboard up for the ground name, the sheet covers nearly
   the whole map and the pin is pushed to the top edge (the saved location is unaffected).
+
+- [ ] **Auction settings (J) partly unverified** (2026-10-02): a real Save was confirmed working by
+  the owner on CPH2487. Still unverified: the J5 failure bar + Retry live, the
+  AUCTION_ALREADY_STARTED message, load failure view, franchises list with real claims, iOS
+  AuctionSettingsView (not compiled).
 
 ## Decisions made during implementation
 

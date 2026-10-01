@@ -50,37 +50,52 @@ struct AuctionSettingsView: View {
             } else if let league = wrapper.state.league {
                 Form {
                     Section("Settings") {
-                        TextField("Base price", text: Binding(get: { wrapper.state.basePrice }, set: { wrapper.onBasePriceChanged($0) }))
-                        TextField("Purse per franchise", text: Binding(get: { wrapper.state.purse }, set: { wrapper.onPurseChanged($0) }))
-                        TextField("Squad size (min)", text: Binding(get: { wrapper.state.squadMin }, set: { wrapper.onSquadMinChanged($0) }))
-                        TextField("Squad size (max)", text: Binding(get: { wrapper.state.squadMax }, set: { wrapper.onSquadMaxChanged($0) }))
-                        TextField("Bid increment", text: Binding(get: { wrapper.state.bidIncrement }, set: { wrapper.onBidIncrementChanged($0) }))
+                        field("Base price", wrapper.state.basePrice, .basePrice) { wrapper.onBasePriceChanged($0) }
+                        field("Purse per franchise", wrapper.state.purse, .purse) { wrapper.onPurseChanged($0) }
+                        field("Squad size (min)", wrapper.state.squadMin, .squadMin) { wrapper.onSquadMinChanged($0) }
+                        field("Squad size (max)", wrapper.state.squadMax, .squadMax) { wrapper.onSquadMaxChanged($0) }
+                        field("Bid increment", wrapper.state.bidIncrement, .bidIncrement) { wrapper.onBidIncrementChanged($0) }
                     }
 
-                    if league.auctionSquadMaxWarning {
-                        Text("This may be impossible to satisfy: squad max times the number of franchises required exceeds players required.")
-                            .foregroundColor(.red)
+                    if let warning = wrapper.state.squadWarning {
+                        Text("Squad max × franchises (\(warning.squadMax) × \(warning.franchises) = \(warning.total)) is more than players required (\(warning.playersRequired)). Some squads may not fill.")
+                            .foregroundColor(.orange)
                     }
 
-                    if let error = wrapper.state.errorMessage {
-                        Text(error).foregroundColor(.red)
+                    if let error = wrapper.state.saveError {
+                        Text(error.message).foregroundColor(.red)
+                    } else if wrapper.state.showSavedNotice {
+                        Text("Auction settings saved")
                     }
 
-                    Button(wrapper.state.isSaving ? "Saving..." : "Save") { wrapper.submit() }
-                        .disabled(wrapper.state.isSaving)
+                    Button(wrapper.state.isSaving ? "Saving…" : "Save") { wrapper.submit() }
+                        .disabled(!wrapper.state.canSave)
 
                     Section("Auction pool") {
                         Text("\(league.players.count) player(s) joined")
+                        if league.franchises.isEmpty {
+                            Text("No franchises yet. They appear here once owners claim them.")
+                        }
                         ForEach(league.franchises, id: \.id) { franchise in
                             Text(franchise.name)
                         }
                     }
                 }
             } else {
-                Text(wrapper.state.errorMessage ?? "Couldn't load this league.").foregroundColor(.red)
+                Text("Couldn't load auction settings. Check your connection and try again.").foregroundColor(.red)
             }
         }
         .navigationTitle("Auction Settings")
         .onAppear { wrapper.retry() }
+    }
+
+    private func field(_ label: String, _ value: String, _ key: AuctionField, onChange: @escaping (String) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TextField(label, text: Binding(get: { value }, set: onChange))
+                .keyboardType(.decimalPad)
+            if let error = wrapper.state.errorFor(field: key) {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
     }
 }
