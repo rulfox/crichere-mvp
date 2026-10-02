@@ -426,6 +426,19 @@ Given you named the timer specifically as something to remove, the direction her
 "simplify the design," not "build the features" — but the size of this gap is worth confirming
 explicitly before cutting all of it.
 
+
+**Implemented (2026-10-02), board L1-L10 (design update #3, imported from the Claude Design
+project).** Status chip (pulsing Live / Not started / Ended) and "Player 12 of 58" / "11 of 58
+done"; On the block card with 88dp photo (gold initials fallback), role chip, current bid with the
+leading franchise tile, "Next bid at least" (or "Opening bid at least"); Recent bids (up to 5,
+newest highlighted, "12s ago" ticking); docked bid form with "Bidding as … · ₹ left · n/max",
+pre-filled Amount, +increment chip, Place Bid, inline errors (L6) and Placing… (L7); organizer
+dock: Sold to <franchise> · ₹amount, Unsold / Next Player (disabled while a player is up) / Undo,
+Allow exceeding purse, End Auction; between players (L8) with the last result; not started for
+organizer / others (L3 / L9); viewer note (L4); loading (L10); Results with expandable franchise
+cards, player photos and "Show all n" (L5) plus a coral "below min squad" note the board doesn't
+draw. Lost-connection line with Retry after a stream drop. Verified with fake data on CPH2487
+(all nine states side by side with the board); live data needs the backend deploy.
 ---
 
 ## M — My leagues
@@ -602,6 +615,12 @@ Open items found while implementing the redesign, not yet scheduled.
   rate-limit message (needs a second registered account; a live grant changes who manages the
   league), iOS ManageRolesView (not compiled). Known gap: a co-organizer who revokes their own
   access stays on the screen; their next action fails with a generic error instead of leaving.
+
+- [ ] **Live auction (L) polish + live check** (2026-10-02). Open: the On the block card renders
+  ~10dp taller than the board (text box heights; not tracked down); Amount shows "15500" where the
+  board shows "15,500"; real photos, live bids, recent-bid timing, results reload after a sale,
+  and Next Player / Sold / Unsold / Undo / End against the deployed backend not yet checked; iOS
+  AuctionLiveView updated but not compiled.
 
 ## Decisions made during implementation
 

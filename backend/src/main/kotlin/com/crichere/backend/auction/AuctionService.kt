@@ -1,6 +1,7 @@
 package com.crichere.backend.auction
 
 import com.crichere.backend.auction.dto.AuctionBidTickerResponse
+import com.crichere.backend.auction.dto.AuctionLastResultResponse
 import com.crichere.backend.auction.dto.AuctionResultsResponse
 import com.crichere.backend.auction.dto.AuctionStateResponse
 import com.crichere.backend.auction.dto.FranchiseAuctionResultResponse
@@ -390,11 +391,12 @@ class AuctionService(
     }
 
     private fun LeagueEntity.toStateResponse(): AuctionStateResponse {
+        val leagueId = requireNotNull(id)
         val currentPlayer = auctionCurrentPlayerId?.let { playerRepository.findById(it).orElse(null) }
-        val currentPlayerName = currentPlayer?.let { profileRepository.findById(it.userId).orElse(null)?.name }
+        val currentProfile = currentPlayer?.let { profileRepository.findById(it.userId).orElse(null) }
         val leadingFranchise = auctionCurrentLeadingFranchiseId?.let { franchiseRepository.findById(it).orElse(null) }
         val recentBids = auctionCurrentPlayerId?.let { playerId ->
-            auctionBidRepository.findTop8ByLeagueIdAndPlayerIdAndReversedFalseOrderByPlacedAtDesc(id!!, playerId)
+            auctionBidRepository.findTop8ByLeagueIdAndPlayerIdAndReversedFalseOrderByPlacedAtDesc(leagueId, playerId)
                 .map { bid ->
                     AuctionBidTickerResponse(
                         franchiseId = bid.franchiseId,
@@ -407,12 +409,31 @@ class AuctionService(
         return AuctionStateResponse(
             auctionStatus = auctionStatus,
             currentPlayerId = auctionCurrentPlayerId,
-            currentPlayerName = currentPlayerName,
+            currentPlayerName = currentProfile?.name,
             currentBidAmount = auctionCurrentBidAmount,
             currentLeadingFranchiseId = auctionCurrentLeadingFranchiseId,
             currentLeadingFranchiseName = leadingFranchise?.name,
             allowExceedPurse = auctionAllowExceedPurse,
             recentBids = recentBids,
+            currentPlayerPhotoUrl = currentProfile?.photoUrl,
+            currentPlayerRole = currentProfile?.playingRole,
+            playersTotal = playerRepository.countByLeagueIdAndRemovedAtIsNull(leagueId).toInt(),
+            playersSold = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.SOLD).toInt(),
+            lastResult = if (auctionCurrentPlayerId == null) lastResult() else null,
+        )
+    }
+
+    /** The player the organizer just sold or sent back unsold -- only while that's still the last action (undo/next player clear it). */
+    private fun LeagueEntity.lastResult(): AuctionLastResultResponse? {
+        val type = auctionLastActionType ?: return null
+        if (type != AuctionLastActionType.SOLD && type != AuctionLastActionType.UNSOLD) return null
+        val player = auctionLastActionPlayerId?.let { playerRepository.findById(it).orElse(null) } ?: return null
+        val sold = type == AuctionLastActionType.SOLD
+        return AuctionLastResultResponse(
+            playerName = profileRepository.findById(player.userId).orElse(null)?.name,
+            sold = sold,
+            franchiseName = if (sold) player.soldToFranchiseId?.let { franchiseRepository.findById(it).orElse(null)?.name } else null,
+            amount = if (sold) player.soldPrice else null,
         )
     }
 
@@ -430,10 +451,14 @@ class AuctionService(
         )
     }
 
-    private fun PlayerEntity.toResultResponse(): PlayerAuctionResultResponse = PlayerAuctionResultResponse(
-        playerId = requireNotNull(id),
-        userId = userId,
-        playerName = profileRepository.findById(userId).orElse(null)?.name,
-        soldPrice = requireNotNull(soldPrice),
-    )
+    private fun PlayerEntity.toResultResponse(): PlayerAuctionResultResponse {
+        val profile = profileRepository.findById(userId).orElse(null)
+        return PlayerAuctionResultResponse(
+            playerId = requireNotNull(id),
+            userId = userId,
+            playerName = profile?.name,
+            soldPrice = requireNotNull(soldPrice),
+            photoUrl = profile?.photoUrl,
+        )
+    }
 }

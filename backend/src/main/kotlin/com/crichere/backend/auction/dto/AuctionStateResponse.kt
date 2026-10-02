@@ -1,6 +1,7 @@
 package com.crichere.backend.auction.dto
 
 import com.crichere.backend.league.AuctionStatus
+import com.crichere.backend.profile.PlayingRole
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -22,6 +23,22 @@ data class AuctionStateResponse(
     /** Public bid ticker (docs/PHASE6.md) -- last 8 unreversed bids on [currentPlayerId], newest
      * first. Always empty when [currentPlayerId] is null. */
     val recentBids: List<AuctionBidTickerResponse>,
+    /** The current player's profile photo and role (screen L, 2026-10-02) -- public like the name. */
+    val currentPlayerPhotoUrl: String? = null,
+    val currentPlayerRole: PlayingRole? = null,
+    /** Active (not removed) players in the league, and how many are sold -- "Player 12 of 58". */
+    val playersTotal: Int = 0,
+    val playersSold: Int = 0,
+    /** The player just closed, while nobody is up yet ("Last: X sold to Y for ₹Z"); `null` otherwise. */
+    val lastResult: AuctionLastResultResponse? = null,
+)
+
+/** See [AuctionStateResponse.lastResult]. [franchiseName]/[amount] are `null` when [sold] is false. */
+data class AuctionLastResultResponse(
+    val playerName: String?,
+    val sold: Boolean,
+    val franchiseName: String?,
+    val amount: BigDecimal?,
 )
 
 data class AuctionBidTickerResponse(

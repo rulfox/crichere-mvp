@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.network.problemCode
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.sse.sse
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 
 /** Thrown by every mutating [AuctionRepository] call for anything other than a clean 2xx -- same posture as [LeagueSaveFailedException]. */
-class AuctionActionFailedException(message: String) : Exception(message)
+class AuctionActionFailedException(message: String, val code: String? = null) : Exception(message)
 
 /**
  * `commonMain` live-auction use cases (see docs/PHASE5.md) -- follows [LeagueRepository]'s
@@ -63,7 +64,7 @@ internal class KtorAuctionRepository(private val httpClient: HttpClient) : Aucti
             contentType(ContentType.Application.Json)
             setBody(request)
         }
-        if (!response.status.isSuccess()) throw AuctionActionFailedException("Bid failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw AuctionActionFailedException("Bid failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 
@@ -78,7 +79,7 @@ internal class KtorAuctionRepository(private val httpClient: HttpClient) : Aucti
             contentType(ContentType.Application.Json)
             setBody(ToggleExceedPurseRequestDto(allow))
         }
-        if (!response.status.isSuccess()) throw AuctionActionFailedException("Toggle exceed-purse failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw AuctionActionFailedException("Toggle exceed-purse failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 
@@ -97,7 +98,7 @@ internal class KtorAuctionRepository(private val httpClient: HttpClient) : Aucti
 
     private suspend fun postAction(leagueId: String, action: String): AuctionStateDto {
         val response = httpClient.post("/api/v1/leagues/$leagueId/auction/$action")
-        if (!response.status.isSuccess()) throw AuctionActionFailedException("$action failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw AuctionActionFailedException("$action failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 }

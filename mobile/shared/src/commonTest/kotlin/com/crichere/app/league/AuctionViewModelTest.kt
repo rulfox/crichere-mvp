@@ -97,7 +97,7 @@ class AuctionViewModelTest {
     }
 
     @Test
-    fun `a stream error surfaces an error message instead of crashing`() = viewModelTest {
+    fun `a stream error before any state is a load failure, not a crash`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val auctionRepository = FakeAuctionRepository().apply {
             stream = flow { throw RuntimeException("disconnected") }
@@ -108,7 +108,7 @@ class AuctionViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isLoading)
-        assertEquals("disconnected", viewModel.state.value.errorMessage)
+        assertTrue(viewModel.state.value.loadFailed)
     }
 
     @Test
@@ -176,9 +176,9 @@ class AuctionViewModelTest {
     }
 
     @Test
-    fun `a bid failure surfaces the server's error message instead of crashing`() = viewModelTest {
+    fun `a bid that fails on the network says so under the field`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague(franchises = listOf(franchise(id = "f1", ownerUserId = "owner-1")))))
-        val auctionRepository = FakeAuctionRepository().apply { actionError = RuntimeException("Bid must be at least 150") }
+        val auctionRepository = FakeAuctionRepository().apply { actionError = RuntimeException("timeout") }
         val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("owner-1"))
         viewModel.retry()
         advanceUntilIdle()
@@ -187,7 +187,7 @@ class AuctionViewModelTest {
         viewModel.placeBid()
         advanceUntilIdle()
 
-        assertEquals("Bid must be at least 150", viewModel.state.value.errorMessage)
+        assertEquals("Couldn't place that bid. Check your connection and try again.", viewModel.state.value.bidError)
         assertFalse(viewModel.state.value.isBidding)
     }
 
@@ -230,7 +230,7 @@ class AuctionViewModelTest {
     }
 
     @Test
-    fun `a load failure surfaces an error message instead of crashing`() = viewModelTest {
+    fun `a load failure is flagged instead of crashing`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = emptyList())
         val viewModel = AuctionViewModel("missing-id", leagueRepository, FakeAuctionRepository(), StubAuthRepository("organizer-1"))
 
@@ -239,7 +239,152 @@ class AuctionViewModelTest {
 
         val state = viewModel.state.value
         assertFalse(state.isLoading)
-        assertTrue(state.errorMessage != null)
+        assertTrue(state.loadFailed)
         assertNull(state.auction)
     }
+
+    // ---------------------------------------------------------------- board L (2026-10-02)
+
+    private fun liveLeague() = sampleLeague(franchises = listOf(franchise(id = "f1", ownerUserId = "owner-1"))).copy(
+        auctionBasePrice = 1000.0,
+        auctionBidIncrement = 500.0,
+        auctionPurse = 75000.0,
+        auctionSquadMax = 12,
+    )
+
+    private fun onTheBlock(currentBid: Double? = 15000.0, playersSold: Int = 11) = AuctionStateDto(
+        auctionStatus = AuctionStatus.IN_PROGRESS,
+        currentPlayerId = "p1",
+        currentPlayerName = "Rohan Patil",
+        currentBidAmount = currentBid,
+        currentLeadingFranchiseId = currentBid?.let { "f2" },
+        currentLeadingFranchiseName = currentBid?.let { "Kolhapur Kings" },
+        playersTotal = 58,
+        playersSold = playersSold,
+    )
+
+    private suspend fun kotlinx.coroutines.test.TestScope.ownerOnBlock(
+        state: AuctionStateDto = onTheBlock(),
+        configure: FakeAuctionRepository.() -> Unit = {},
+    ): Pair<AuctionViewModel, FakeAuctionRepository> {
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = MutableSharedFlow<AuctionStateDto>(replay = 1).apply { tryEmit(state) }
+            configure()
+        }
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(liveLeague())), auctionRepository, StubAuthRepository("owner-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+        return viewModel to auctionRepository
+    }
+
+    @Test
+    fun `the minimum next bid is the current bid plus the increment, and the amount is pre-filled with it`() = viewModelTest {
+        val (viewModel, _) = ownerOnBlock()
+
+        assertEquals(15500.0, viewModel.state.value.minimumNextBid)
+        assertEquals("15500", viewModel.state.value.bidAmountInput)
+    }
+
+    @Test
+    fun `before the first bid the minimum is the base price`() = viewModelTest {
+        val (viewModel, _) = ownerOnBlock(onTheBlock(currentBid = null))
+
+        assertEquals(1000.0, viewModel.state.value.minimumNextBid)
+        assertEquals("1000", viewModel.state.value.bidAmountInput)
+    }
+
+    @Test
+    fun `the step chip adds one bid increment to the typed amount`() = viewModelTest {
+        val (viewModel, _) = ownerOnBlock()
+
+        viewModel.onStepBid()
+        assertEquals("16000", viewModel.state.value.bidAmountInput)
+
+        viewModel.onBidAmountChanged("")
+        viewModel.onStepBid()
+        assertEquals("16000", viewModel.state.value.bidAmountInput) // blank -> minimum + increment
+    }
+
+    @Test
+    fun `a bid below the minimum is caught before it is sent`() = viewModelTest {
+        val (viewModel, repository) = ownerOnBlock()
+
+        viewModel.onBidAmountChanged("15200")
+        viewModel.placeBid()
+        advanceUntilIdle()
+
+        assertTrue(repository.placeBidRequests.isEmpty())
+        assertEquals("Bid must be at least ₹15,500.", viewModel.state.value.bidError)
+    }
+
+    @Test
+    fun `server bid rejections map to plain messages`() = viewModelTest {
+        val (viewModel, repository) = ownerOnBlock { actionError = AuctionActionFailedException("409", code = "SQUAD_FULL") }
+
+        viewModel.placeBid()
+        advanceUntilIdle()
+        assertEquals("Your squad is full (12/12).", viewModel.state.value.bidError)
+
+        repository.actionError = AuctionActionFailedException("409", code = "PURSE_EXCEEDED")
+        viewModel.placeBid()
+        advanceUntilIdle()
+        assertEquals("This bid is more than your remaining purse (₹75,000).", viewModel.state.value.bidError)
+    }
+
+    @Test
+    fun `bidding context comes from the results -- purse left and players won`() = viewModelTest {
+        val (viewModel, _) = ownerOnBlock {
+            nextResults = AuctionResultsDto(
+                auctionStatus = AuctionStatus.IN_PROGRESS,
+                franchises = listOf(
+                    FranchiseAuctionResultDto(
+                        franchiseId = "f1",
+                        franchiseName = "Chennai Kings",
+                        playersWon = List(11) { PlayerAuctionResultDto(playerId = "p$it", userId = "u$it", soldPrice = 3000.0) },
+                        purseSpent = 33000.0,
+                        purseRemaining = 42000.0,
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(BiddingContext("f1", "Chennai Kings", purseLeft = 42000.0, playersWon = 11, squadMax = 12), viewModel.state.value.biddingContext)
+    }
+
+    @Test
+    fun `a typed amount above the new minimum survives someone else's bid`() = viewModelTest {
+        val stream = MutableSharedFlow<AuctionStateDto>(replay = 1).apply { tryEmit(onTheBlock()) }
+        val (viewModel, _) = ownerOnBlock { this.stream = stream }
+
+        viewModel.onBidAmountChanged("20000")
+        stream.emit(onTheBlock(currentBid = 16000.0))
+        advanceUntilIdle()
+        assertEquals("20000", viewModel.state.value.bidAmountInput)
+
+        stream.emit(onTheBlock(currentBid = 21000.0))
+        advanceUntilIdle()
+        assertEquals("21500", viewModel.state.value.bidAmountInput)
+    }
+
+    @Test
+    fun `organizer action errors map to plain messages`() = viewModelTest {
+        val auctionRepository = FakeAuctionRepository().apply { actionError = AuctionActionFailedException("409", code = "NO_BIDS_TO_SELL") }
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), auctionRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.sold()
+        advanceUntilIdle()
+
+        assertEquals("No bids yet. Mark the player Unsold instead.", viewModel.state.value.actionError)
+    }
+
+    @Test
+    fun `rupee text uses Indian grouping`() {
+        assertEquals("₹500", rupeeText(500.0))
+        assertEquals("₹15,500", rupeeText(15500.0))
+        assertEquals("₹1,50,000", rupeeText(150000.0))
+        assertEquals("₹12.5", rupeeText(12.5))
+    }
 }
+

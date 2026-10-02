@@ -1,5 +1,6 @@
 package com.crichere.app.league
 
+import com.crichere.app.profile.PlayingRole
 import kotlinx.serialization.Serializable
 
 /** Mirrors the backend's `com.crichere.backend.league.AuctionStatus`. */
@@ -24,6 +25,32 @@ data class AuctionStateDto(
     val currentLeadingFranchiseId: String? = null,
     val currentLeadingFranchiseName: String? = null,
     val allowExceedPurse: Boolean = false,
+    /** Last 8 bids on the current player, newest first (docs/PHASE6.md); empty between players. */
+    val recentBids: List<AuctionBidTickerDto> = emptyList(),
+    val currentPlayerPhotoUrl: String? = null,
+    val currentPlayerRole: PlayingRole? = null,
+    val playersTotal: Int = 0,
+    val playersSold: Int = 0,
+    /** The player just sold / sent back unsold, while nobody is up yet (design L8). */
+    val lastResult: AuctionLastResultDto? = null,
+)
+
+/** Mirrors the backend's `AuctionBidTickerResponse`. [placedAt] is an ISO-8601 instant. */
+@Serializable
+data class AuctionBidTickerDto(
+    val franchiseId: String,
+    val franchiseName: String? = null,
+    val amount: Double,
+    val placedAt: String,
+)
+
+/** Mirrors the backend's `AuctionLastResultResponse`. */
+@Serializable
+data class AuctionLastResultDto(
+    val playerName: String? = null,
+    val sold: Boolean,
+    val franchiseName: String? = null,
+    val amount: Double? = null,
 )
 
 /** Mirrors the backend's `AuctionResultsResponse`. */
@@ -51,6 +78,7 @@ data class PlayerAuctionResultDto(
     val userId: String,
     val playerName: String? = null,
     val soldPrice: Double,
+    val photoUrl: String? = null,
 )
 
 /** Body of `POST /leagues/{id}/auction/bids`. */

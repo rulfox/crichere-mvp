@@ -48,14 +48,14 @@ class AuctionLiveScreenTest {
         composeRule.setContent { AuctionLiveRoute(leagueId = "league-1", onBack = {}, viewModel = viewModel) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Status: NOT_STARTED").assertExists()
+        composeRule.onNodeWithText("Not started").assertExists()
         composeRule.onNodeWithText("Start Auction").performClick()
         composeRule.waitForIdle()
 
         assert(auctionRepository.actionCalls == listOf("start")) {
             "expected the start action to fire, got ${auctionRepository.actionCalls}"
         }
-        composeRule.onNodeWithText("Status: IN_PROGRESS").assertExists()
+        composeRule.onNodeWithText("Live").assertExists()
     }
 
     @Test

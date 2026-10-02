@@ -60,14 +60,25 @@ struct AuctionLiveView: View {
                         if let auction = wrapper.state.auction, auction.currentPlayerId != nil {
                             Text(auction.currentPlayerName ?? "Current player")
                             Text("Current bid: \(auction.currentBidAmount.map { "\($0)" } ?? "none yet")")
+                            if let minimum = wrapper.state.minimumNextBid {
+                                Text("Next bid at least \(minimum)").font(.caption)
+                            }
+                            ForEach(auction.recentBids.prefix(5), id: \.placedAt) { bid in
+                                Text("\(bid.franchiseName ?? "Franchise") -- \(bid.amount)").font(.caption)
+                            }
+                        } else if let last = wrapper.state.auction?.lastResult {
+                            Text(last.sold ? "Last: \(last.playerName ?? "") sold to \(last.franchiseName ?? "")" : "Last: \(last.playerName ?? "") went unsold.")
                         }
                     }
 
                     if wrapper.state.myFranchiseId != nil, wrapper.state.auction?.currentPlayerId != nil {
                         Section("Your bid") {
                             TextField("Amount", text: Binding(get: { wrapper.state.bidAmountInput }, set: { wrapper.onBidAmountChanged($0) }))
-                            Button(wrapper.state.isBidding ? "Placing..." : "Place Bid") { wrapper.placeBid() }
+                            Button(wrapper.state.isBidding ? "Placing…" : "Place Bid") { wrapper.placeBid() }
                                 .disabled(wrapper.state.isBidding)
+                            if let bidError = wrapper.state.bidError {
+                                Text(bidError).foregroundColor(.red)
+                            }
                         }
                     }
 
@@ -77,7 +88,9 @@ struct AuctionLiveView: View {
                             case AuctionStatus.notStarted:
                                 Button("Start Auction") { wrapper.start() }.disabled(wrapper.state.isActing)
                             case AuctionStatus.inProgress:
-                                Button("Next Player") { wrapper.nextPlayer() }.disabled(wrapper.state.isActing)
+                                // Disabled while a player is up -- the server only opens the next one after Sold / Unsold.
+                                Button("Next Player") { wrapper.nextPlayer() }
+                                    .disabled(wrapper.state.isActing || wrapper.state.auction?.currentPlayerId != nil)
                                 Button("Sold") { wrapper.sold() }.disabled(wrapper.state.isActing)
                                 Button("Unsold") { wrapper.unsold() }.disabled(wrapper.state.isActing)
                                 Button("Undo") { wrapper.undo() }.disabled(wrapper.state.isActing)
@@ -113,12 +126,12 @@ struct AuctionLiveView: View {
                         }
                     }
 
-                    if let error = wrapper.state.errorMessage {
+                    if let error = wrapper.state.actionError {
                         Text(error).foregroundColor(.red)
                     }
                 }
             } else {
-                Text(wrapper.state.errorMessage ?? "Couldn't load this league.").foregroundColor(.red)
+                Text("Couldn't load the auction. Check your connection and try again.").foregroundColor(.red)
             }
         }
         .navigationTitle("Live Auction")

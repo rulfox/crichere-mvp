@@ -15,6 +15,8 @@ import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.AuctionOutcome
 import com.crichere.backend.player.PlayerEntity
 import com.crichere.backend.player.PlayerRepository
+import com.crichere.backend.profile.PlayingRole
+import com.crichere.backend.profile.ProfileEntity
 import com.crichere.backend.profile.ProfileRepository
 import io.mockk.every
 import io.mockk.just
@@ -49,6 +51,9 @@ class AuctionServiceTest {
         every { it.findByIdAndLeagueId(any(), any()) } answers {
             Optional.of(PlayerEntity(id = firstArg(), leagueId = secondArg(), userId = UUID.randomUUID()))
         }
+        // toStateResponse()'s "Player 12 of 58" counts -- default to zero; tests that care stub them.
+        every { it.countByLeagueIdAndRemovedAtIsNull(any()) } returns 0L
+        every { it.countByLeagueIdAndAuctionOutcome(any(), any()) } returns 0L
     }
     private val franchiseRepository = mockk<FranchiseRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
@@ -428,5 +433,91 @@ class AuctionServiceTest {
 
         assertEquals(AuctionStatus.COMPLETED, result.auctionStatus)
         assertEquals(AuctionOutcome.UNSOLD, playerSlot.captured.auctionOutcome)
+    }
+
+    // ---------------------------------------------------------------- state display fields (screen L)
+
+    @Test
+    fun `state carries the current player's photo, role and the sold count`() {
+        val userId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(currentPlayerId = playerId))
+        every { playerRepository.findById(playerId) } returns Optional.of(PlayerEntity(id = playerId, leagueId = leagueId, userId = userId))
+        every { profileRepository.findById(userId) } returns
+            Optional.of(ProfileEntity(userId = userId, name = "Rohan Patil", photoUrl = "https://cdn/p.jpg", playingRole = PlayingRole.ALL_ROUNDER))
+        every { playerRepository.countByLeagueIdAndRemovedAtIsNull(leagueId) } returns 58L
+        every { playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.SOLD) } returns 11L
+
+        val state = service.currentState(leagueId)
+
+        assertEquals("Rohan Patil", state.currentPlayerName)
+        assertEquals("https://cdn/p.jpg", state.currentPlayerPhotoUrl)
+        assertEquals(PlayingRole.ALL_ROUNDER, state.currentPlayerRole)
+        assertEquals(58, state.playersTotal)
+        assertEquals(11, state.playersSold)
+        assertNull(state.lastResult)
+    }
+
+    @Test
+    fun `between players, state reports the player just sold, to whom and for how much`() {
+        val userId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns
+            Optional.of(league(lastActionType = AuctionLastActionType.SOLD, lastActionPlayerId = playerId))
+        every { playerRepository.findById(playerId) } returns Optional.of(
+            PlayerEntity(id = playerId, leagueId = leagueId, userId = userId, auctionOutcome = AuctionOutcome.SOLD).apply {
+                soldToFranchiseId = franchiseId
+                soldPrice = BigDecimal("15000")
+            },
+        )
+        every { profileRepository.findById(userId) } returns Optional.of(ProfileEntity(userId = userId, name = "Rohan Patil"))
+        every { franchiseRepository.findById(franchiseId) } returns Optional.of(franchise())
+
+        val last = service.currentState(leagueId).lastResult
+
+        assertEquals("Rohan Patil", last?.playerName)
+        assertTrue(last!!.sold)
+        assertEquals("Chennai Kings", last.franchiseName)
+        assertEquals(BigDecimal("15000"), last.amount)
+    }
+
+    @Test
+    fun `between players after unsold, state reports the player went unsold`() {
+        val userId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns
+            Optional.of(league(lastActionType = AuctionLastActionType.UNSOLD, lastActionPlayerId = playerId))
+        every { playerRepository.findById(playerId) } returns Optional.of(PlayerEntity(id = playerId, leagueId = leagueId, userId = userId))
+        every { profileRepository.findById(userId) } returns Optional.of(ProfileEntity(userId = userId, name = "Rohan Patil"))
+
+        val last = service.currentState(leagueId).lastResult
+
+        assertEquals("Rohan Patil", last?.playerName)
+        assertEquals(false, last?.sold)
+        assertNull(last?.franchiseName)
+        assertNull(last?.amount)
+    }
+
+    @Test
+    fun `no last result once the organizer has moved on (last action is a bid)`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(lastActionType = AuctionLastActionType.BID, lastActionPlayerId = playerId))
+
+        assertNull(service.currentState(leagueId).lastResult)
+    }
+
+    @Test
+    fun `results include each won player's photo`() {
+        val userId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(status = AuctionStatus.COMPLETED))
+        every { franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId) } returns listOf(franchise())
+        every { playerRepository.findBySoldToFranchiseId(franchiseId) } returns listOf(
+            PlayerEntity(id = playerId, leagueId = leagueId, userId = userId, auctionOutcome = AuctionOutcome.SOLD).apply {
+                soldToFranchiseId = franchiseId
+                soldPrice = BigDecimal("900")
+            },
+        )
+        every { profileRepository.findById(userId) } returns Optional.of(ProfileEntity(userId = userId, name = "Rohan Patil", photoUrl = "https://cdn/p.jpg"))
+
+        val won = service.results(leagueId).franchises.single().playersWon.single()
+
+        assertEquals("Rohan Patil", won.playerName)
+        assertEquals("https://cdn/p.jpg", won.photoUrl)
     }
 }

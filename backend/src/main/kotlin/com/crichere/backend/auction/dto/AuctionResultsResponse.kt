@@ -26,4 +26,5 @@ data class PlayerAuctionResultResponse(
     val userId: UUID,
     val playerName: String?,
     val soldPrice: BigDecimal,
+    val photoUrl: String? = null,
 )
