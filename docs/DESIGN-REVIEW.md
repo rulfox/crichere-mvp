@@ -662,6 +662,24 @@ Open items found while implementing the redesign, not yet scheduled.
   wasn't connected): picking, clearing, the 12h display, and the instrumented
   `aScheduledTimeCanBeClearedBeforeSaving` test. iOS `DatePicker` section authored, not compiled.
 
+- [ ] **Public web redesign (PHASE11.md) -- open items and unverified scenarios** (2026-10-02):
+  - Store badges use the design's mock glyphs -- swap in the official Google Play / Apple artwork
+    before release. Both render "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` /
+    `NEXT_PUBLIC_APP_STORE_URL` are set; QR card and the mobile "Open in app" banner stay hidden
+    until the Play URL exists (QR generation needs a dependency -- ask first).
+  - Landing stats (1,240 / 38,600 / 9,64,000) and the hero's "Bids placed tonight 412" are design
+    placeholders (D4) -- replace before public launch.
+  - Footer About / Privacy / Terms point at `#`; Contact uses `hello@crichere.app` unverified.
+  - Auction top bar at 360px wraps "Live feed" and "Get the app" onto two lines -- the design does
+    the same; kept for parity, worth a design fix.
+  - Not verified against the real backend + phone: a full live auction driven from the app (bids,
+    sold, unsold, undo, end) watched on the web, a real network drop, the live-now link with a real
+    in-progress league, and Safari/iOS (`linear()` fallback, `backdrop-filter`, container queries).
+    All states were verified in Chromium against the mock backend only.
+  - The landing "nothing live" state (live-now 204 hides every Watch-live link) has no e2e (the
+    mock always returns a live league); unit-level only via `fetchLiveNow` returning null.
+  - "Between lots" card (no player open, no band) is not in the design.
+
 ## Decisions made during implementation
 
 - **App start no longer treats transient failures as signed out** (2026-10-01). A refresh that

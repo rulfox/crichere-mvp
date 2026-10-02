@@ -4,7 +4,7 @@ Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infr
 [PHASE6.md](PHASE6.md) for the original web viewer.
 
 **Last updated:** 2026-10-02
-**Status:** planned. Compatibility check done, decisions below locked, implementation not started.
+**Status:** implemented (backend + mobile + web-viewer), verified against the design in a browser; not yet deployed. Mobile scheduled-time picker not verified on-device (phone not connected).
 
 ---
 
@@ -144,8 +144,45 @@ state, role on results rows, a lot number, scheduled auction time, a "which leag
   as an instant; a 44dp clear button appears once set. iOS: a `DatePicker` section (authored only).
 - The new auction-state fields need no mobile change (`ignoreUnknownKeys = true`).
 
+### Web (steps 3-8)
+- **Design matching**: the `.dc.html` sources carry exact inline styles, so CSS was copied from them
+  rule for rule, then checked by measuring element boxes in the rendered design vs the app with
+  Playwright (1440 / 768 / 360). Landing matches to the pixel at 1440; the auction page's boxes match
+  wherever the data matches.
+  - The design uses the browser's **content-box** default, so the old global `* { box-sizing:
+    border-box }` was removed; elements the design marks border-box keep it.
+  - JetBrains Mono has **no ₹ glyph**, so the design's rupee sign comes from the `monospace`
+    fallback. `next/font`'s default size-adjusted Arial fallback drew a wider ₹, so the mono font
+    uses `adjustFontFallback: false, fallback: ["monospace"]`.
+- **Structure**: `app/page.tsx` (server, ISR 15s for live-now) + `components/landing/*`
+  (`HeroPhone` demo loop, `LandingMotion` driving reveals / count-ups / parallax / how-it-works from
+  `data-*` attributes); `components/LiveAuction.tsx` + `useAuctionStream.ts`; shared
+  `components/ui/*` (`Icon`, `Logo`, `StoreBadge`, `GetAppPopover`); `lib/motion.ts`, `lib/store.ts`.
+- **Breakpoints** follow the README (nav links + QR collapse under 820px, floating hero cards hide
+  under 1180px, app banner under 720px) as CSS container queries. The design prototype itself never
+  collapses them (its ResizeObserver state doesn't apply), so it disagrees below 820px -- the README wins.
+- **SOLD / UNSOLD**: `lastResult` first; `detectOutcome()` (results diff) only when the in-between
+  state was missed. A band holds 3s on the closed lot, then the newest state shows. The state
+  already on screen at page open never replays a band.
+- **Reconnecting**: EventSource `error` -> banner + attempt count + "last update Ns ago", live
+  content dimmed to 50%. If the browser gives up (CLOSED), a new EventSource opens with 2/4/8/15s backoff.
+- **Between lots** (no player open, no band): the card reads "Between lots / Next player coming up"
+  -- not in the design (it always has a player up).
+- **Copy deviations**: "Lot N · X left in pool" instead of "Lot N of M" (D2); role labels come from
+  the 4-value `PlayingRole` enum ("All-rounder", not "Batting all-rounder"); franchise badges use
+  derived initials ("SPA", "VC") since no short code exists; the Play badge also gets a "Coming
+  soon" variant (the design only has one for the App Store) because neither app is published (D8).
+- **Tests**: 32 Vitest (every viewer state, SOLD/UNSOLD + fallback, reconnect + backoff, skeleton,
+  below-min, style chips, helpers, badges) and 11 Playwright e2e against the mock backend, whose
+  fixtures now mirror the design's sample league with scripted SOLD / UNSOLD / dropped-connection streams.
+
 ## 7. Open items needing owner input
 
 - Official Google Play / App Store badge artwork (design uses mock glyphs).
-- Final Play Store URL (QR + badges) and whether the app has an App Link for `/leagues/{id}`
-  (decides what the mobile banner's "Open" does; default: Play Store URL).
+- Final Play Store URL -> set `NEXT_PUBLIC_PLAY_STORE_URL`; then generate the QR (needs a QR
+  dependency -- ask first) and pass it to `<StoreBadge kind="qr" qrSrc=...>`.
+- Whether the app gets an App Link for `/leagues/{id}` (decides what the mobile banner's "Open"
+  does; today: the Play Store URL).
+- Replace the placeholder landing stats (D4) before public launch.
+- Footer About / Privacy / Terms link to `#` (no pages exist) and Contact is `hello@crichere.app`
+  as designed -- confirm the address and add the pages.
