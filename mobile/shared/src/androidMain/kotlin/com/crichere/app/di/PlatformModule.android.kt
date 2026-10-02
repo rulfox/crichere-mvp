@@ -2,6 +2,7 @@ package com.crichere.app.di
 
 import com.crichere.app.auth.FirebasePhoneAuthClient
 import com.crichere.app.auth.PhoneAuthClient
+import com.crichere.app.auth.ReusingPhoneAuthClient
 import com.crichere.app.location.DeviceLocationProvider
 import com.crichere.app.location.LocationProvider
 import com.crichere.app.notification.DeviceTokenProvider
@@ -18,7 +19,9 @@ import org.koin.dsl.module
  */
 actual val platformModule: Module = module {
     single<SecureStore> { SecureStorage(get()) }
-    single<PhoneAuthClient> { FirebasePhoneAuthClient() }
+    // Wrapped so a repeat "Send code" for the same number reuses the pending code instead of
+    // hanging on Firebase's silent duplicate request -- see ReusingPhoneAuthClient.
+    single<PhoneAuthClient> { ReusingPhoneAuthClient(FirebasePhoneAuthClient()) }
     single<LocationProvider> { DeviceLocationProvider(get()) }
     single<DeviceTokenProvider> { FcmDeviceTokenProvider() }
 }

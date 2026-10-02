@@ -651,7 +651,8 @@ Open items found while implementing the redesign, not yet scheduled.
 - [ ] **Navigation 3 migration (PHASE10.md Part B), not verified on-device** (2026-10-02):
   predictive-back gesture animation (phone uses 3-button nav), deep link cold and warm, new-league
   `replaceTop`, Join/Claim completion, OTP lockout, Edit profile save.
-- [ ] **Same-number re-send hangs on "Sending code…"** (found 2026-10-02 via OTP -> back -> Send
+- [x] **Same-number re-send hangs on "Sending code…"** (fixed 2026-10-02, PHASE10.md "Send-code
+  hang fix") (found 2026-10-02 via OTP -> back -> Send
   code within 60s; pre-existing via OTP's "Edit"). Firebase gives no callback without a
   force-resend token, and the client has no timeout. See PHASE10.md Open gaps.
 

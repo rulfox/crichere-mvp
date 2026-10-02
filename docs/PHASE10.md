@@ -187,14 +187,30 @@ play-services-maps 20.0.0, androidx.test core/runner/rules 1.7.0, orchestrator 1
 
 ### Open gaps
 
-- **Re-sending a code to the same number within 60s hangs on "Sending code…"** (pre-existing, now
-  easier to reach). Firebase fires no callback for a second `verifyPhoneNumber` on a number with
-  a verification still in its timeout window when no force-resend token is passed, and
-  `FirebasePhoneAuthClient` has no timeout. Hit on-device: OTP -> back -> Send code again. The
-  OTP screen's "Edit" arrow reached the same state before this phase. Fix candidates: pass the
-  previous `ForceResendingToken` when re-sending the same number, and/or a client-side timeout.
+- ~~Re-sending a code to the same number within 60s hangs on "Sending code…"~~ **Fixed
+  2026-10-02**, see "Send-code hang fix" below.
 - adb-injected `KEYCODE_BACK` right after adb-injected text sometimes did nothing while Gboard was
   up. Real nav-bar taps always worked. Treated as an adb injection quirk, not an app bug.
 - Not exercised on-device: predictive-back *gesture* animation (the phone uses 3-button nav), deep
   link (`crichere://leagues/{id}`) cold and warm, creating a new league (`replaceTop`), Join /
   Claim completion, the OTP 5-wrong-attempts lockout, and Edit profile *save*.
+
+### Send-code hang fix (2026-10-02)
+
+**Bug:** OTP -> back -> "Send code" again within 60s spun on "Sending code…" forever. This existed
+before the migration via OTP's "Edit" arrow; hardware back made it easier to reach. Firebase's
+Android SDK fires no callback for a second `verifyPhoneNumber` on a number whose verification is
+still in its timeout window unless a force-resend token is passed, and the client had no timeout.
+
+**Fix:** `shared/commonMain/.../auth/ReusingPhoneAuthClient.kt` wraps `FirebasePhoneAuthClient`.
+It's bound on Android only in `PlatformModule.android.kt`, because an iOS "Resend" carries no
+token and would wrongly hit the reuse path.
+
+| Decision | Reasoning |
+|---|---|
+| **Reuse the pending code (owner, 2026-10-02)** | A plain send for the same number within 60s of a successful send returns the same verification handle without calling Firebase. That means no extra billed SMS and no rate-limit exposure, and the code already sent stays valid. The OTP screen's "Resend" always passes a token, so it still forces a real new SMS. A failed or already-verified handle is never reused. |
+| **120s safety timeout on every send (owner, 2026-10-02)** | Any other silent hang ends in "Couldn't send the code. Please try again." Long enough for a reCAPTCHA fallback (devices failing Play Integrity) to be solved; 30s could fail someone mid-challenge. |
+
+**Verified:** `ReusingPhoneAuthClientTest` 7/7 (shared total 267/267). `:shared:compileKotlinIosArm64`
+green. On the CPH2487: send, OTP -> back, send again 2s later reached OTP immediately ("Resend in
+0:57"), and 123456 signed in.
