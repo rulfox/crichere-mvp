@@ -19,6 +19,7 @@ class AuctionSettingsViewModelTest {
         auctionSquadMin: Int? = null,
         auctionSquadMax: Int? = null,
         auctionBidIncrement: Double? = null,
+        auctionScheduledAt: String? = null,
     ) = LeagueDto(
         id = "l1",
         organizerUserId = "organizer-1",
@@ -33,6 +34,7 @@ class AuctionSettingsViewModelTest {
         auctionSquadMin = auctionSquadMin,
         auctionSquadMax = auctionSquadMax,
         auctionBidIncrement = auctionBidIncrement,
+        auctionScheduledAt = auctionScheduledAt,
     )
 
     private val configured = sampleLeague(auctionBasePrice = 1000.0, auctionPurse = 75000.0, auctionSquadMin = 11, auctionSquadMax = 12, auctionBidIncrement = 500.0)
@@ -162,6 +164,27 @@ class AuctionSettingsViewModelTest {
 
         viewModel.onSavedNoticeShown()
         assertFalse(viewModel.state.value.showSavedNotice)
+    }
+
+    @Test
+    fun `the scheduled time pre-fills, is sent with the save, and can be cleared`() = viewModelTest {
+        val (viewModel, repository) = loaded(
+            sampleLeague(auctionBasePrice = 500.0, auctionPurse = 10000.0, auctionSquadMin = 5, auctionSquadMax = 15, auctionBidIncrement = 100.0, auctionScheduledAt = "2026-10-12T13:30:00Z"),
+        ) { nextAuctionSettingsUpdated = configured }
+        viewModel.retry()
+        advanceUntilIdle()
+        assertEquals("2026-10-12T13:30:00Z", viewModel.state.value.scheduledAt)
+
+        viewModel.onScheduledAtChanged("2026-10-13T14:00:00Z")
+        viewModel.submit()
+        advanceUntilIdle()
+        assertEquals("2026-10-13T14:00:00Z", repository.updateAuctionSettingsRequests.last().scheduledAt)
+
+        viewModel.onScheduledAtChanged(null)
+        assertNull(viewModel.state.value.scheduledAt)
+        viewModel.submit()
+        advanceUntilIdle()
+        assertNull(repository.updateAuctionSettingsRequests.last().scheduledAt)
     }
 
     @Test

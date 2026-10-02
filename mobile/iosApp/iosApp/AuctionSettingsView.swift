@@ -28,6 +28,10 @@ final class AuctionSettingsViewModelWrapper: ObservableObject {
     func onSquadMinChanged(_ value: String) { viewModel.onSquadMinChanged(value: value) }
     func onSquadMaxChanged(_ value: String) { viewModel.onSquadMaxChanged(value: value) }
     func onBidIncrementChanged(_ value: String) { viewModel.onBidIncrementChanged(value: value) }
+    /// `nil` clears it; otherwise stored as an ISO-8601 instant (docs/PHASE11.md D3).
+    func onScheduledAtChanged(_ value: Date?) {
+        viewModel.onScheduledAtChanged(value: value.map { ISO8601DateFormatter().string(from: $0) })
+    }
     func submit() { viewModel.submit() }
 }
 
@@ -55,6 +59,15 @@ struct AuctionSettingsView: View {
                         field("Squad size (min)", wrapper.state.squadMin, .squadMin) { wrapper.onSquadMinChanged($0) }
                         field("Squad size (max)", wrapper.state.squadMax, .squadMax) { wrapper.onSquadMaxChanged($0) }
                         field("Bid increment", wrapper.state.bidIncrement, .bidIncrement) { wrapper.onBidIncrementChanged($0) }
+                    }
+
+                    Section("Auction date & time (optional)") {
+                        if let scheduled = scheduledDate {
+                            DatePicker("Bidding opens", selection: Binding(get: { scheduled }, set: { wrapper.onScheduledAtChanged($0) }))
+                            Button("Clear", role: .destructive) { wrapper.onScheduledAtChanged(nil) }
+                        } else {
+                            Button("Set a time") { wrapper.onScheduledAtChanged(Date()) }
+                        }
                     }
 
                     if let warning = wrapper.state.squadWarning {
@@ -87,6 +100,10 @@ struct AuctionSettingsView: View {
         }
         .navigationTitle("Auction Settings")
         .onAppear { wrapper.retry() }
+    }
+
+    private var scheduledDate: Date? {
+        wrapper.state.scheduledAt.flatMap { ISO8601DateFormatter().date(from: $0) }
     }
 
     private func field(_ label: String, _ value: String, _ key: AuctionField, onChange: @escaping (String) -> Void) -> some View {

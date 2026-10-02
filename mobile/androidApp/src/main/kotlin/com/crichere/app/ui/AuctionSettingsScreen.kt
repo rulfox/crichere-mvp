@@ -22,14 +22,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -54,6 +66,13 @@ import com.crichere.app.ui.theme.CrichereWarningContainer
 import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val PoolListText = Color(0xFF3E4A41)
 private val DisabledSaveText = Color(0xFF6B756D)
@@ -149,8 +168,109 @@ private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewMo
             SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Squad size (max)", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f))
         }
         SettingField(state.bidIncrement, viewModel::onBidIncrementChanged, "Bid increment", errors[AuctionField.BidIncrement], amount, state.isSaving)
+        ScheduledAtField(state.scheduledAt, viewModel::onScheduledAtChanged, state.isSaving)
     }
 }
+
+/**
+ * Optional "bidding opens at" time (docs/PHASE11.md D3) -- shown on the public web viewer's
+ * not-started page. Not on the design board; picks a date, then a time, in the phone's zone and
+ * stores the instant. A clear button sits beside it once set.
+ */
+@Composable
+private fun ScheduledAtField(scheduledAt: String?, onChange: (String?) -> Unit, readOnly: Boolean) {
+    var pickingDate by remember { mutableStateOf(false) }
+    var pickedDate by remember { mutableStateOf<LocalDate?>(null) }
+    val zone = ZoneId.systemDefault()
+    val current = scheduledAt?.let { runCatching { Instant.parse(it).atZone(zone) }.getOrNull() }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        CrichereTapField(
+            label = "Auction date & time (optional)",
+            value = current?.format(DateTimeFormatter.ofPattern("EEE d MMM, h:mm a", Locale.ENGLISH)),
+            onClick = { if (!readOnly) pickingDate = true },
+            look = FieldVariant.Form,
+            trailingIcon = R.drawable.ic_schedule,
+            modifier = Modifier.weight(1f),
+        )
+        if (current != null && !readOnly) {
+            Box(
+                Modifier.padding(top = 7.dp).size(44.dp).clip(CircleShape).clickable(onClickLabel = "Clear auction time") { onChange(null) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(painterResource(R.drawable.ic_close), contentDescription = "Clear auction time", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+    if (pickingDate) {
+        ScheduleDatePicker(
+            initial = current?.toLocalDate(),
+            onDismiss = { pickingDate = false },
+            onPicked = { pickingDate = false; pickedDate = it },
+        )
+    }
+    pickedDate?.let { date ->
+        ScheduleTimePicker(
+            initial = current?.toLocalTime() ?: LocalTime.of(19, 0),
+            onDismiss = { pickedDate = null },
+            onPicked = { time ->
+                pickedDate = null
+                onChange(date.atTime(time).atZone(zone).toInstant().toString())
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPicked: (LocalDate) -> Unit) {
+    val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli())
+    val colors = MaterialTheme.colorScheme
+    val pickerColors = DatePickerDefaults.colors(
+        containerColor = ScheduleDialogSurface,
+        selectedDayContainerColor = colors.primary,
+        selectedDayContentColor = Color.White,
+        todayDateBorderColor = colors.primary,
+    )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
+        colors = pickerColors,
+        confirmButton = {
+            TextButton(onClick = {
+                val millis = pickerState.selectedDateMillis
+                if (millis != null) onPicked(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()) else onDismiss()
+            }) { Text("Next", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
+        },
+    ) {
+        DatePicker(state = pickerState, colors = pickerColors, showModeToggle = false)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleTimePicker(initial: LocalTime, onDismiss: () -> Unit, onPicked: (LocalTime) -> Unit) {
+    val pickerState = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = false)
+    val colors = MaterialTheme.colorScheme
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = ScheduleDialogSurface,
+        shape = RoundedCornerShape(28.dp),
+        confirmButton = {
+            TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
+                Text("OK", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
+        },
+        text = { TimePicker(state = pickerState) },
+    )
+}
+
+private val ScheduleDialogSurface = Color(0xFFF1F4EE)
 
 @Composable
 private fun SettingField(

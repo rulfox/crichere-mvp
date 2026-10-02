@@ -123,6 +123,8 @@ data class LeagueDto(
     val auctionBidIncrement: Double? = null,
     val auctionSquadMaxWarning: Boolean = false,
     val coOrganizers: List<LeagueRoleDto> = emptyList(),
+    /** Optional "bidding opens at" time, ISO-8601 instant (docs/PHASE11.md D3). */
+    val auctionScheduledAt: String? = null,
 )
 
 /**
@@ -163,4 +165,6 @@ data class AuctionSettingsSaveRequestDto(
     val squadMin: Int,
     val squadMax: Int,
     val bidIncrement: Double,
+    /** Optional ISO-8601 instant -- `null` clears it (docs/PHASE11.md D3). */
+    val scheduledAt: String? = null,
 )

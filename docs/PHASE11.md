@@ -135,6 +135,15 @@ state, role on results rows, a lot number, scheduled auction time, a "which leag
   (`NULLS LAST`), then `updated_at`. Memoized 15s (`AtomicReference`, null answers included).
   `permitAll()` GET; no CORS entry (fetched server-side by Next).
 
+### Mobile (step 2)
+- `LeagueDto.auctionScheduledAt` and `AuctionSettingsSaveRequestDto.scheduledAt` (ISO-8601 instant
+  strings). `AuctionSettingsViewModel` pre-fills `scheduledAt`, `onScheduledAtChanged(String?)`
+  sets/clears it, `submit()` sends it; it is never validated and never blocks Save.
+- Android `AuctionSettingsScreen`: "Auction date & time (optional)" tap field after Bid increment
+  -> Material3 date dialog ("Next") -> time dialog (default 7:00 PM) -> stored in the phone's zone
+  as an instant; a 44dp clear button appears once set. iOS: a `DatePicker` section (authored only).
+- The new auction-state fields need no mobile change (`ignoreUnknownKeys = true`).
+
 ## 7. Open items needing owner input
 
 - Official Google Play / App Store badge artwork (design uses mock glyphs).

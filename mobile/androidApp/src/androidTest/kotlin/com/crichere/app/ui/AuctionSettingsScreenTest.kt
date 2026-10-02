@@ -2,6 +2,7 @@ package com.crichere.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -66,6 +67,28 @@ class AuctionSettingsScreenTest {
 
         assert(leagueRepository.updateAuctionSettingsRequests.isEmpty()) {
             "expected no save request, got ${leagueRepository.updateAuctionSettingsRequests}"
+        }
+    }
+
+    @Test
+    fun aScheduledTimeCanBeClearedBeforeSaving() {
+        val scheduled = fixtureLeague.copy(
+            auctionBasePrice = 2000.0, auctionPurse = 100000.0, auctionSquadMin = 11, auctionSquadMax = 15, auctionBidIncrement = 500.0,
+            auctionScheduledAt = "2026-10-12T13:30:00Z",
+        )
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(scheduled)).apply { nextAuctionSettingsUpdated = scheduled }
+        val viewModel = AuctionSettingsViewModel(leagueId = "league-1", leagueRepository)
+
+        composeRule.setContent { AuctionSettingsRoute(leagueId = "league-1", onBack = {}, viewModel = viewModel) }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Auction date & time (optional)").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Clear auction time").performClick()
+        composeRule.onNodeWithText("Save").performClick()
+        composeRule.waitForIdle()
+
+        assert(leagueRepository.updateAuctionSettingsRequests.single().scheduledAt == null) {
+            "expected the cleared time to be sent as null, got ${leagueRepository.updateAuctionSettingsRequests}"
         }
     }
 }

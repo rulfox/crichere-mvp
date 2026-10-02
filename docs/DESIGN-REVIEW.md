@@ -656,6 +656,12 @@ Open items found while implementing the redesign, not yet scheduled.
   code within 60s; pre-existing via OTP's "Edit"). Firebase gives no callback without a
   force-resend token, and the client has no timeout. See PHASE10.md Open gaps.
 
+- [ ] **Auction settings (J): new optional "Auction date & time" field not on the design board**
+  (2026-10-02, PHASE11.md D3). Built as a tap field (date dialog -> time dialog, phone's zone,
+  stored as an instant) with a clear button. Needs a design pass. Not verified on-device (CPH2487
+  wasn't connected): picking, clearing, the 12h display, and the instrumented
+  `aScheduledTimeCanBeClearedBeforeSaving` test. iOS `DatePicker` section authored, not compiled.
+
 ## Decisions made during implementation
 
 - **App start no longer treats transient failures as signed out** (2026-10-01). A refresh that

@@ -28,6 +28,8 @@ data class AuctionSettingsState(
     val squadMin: String = "",
     val squadMax: String = "",
     val bidIncrement: String = "",
+    /** Optional "bidding opens at" time as an ISO-8601 instant (docs/PHASE11.md D3); never validated, `null` = not set. */
+    val scheduledAt: String? = null,
     /** Fields the user has changed -- their errors show as they type (owner decision 2026-10-02). */
     val touched: Set<AuctionField> = emptySet(),
     /** Save was tapped with errors -- every field's error shows from then on. */
@@ -103,7 +105,7 @@ fun amountText(value: Double?): String = when {
 
 /**
  * Auction Settings screen's ViewModel (see docs/PHASE4.md) -- loads the league (pre-filling the
- * five editable fields from whatever's already configured) and lets the organizer save all five
+ * five required fields, plus the optional scheduled time from docs/PHASE11.md, from whatever's already configured) and lets the organizer save all five
  * together. The pool/purse read view renders directly from the same loaded [LeagueDto.players]/
  * [LeagueDto.franchises] -- no second fetch, no separate repository call.
  *
@@ -142,6 +144,7 @@ class AuctionSettingsViewModel(
         squadMin = league.auctionSquadMin?.toString() ?: "",
         squadMax = league.auctionSquadMax?.toString() ?: "",
         bidIncrement = amountText(league.auctionBidIncrement),
+        scheduledAt = league.auctionScheduledAt,
         touched = emptySet(),
         submitAttempted = false,
     )
@@ -151,6 +154,9 @@ class AuctionSettingsViewModel(
     fun onSquadMinChanged(value: String) = edit(AuctionField.SquadMin) { it.copy(squadMin = value) }
     fun onSquadMaxChanged(value: String) = edit(AuctionField.SquadMax) { it.copy(squadMax = value) }
     fun onBidIncrementChanged(value: String) = edit(AuctionField.BidIncrement) { it.copy(bidIncrement = value) }
+
+    /** The picked date-time as an ISO-8601 instant, or `null` to clear it. */
+    fun onScheduledAtChanged(value: String?) = _state.update { it.copy(scheduledAt = value, saveError = null) }
 
     private fun edit(field: AuctionField, change: (AuctionSettingsState) -> AuctionSettingsState) =
         _state.update { change(it).copy(touched = it.touched + field, saveError = null) }
@@ -173,6 +179,7 @@ class AuctionSettingsViewModel(
             squadMin = current.squadMin.trim().toInt(),
             squadMax = current.squadMax.trim().toInt(),
             bidIncrement = current.bidIncrement.trim().toDouble(),
+            scheduledAt = current.scheduledAt,
         )
         _state.update { it.copy(isSaving = true, saveError = null, showSavedNotice = false) }
         viewModelScope.launch {
