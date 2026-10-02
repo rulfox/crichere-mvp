@@ -354,6 +354,8 @@ private fun MainRoute(
                     )
                     MainTab.MY_LEAGUES -> MyLeaguesRoute(
                         onOpenLeague = { leagueId -> destination = MainDestination.LeagueDetail(leagueId) },
+                        onBrowseLeagues = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
+                        onCreateLeague = { destination = MainDestination.LeagueCreation(editingLeagueId = null) },
                     )
                     MainTab.MY_PROFILE -> OwnProfileRoute(onNavigateToEditProfile, onNavigateToPhoneEntry)
                 }

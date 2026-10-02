@@ -36,6 +36,14 @@ struct MyLeaguesView: View {
         Group {
             if wrapper.state.isLoading {
                 ProgressView()
+            } else if let data = wrapper.state.data, data.organizing.isEmpty, data.playing.isEmpty, data.franchiseOwner.isEmpty, data.following.isEmpty {
+                // Design M2 (app fix: was a blank list).
+                VStack(spacing: 10) {
+                    Text("No leagues yet").font(.headline)
+                    Text("Join one as a player, claim a franchise, follow one, or start your own.")
+                        .font(.footnote).multilineTextAlignment(.center).foregroundColor(.secondary)
+                }
+                .padding(40)
             } else if let data = wrapper.state.data {
                 List {
                     section("Organizing", data.organizing)

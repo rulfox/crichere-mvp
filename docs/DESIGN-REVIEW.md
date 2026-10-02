@@ -455,6 +455,13 @@ draw. Lost-connection line with Retry after a stream drop. Verified with fake da
   every category is empty. This is a real app bug worth fixing regardless of the design direction
   — build M2's empty state into the app.
 
+
+**Implemented (2026-10-02), board M1-M3.** 28sp "My leagues" header; stacked Organizing / Playing /
+Franchise owner / Following sections (empty ones hidden) with white rows: league logo or initials
+tile, name, "city, state -- starts", chevron. App fix M2: empty state with Browse leagues
+(Dashboard tab) and Create (new league). M3: spinner on first load, then an error card with Retry;
+a refresh on re-entry keeps the last list instead of flashing the spinner. Verified on CPH2487
+with real data (M1, side by side with the board).
 ---
 
 ## N — My profile
@@ -621,6 +628,10 @@ Open items found while implementing the redesign, not yet scheduled.
   board shows "15,500"; real photos, live bids, recent-bid timing, results reload after a sale,
   and Next Player / Sold / Unsold / Undo / End against the deployed backend not yet checked; iOS
   AuctionLiveView updated but not compiled.
+
+- [ ] **My leagues (M) unverified states** (2026-10-02): M2 empty and M3 error not seen on device
+  (the test account has leagues); a long city name truncates the start date ("Thiruvananthapuram,
+  Kerala -- 2026..."); iOS empty state added but not compiled.
 
 ## Decisions made during implementation
 
