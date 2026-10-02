@@ -12,9 +12,22 @@ export type LeagueFranchise = {
   logoUrl: string | null;
 };
 
+export type PlayingRole = "BATSMAN" | "BOWLER" | "ALL_ROUNDER" | "WICKETKEEPER";
+export type BattingStyle = "RIGHT_HAND" | "LEFT_HAND";
+export type BowlingStyle =
+  | "RIGHT_ARM_FAST"
+  | "RIGHT_ARM_MEDIUM"
+  | "RIGHT_ARM_OFFBREAK"
+  | "RIGHT_ARM_LEGBREAK"
+  | "LEFT_ARM_FAST"
+  | "LEFT_ARM_MEDIUM"
+  | "LEFT_ARM_ORTHODOX"
+  | "LEFT_ARM_CHINAMAN";
+
 export type LeaguePlayer = {
   id: string;
   name: string | null;
+  playingRole?: PlayingRole | null;
 };
 
 export type League = {
@@ -26,6 +39,7 @@ export type League = {
   state: string;
   district: string;
   city: string;
+  groundName?: string | null;
   startsOn: string;
   format: string | null;
   players: LeaguePlayer[];
@@ -34,6 +48,8 @@ export type League = {
   auctionPurse: string | null;
   auctionSquadMin: number | null;
   auctionSquadMax: number | null;
+  /** Optional "bidding opens at" instant (docs/PHASE11.md D3). */
+  auctionScheduledAt?: string | null;
 };
 
 export type AuctionStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
@@ -54,12 +70,31 @@ export type AuctionState = {
   currentLeadingFranchiseName: string | null;
   allowExceedPurse: boolean;
   recentBids: BidTickerRow[];
+  currentPlayerPhotoUrl?: string | null;
+  currentPlayerRole?: PlayingRole | null;
+  currentPlayerBattingStyle?: BattingStyle | null;
+  currentPlayerBowlingStyle?: BowlingStyle | null;
+  /** "Lot N" -- how many players have been opened so far; `null` before the first (docs/PHASE11.md D2). */
+  currentLotNumber?: number | null;
+  playersTotal?: number;
+  playersSold?: number;
+  /** Players still in the pool next-player draws from. */
+  playersPending?: number;
+  /** The player just closed, while nobody is up yet -- the explicit SOLD/UNSOLD signal. */
+  lastResult?: LastResult | null;
+};
+
+export type LastResult = {
+  playerName: string | null;
+  sold: boolean;
+  franchiseName: string | null;
+  amount: string | null;
 };
 
 export type FranchiseResult = {
   franchiseId: string;
   franchiseName: string;
-  playersWon: { playerId: string; playerName: string | null; soldPrice: string }[];
+  playersWon: { playerId: string; playerName: string | null; soldPrice: string; photoUrl?: string | null; playingRole?: PlayingRole | null }[];
   purseSpent: string;
   purseRemaining: string | null;
   belowSquadMin: boolean;
@@ -84,6 +119,21 @@ export async function fetchResults(id: string): Promise<AuctionResults> {
   const response = await fetch(`${API_BASE}/api/v1/leagues/${id}/auction/results`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Couldn't load results (${response.status}).`);
   return response.json();
+}
+
+/**
+ * The league the landing page's "Watch live" links open (docs/PHASE11.md D5), or `null` when no
+ * auction is in progress (204) or the lookup fails -- the links are simply hidden then. Revalidated
+ * every 15s, matching the backend's own memo.
+ */
+export async function fetchLiveNow(): Promise<{ leagueId: string; leagueName: string } | null> {
+  try {
+    const response = await fetch(`${API_BASE}/api/v1/auctions/live-now`, { next: { revalidate: 15 } });
+    if (response.status !== 200) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 export function auctionStreamUrl(id: string): string {

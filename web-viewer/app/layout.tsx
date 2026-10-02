@@ -1,30 +1,36 @@
 import type { Metadata } from "next";
-import { Big_Shoulders, IBM_Plex_Sans } from "next/font/google";
+import { Archivo, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const displayFont = Big_Shoulders({
+const displayFont = Archivo({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["500", "700", "800"],
 });
 
-const bodyFont = IBM_Plex_Sans({
+const bodyFont = Instrument_Sans({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const monoFont = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Crichere Watch",
-    default: "Crichere Watch",
+    template: "%s | Crichere",
+    default: "Crichere -- Build. Auction. Compete.",
   },
-  description: "Follow a Crichere league's live player auction -- no account needed.",
+  description: "The ultimate platform to organize and manage cricket leagues, with live player auctions included.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
+    <html lang="en" className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
       <body>{children}</body>
     </html>
   );
