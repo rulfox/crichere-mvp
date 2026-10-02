@@ -94,7 +94,7 @@ class OwnProfileViewModelTest {
     }
 
     @Test
-    fun `a load failure surfaces an error message instead of crashing`() = viewModelTest {
+    fun `a first load failure is flagged instead of crashing`() = viewModelTest {
         val profileRepository = FakeProfileRepository().apply {
             getProfileError = RuntimeException("network blip")
         }
@@ -104,7 +104,7 @@ class OwnProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals(false, viewModel.state.value.isLoading)
-        assertTrue(viewModel.state.value.errorMessage != null)
+        assertTrue(viewModel.state.value.loadFailed)
     }
 
     @Test
@@ -130,5 +130,61 @@ class OwnProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals("User B", viewModel.state.value.name)
+    }
+
+    // ---------------------------------------------------------------- board N (2026-10-02)
+
+    private val complete = ProfileDto(
+        userId = "u1", name = "Aarav Pawar", photoUrl = "https://cdn/old.jpg", state = "Maharashtra", district = "Kolhapur",
+        city = "Kolhapur", playingRole = PlayingRole.ALL_ROUNDER, battingStyle = BattingStyle.RIGHT_HAND, bowlingStyle = BowlingStyle.RIGHT_ARM_OFFBREAK,
+    )
+
+    @Test
+    fun `changing the photo uploads it, then saves the whole profile pointing at it`() = viewModelTest {
+        val repository = FakeProfileRepository(complete).apply { uploadedPhotoUrl = "https://cdn/new.jpg?v=2" }
+        val viewModel = OwnProfileViewModel(repository, StubAuthRepository())
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.changePhoto(ByteArray(10), "image/jpeg")
+        advanceUntilIdle()
+
+        val saved = repository.savedSnapshots.single()
+        assertEquals("https://cdn/new.jpg?v=2", saved.photoUrl)
+        assertEquals("Aarav Pawar", saved.name)
+        assertEquals(BowlingStyle.RIGHT_ARM_OFFBREAK, saved.bowlingStyle)
+        assertEquals(false, viewModel.state.value.isUploadingPhoto)
+        assertEquals(null, viewModel.state.value.photoError)
+    }
+
+    @Test
+    fun `a failed photo change keeps the old photo and says so`() = viewModelTest {
+        val repository = FakeProfileRepository(complete).apply { uploadPhotoError = RuntimeException("timeout") }
+        val viewModel = OwnProfileViewModel(repository, StubAuthRepository())
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.changePhoto(ByteArray(10), "image/jpeg")
+        advanceUntilIdle()
+
+        assertTrue(repository.savedSnapshots.isEmpty())
+        assertEquals("https://cdn/old.jpg", viewModel.state.value.photoUrl)
+        assertEquals("Couldn't change your photo. Check your connection and try again.", viewModel.state.value.photoError)
+        assertEquals(false, viewModel.state.value.isUploadingPhoto)
+    }
+
+    @Test
+    fun `a failed refresh keeps the profile on screen`() = viewModelTest {
+        val repository = FakeProfileRepository(complete)
+        val viewModel = OwnProfileViewModel(repository, StubAuthRepository())
+        viewModel.retry()
+        advanceUntilIdle()
+
+        repository.getProfileError = RuntimeException("network blip")
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertEquals("Aarav Pawar", viewModel.state.value.name)
+        assertEquals(false, viewModel.state.value.loadFailed)
     }
 }

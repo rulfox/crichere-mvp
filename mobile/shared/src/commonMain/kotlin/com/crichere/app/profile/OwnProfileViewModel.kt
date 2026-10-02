@@ -24,8 +24,15 @@ data class OwnProfileState(
     val playingRole: PlayingRole? = null,
     val battingStyle: BattingStyle? = null,
     val bowlingStyle: BowlingStyle? = null,
-    val errorMessage: String? = null,
-)
+    /** First load failed with nothing to show (design N5). A failed refresh keeps the last profile. */
+    val loadFailed: Boolean = false,
+    /** Design N2 "Choose new photo": upload, then the profile save that points at it. */
+    val isUploadingPhoto: Boolean = false,
+    val photoUploadProgress: Float = 0f,
+    val photoError: String? = null,
+) {
+    val hasProfile: Boolean get() = name != null
+}
 
 sealed interface OwnProfileNavigationEvent {
     /** "Edit" action -- reached with [com.crichere.app.profile.ProfileSetupViewModel]'s `isEditMode = true`. */
@@ -61,37 +68,84 @@ class OwnProfileViewModel(
 
     fun retry() = load()
 
+    /** The profile as last loaded / saved -- the base for the full-snapshot save a photo change needs. */
+    private var loaded: ProfileDto? = null
+
     private fun load() {
         loadJob?.cancel()
-        _state.update { OwnProfileState(isLoading = true) }
+        // Keep showing the last profile while refreshing (same user -- logout clears it, see logout()).
+        _state.update { if (loaded != null) it.copy(isLoading = true, loadFailed = false) else OwnProfileState(isLoading = true) }
         loadJob = viewModelScope.launch {
             runCatching { profileRepository.getProfile() }
-                .onSuccess { profile ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            name = profile.name,
-                            photoUrl = profile.photoUrl,
-                            country = profile.country,
-                            state = profile.state,
-                            district = profile.district,
-                            city = profile.city,
-                            playingRole = profile.playingRole,
-                            battingStyle = profile.battingStyle,
-                            bowlingStyle = profile.bowlingStyle,
-                        )
-                    }
+                .onSuccess { profile -> show(profile) }
+                .onFailure { _state.update { it.copy(isLoading = false, loadFailed = loaded == null) } }
+        }
+    }
+
+    private fun show(profile: ProfileDto) {
+        loaded = profile
+        _state.update {
+            it.copy(
+                isLoading = false,
+                loadFailed = false,
+                name = profile.name,
+                photoUrl = profile.photoUrl,
+                country = profile.country,
+                state = profile.state,
+                district = profile.district,
+                city = profile.city,
+                playingRole = profile.playingRole,
+                battingStyle = profile.battingStyle,
+                bowlingStyle = profile.bowlingStyle,
+            )
+        }
+    }
+
+    /**
+     * Uploads [bytes] as the new profile photo, then saves the full profile pointing at it (the
+     * `PUT` takes a complete snapshot, see [ProfileRepository.saveProfile]). The old photo stays
+     * on screen until both succeed.
+     */
+    fun changePhoto(bytes: ByteArray, contentType: String) {
+        val base = loaded ?: return
+        if (_state.value.isUploadingPhoto) return
+        _state.update { it.copy(isUploadingPhoto = true, photoUploadProgress = 0f, photoError = null) }
+        viewModelScope.launch {
+            runCatching {
+                val uploadInfo = profileRepository.requestPhotoUploadUrl()
+                val photoUrl = profileRepository.uploadPhoto(uploadInfo, bytes, contentType) { fraction ->
+                    _state.update { it.copy(photoUploadProgress = fraction) }
+                }
+                profileRepository.saveProfile(
+                    ProfileUpdateRequestDto(
+                        name = base.name,
+                        photoUrl = photoUrl,
+                        state = base.state,
+                        district = base.district,
+                        city = base.city,
+                        playingRole = base.playingRole,
+                        battingStyle = base.battingStyle,
+                        bowlingStyle = base.bowlingStyle,
+                    ),
+                )
+            }
+                .onSuccess { saved ->
+                    _state.update { it.copy(isUploadingPhoto = false, photoUploadProgress = 1f) }
+                    show(saved)
                 }
                 .onFailure { throwable ->
                     _state.update {
                         it.copy(
-                            isLoading = false,
-                            errorMessage = throwable.message ?: "Couldn't load your profile. Please try again.",
+                            isUploadingPhoto = false,
+                            photoError = if (throwable is PhotoUploadUnavailableException) "Photo upload isn't available right now. Try again later."
+                            else "Couldn't change your photo. Check your connection and try again.",
                         )
                     }
                 }
         }
     }
+
+    fun dismissPhotoError() = _state.update { it.copy(photoError = null) }
 
     fun editProfile() {
         viewModelScope.launch {
@@ -104,6 +158,8 @@ class OwnProfileViewModel(
             // AuthRepository.logout() clears SecureStore regardless of whether the backend
             // revoke call itself succeeds -- see its own doc.
             authRepository.logout()
+            loaded = null
+            _state.update { OwnProfileState() }
             _navigationEvents.send(OwnProfileNavigationEvent.NavigateToPhoneEntry)
         }
     }

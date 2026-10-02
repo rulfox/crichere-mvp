@@ -479,6 +479,17 @@ with real data (M1, side by side with the board).
   humanized labels used everywhere else in the app (Profile Setup shows "All-rounder"). This is a
   real display bug, not a design-alignment question.
 
+
+**Implemented (2026-10-02), board N1-N5.** 104dp profile photo (initials on green when there's
+none, N3) with a camera badge, name, a card of State / District / City / Playing role / Batting
+style / Bowling style with humanized labels, Edit profile, Log out behind a confirmation (N4).
+Tapping the photo opens the photo sheet (N2): View photo (the existing full-screen viewer, titled
+"Profile photo") and Choose new photo (picker -> square crop -> upload -> full-profile save; the
+cropped image shows with a progress ring while it uploads, the old photo stays if it fails). No
+Remove, no Phone, no Member since (decided). With no photo, the badge and "Add a photo so
+organizers recognise you" go straight to the picker. N5 uses the shared load-error view; a failed
+refresh keeps the profile on screen. Verified on CPH2487 with real data: N1 side by side, N2
+sheet, View photo + Back, N4 dialog + Cancel.
 ---
 
 ## Cross-cutting changes
@@ -632,6 +643,10 @@ Open items found while implementing the redesign, not yet scheduled.
 - [ ] **My leagues (M) unverified states** (2026-10-02): M2 empty and M3 error not seen on device
   (the test account has leagues); a long city name truncates the start date ("Thiruvananthapuram,
   Kerala -- 2026..."); iOS empty state added but not compiled.
+
+- [ ] **My profile (N) unverified** (2026-10-02): Choose new photo was not run live (it would replace
+  the owner's real photo; covered by VM tests), N3 no-photo and N5 error not seen on device, iOS
+  OwnProfileView only got the load-failed state (no photo sheet; not compiled).
 
 ## Decisions made during implementation
 

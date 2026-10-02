@@ -1,6 +1,7 @@
 package com.crichere.app.ui
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.crichere.app.auth.FakeAuthRepository
@@ -24,13 +25,17 @@ class OwnProfileScreenTest {
         val viewModel = OwnProfileViewModel(profileRepository, authRepository)
         viewModel.retry()
 
-        composeRule.setContent { OwnProfileScreen(viewModel, onNavigateToEditProfile = {}, onNavigateToPhoneEntry = {}) }
+        composeRule.setContent { OwnProfileScreen(viewModel, onNavigateToEditProfile = {}, onNavigateToPhoneEntry = {}, onViewPhoto = {}) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Name: Rahul Sharma").assertExists()
-        composeRule.onNodeWithText("City: Bengaluru").assertExists()
+        composeRule.onNodeWithText("Rahul Sharma").assertExists()
+        composeRule.onNodeWithText("Bengaluru").assertExists()
 
+        // Design N4: Log out asks first.
         composeRule.onNodeWithText("Log out").performClick()
+        composeRule.onNodeWithText("Log out of Crichere?").assertExists()
+        assert(authRepository.logoutCallCount == 0)
+        composeRule.onAllNodesWithText("Log out")[1].performClick()
         composeRule.waitForIdle()
 
         assert(authRepository.logoutCallCount == 1)

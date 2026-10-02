@@ -300,7 +300,7 @@ private sealed interface MainDestination {
     data class LeagueCreation(val editingLeagueId: String?) : MainDestination
     data class JoinLeagueFlow(val leagueId: String) : MainDestination
     data class ClaimFranchiseFlow(val leagueId: String) : MainDestination
-    data class ScreenshotViewer(val imageUrl: String) : MainDestination
+    data class ScreenshotViewer(val imageUrl: String, val title: String = "Payment screenshot") : MainDestination
     data class AuctionSettings(val leagueId: String) : MainDestination
     data class AuctionLive(val leagueId: String) : MainDestination
     data class ManageRoles(val leagueId: String) : MainDestination
@@ -357,7 +357,14 @@ private fun MainRoute(
                         onBrowseLeagues = { destination = MainDestination.Tabs(MainTab.DASHBOARD) },
                         onCreateLeague = { destination = MainDestination.LeagueCreation(editingLeagueId = null) },
                     )
-                    MainTab.MY_PROFILE -> OwnProfileRoute(onNavigateToEditProfile, onNavigateToPhoneEntry)
+                    MainTab.MY_PROFILE -> OwnProfileRoute(
+                        onNavigateToEditProfile = onNavigateToEditProfile,
+                        onNavigateToPhoneEntry = onNavigateToPhoneEntry,
+                        onViewPhoto = { photoUrl ->
+                            screenshotBackTarget = current
+                            destination = MainDestination.ScreenshotViewer(photoUrl, title = "Profile photo")
+                        },
+                    )
                 }
             }
         }
@@ -413,13 +420,14 @@ private fun MainRoute(
         is MainDestination.ScreenshotViewer -> ScreenshotViewerRoute(
             imageUrl = current.imageUrl,
             onBack = { destination = screenshotBackTarget },
+            title = current.title,
         )
     }
 }
 
 @Composable
-private fun OwnProfileRoute(onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit) {
+private fun OwnProfileRoute(onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit, onViewPhoto: (String) -> Unit) {
     val viewModel: OwnProfileViewModel = koinViewModel()
     LaunchedEffect(Unit) { viewModel.retry() }
-    OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry)
+    OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry, onViewPhoto)
 }

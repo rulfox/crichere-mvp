@@ -78,7 +78,7 @@ private const val MaxZoom = 5f
  * offers Retry (H3).
  */
 @Composable
-internal fun ScreenshotViewerRoute(imageUrl: String, onBack: () -> Unit) {
+internal fun ScreenshotViewerRoute(imageUrl: String, onBack: () -> Unit, title: String = "Payment screenshot") {
     // The backend already restricts this field to https:// (see LeaguePlayerJoinRequest/
     // LeagueFranchiseClaimRequest), but this is a second, independent check right at the point the
     // URL is actually opened -- a `file://`/`content://` value here would otherwise read local
@@ -101,11 +101,12 @@ internal fun ScreenshotViewerRoute(imageUrl: String, onBack: () -> Unit) {
         failed = !allowed || state is AsyncImagePainter.State.Error,
         onRetry = { attempt++ },
         onBack = onBack,
+        title = title,
     )
 }
 
 @Composable
-internal fun ScreenshotViewerScreen(painter: Painter, loaded: Boolean, failed: Boolean, onRetry: () -> Unit, onBack: () -> Unit) {
+internal fun ScreenshotViewerScreen(painter: Painter, loaded: Boolean, failed: Boolean, onRetry: () -> Unit, onBack: () -> Unit, title: String = "Payment screenshot") {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var rootSize by remember { mutableStateOf(Size.Zero) }
@@ -126,7 +127,7 @@ internal fun ScreenshotViewerScreen(painter: Painter, loaded: Boolean, failed: B
             },
     ) {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.statusBarsPadding().alpha(if (zoomed) 0f else 1f)) { ViewerTopBar(onBack = onBack, enabled = !zoomed) }
+            Box(Modifier.statusBarsPadding().alpha(if (zoomed) 0f else 1f)) { ViewerTopBar(onBack = onBack, enabled = !zoomed, title = title) }
             BoxWithConstraints(
                 Modifier.weight(1f).fillMaxWidth().padding(start = 28.dp, end = 28.dp, top = 29.dp, bottom = 35.dp),
                 contentAlignment = Alignment.Center,
@@ -191,13 +192,13 @@ internal fun ScreenshotViewerScreen(painter: Painter, loaded: Boolean, failed: B
 }
 
 @Composable
-private fun ViewerTopBar(onBack: () -> Unit, enabled: Boolean) {
+private fun ViewerTopBar(onBack: () -> Unit, enabled: Boolean, title: String) {
     Row(Modifier.fillMaxWidth().height(40.dp).padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(48.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onBack), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = Color.White, modifier = Modifier.size(24.dp))
         }
         Spacer(Modifier.width(4.dp))
-        Text("Payment screenshot", style = pText(15.sp, FontWeight.SemiBold, 15.sp), color = Color.White)
+        Text(title, style = pText(15.sp, FontWeight.SemiBold, 15.sp), color = Color.White)
     }
 }
 

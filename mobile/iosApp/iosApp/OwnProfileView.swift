@@ -44,13 +44,15 @@ struct OwnProfileView: View {
 
     var body: some View {
         Group {
-            if wrapper.state.isLoading {
+            if wrapper.state.isLoading && !wrapper.state.hasProfile {
                 ProgressView()
+            } else if wrapper.state.loadFailed {
+                VStack(spacing: 10) {
+                    Text("Couldn't load your profile").font(.headline)
+                    Button("Retry") { wrapper.retry() }
+                }
             } else {
                 List {
-                    if let error = wrapper.state.errorMessage {
-                        Text(error).foregroundColor(.red)
-                    }
                     LabeledContent("Name", value: wrapper.state.name ?? "--")
                     LabeledContent("State", value: wrapper.state.state ?? "--")
                     LabeledContent("District", value: wrapper.state.district ?? "--")
