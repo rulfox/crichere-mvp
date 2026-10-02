@@ -1,0 +1,121 @@
+# Phase 11 — Public Web Redesign (Landing + Live Auction viewer)
+
+Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infra decisions and
+[PHASE6.md](PHASE6.md) for the original web viewer.
+
+**Last updated:** 2026-10-02
+**Status:** planned. Compatibility check done, decisions below locked, implementation not started.
+
+---
+
+## 1. Overview
+
+A Claude Design redesign of the public web (`web-viewer/`) — handoff at
+`C:\Users\rulfo\Downloads\Crichere Instructions\design_handoff_crichere_web` (README.md is the
+spec; `design/*.dc.html` are high-fidelity references, not code to copy). Design project:
+`https://claude.ai/design/p/8cfb9b49-de1e-4b6e-a069-8182cf150e76`.
+
+| Route | Design file | Replaces |
+|---|---|---|
+| `/` | `Crichere Landing.dc.html` | `app/page.tsx` (was a one-paragraph placeholder) |
+| `/leagues/[id]` | `Live Auction.dc.html` (8 views) | `components/LiveAuction.tsx` + module CSS |
+| `/leagues/[id]` 404 | `Live Auction.dc.html` → `notFound` | `app/leagues/[id]/not-found.tsx` |
+| shared | `Store Badge.dc.html` | new `components/StoreBadge.tsx` |
+
+The Phase 6 "single dark theme" decision is superseded: landing uses the light brand palette
+with dark hero/how-it-works sections; the auction page stays dark (broadcast look). Fixed per
+section, still not OS-adaptive.
+
+---
+
+## 2. Compatibility check (2026-10-02)
+
+**Stack:** compatible, no blockers. Next 16 App Router + CSS Modules + `next/font/google`
+(Archivo, Instrument Sans, JetBrains Mono — self-hosted) cover it. All motion is Web Animations
+API + CSS `linear()` easing with cubic fallbacks — **no new runtime dependency** (no Framer Motion).
+Container units (`cqi`) are baseline since 2023.
+
+**Data the backend already returns but `web-viewer/lib/api.ts` never typed** (type sync only):
+
+| Design element | Existing backend field |
+|---|---|
+| Player photo | `AuctionStateResponse.currentPlayerPhotoUrl` |
+| Role chip | `AuctionStateResponse.currentPlayerRole` |
+| Pool progress | `playersTotal`, `playersSold` |
+| SOLD / UNSOLD band | `lastResult { playerName, sold, franchiseName, amount }` |
+| Ground in meta row | `LeagueResponse.groundName` |
+| Franchise logos | `LeagueResponse.franchises[].logoUrl` |
+| Completed-list photos | `PlayerAuctionResultResponse.photoUrl` |
+
+`lastResult` is an explicit sold/unsold signal, so it replaces the handoff README's
+"diff `results.playersWon` on player change" heuristic. The diff stays only as a fallback for a
+missed intermediate SSE state.
+
+**Data missing everywhere** — resolved by decision D1 below: batting/bowling style on the auction
+state, role on results rows, a lot number, scheduled auction time, a "which league is live now" lookup.
+
+---
+
+## 3. Decisions Made
+
+- **D1 — Full backend parity for design fields.** Backend adds:
+  - `currentPlayerBattingStyle` / `currentPlayerBowlingStyle` on `AuctionStateResponse` (from the profile, public like name/role).
+  - `playingRole` on `PlayerAuctionResultResponse`.
+  - `currentLotNumber` (see D2) and `auctionScheduledAt` (see D3).
+- **D2 — Lot number = persisted counter, shown as "Lot N" only.** Unsold players re-enter the
+  random pool (`AuctionService.nextPlayer`), so "Lot N of M" could read "Lot 34 of 30". New
+  `leagues.auction_lot_counter` (migration V18), +1 on every `nextPlayer`. Copy: `Lot 14 · 32 left
+  in pool` (pool = still-`PENDING` count). Deviation from design copy "Lot N of M" — intentional.
+- **D3 — Scheduled auction time end to end.** `leagues.auction_scheduled_at` (nullable
+  `timestamptz`, V18), settable from the mobile Auction settings screen (date + time picker),
+  exposed on `LeagueResponse`. Web "Not started" view shows it when set, hides it otherwise.
+- **D4 — Landing stats ship as design placeholders** (1,240 leagues / 38,600 players / 9,64,000
+  bids, hero card "Bids placed tonight 412"). Owner's call. **Must be replaced with real numbers
+  before public launch** — tracked in DESIGN-REVIEW follow-ups.
+- **D5 — "Live now" endpoint.** `GET /api/v1/auctions/live-now`, public: the `IN_PROGRESS`
+  league with the most recent bid (fallback: most recently started). `204` when none — landing
+  then hides every "Watch live" / "Watch a live auction" / "See one running" link. Short server
+  cache (~15s); exposes nothing beyond what each league's public page already shows.
+- **D6 — Icons as inline SVG components, QR as a static committed SVG.** The 33 Material Symbols
+  Rounded SVGs become small React components (no icon-font download/flash, no external request).
+  QR generated once by a script for the Play Store URL; regenerate if the URL changes. No
+  third-party QR API (would leak traffic).
+- **D7 — Dependency bumps.** Patch/minor to latest stable as step 0 (Next 16.3.8, React 19.3.0,
+  eslint-config-next 16.3.8, vitest/vite/jsdom patches). TypeScript 7 and ESLint 10 are major
+  jumps — separate phase.
+
+---
+
+## 4. Security notes
+
+- No new authenticated surface. D5 is public read-only, returns only a league id already
+  reachable via its public page; cached to bound DB load from anonymous traffic.
+- D1 fields (batting/bowling style, role) are profile attributes already shown on the public
+  roster/auction surfaces — same exposure posture as name/photo.
+- External store links: `rel="noopener noreferrer"`, URLs from env vars, never user input.
+- Images (`logoUrl`, `photoUrl`) render via plain `<img>` — no `next/image` `remotePatterns` widening.
+- No CSP headers exist on the web viewer today — out of scope here, noted for the deploy phase.
+
+---
+
+## 5. Plan
+
+0. Dependency bumps (D7); fetch `support.js` via design MCP (after `/design-login`) so the
+   `.dc.html` references render for Playwright CSS extraction.
+1. **Backend:** V18 migration (lot counter, scheduled-at), D1 DTO fields, D5 endpoint + tests.
+2. **Mobile:** scheduled-at picker on Auction settings; DTO sync.
+3. **Web — tokens & fonts:** light/dark palettes, three fonts, favicon/logo, icon components.
+4. **Web — `StoreBadge`:** play / appstore / appstore coming-soon / qr, magnetic hover; store URLs from env.
+5. **Web — Landing:** six sections, scroll reveals, parallax, hero phone loop, how-it-works scroll sequence, count-ups.
+6. **Web — Live Auction:** `lib/api.ts` sync, all 8 states (loading, not started, live, sold, unsold, completed, reconnecting, not found), sticky mobile app banner, "Get the app" popover.
+7. **Web — not-found.**
+8. **Motion pass** against the README motion table; JS reduced-motion branch.
+9. **Tests:** Vitest (lastResult SOLD/UNSOLD, reconnect, skeleton, below-min), e2e (landing links, every viewer state, live-now 204), mock-server fixtures extended. On-device check (CPH2487) + DESIGN-REVIEW follow-ups.
+
+---
+
+## 6. Open items needing owner input
+
+- Official Google Play / App Store badge artwork (design uses mock glyphs).
+- Final Play Store URL (QR + badges) and whether the app has an App Link for `/leagues/{id}`
+  (decides what the mobile banner's "Open" does; default: Play Store URL).

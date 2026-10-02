@@ -68,6 +68,7 @@ Every `PHASEn.md` follows this structure, in order:
 - [Phase 8](PHASE8.md) — push notifications (FCM, Android): auction start, sold/unsold, leave request/approval, role grant/revoke. **Status: implemented (backend + Android), tested and verified on-device with a real FCM round trip.**
 - [Phase 9](PHASE9.md) — iOS wiring: the missing login flow (Phone Entry/OTP Verify) and main hub (League Dashboard/Creation, with a real MapKit ground-picker), plus a real navigation host wiring every previously-standalone screen together, and an XcodeGen `project.yml` for a real, automatable `.xcodeproj`. **Status: implemented (iOS only — authored, not yet compiled/run; needs a Mac to verify).**
 - [Phase 10](PHASE10.md) — Android toolchain upgrade to latest stable (AGP 9.4.1, Kotlin 2.4.20, CMP 1.12.1, compileSdk 37) and migration of Android navigation to Navigation 3 (real back stack, hardware back, keyboard-aware back). **Status: Part A (toolchain) implemented and verified on-device; Part B (Navigation 3) implemented and verified on-device.**
+- [Phase 11](PHASE11.md) — public web redesign (Claude Design handoff): marketing landing page + rebuilt Live Auction viewer, with backend parity fields (lot counter, scheduled auction time, batting/bowling style, live-now endpoint) and a mobile scheduled-time picker. **Status: planned, decisions locked.**
 
 ## Open Questions
 
