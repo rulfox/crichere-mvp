@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 /**
  * Motion primitives shared by the landing page and the live auction viewer (docs/PHASE11.md,
@@ -70,57 +70,4 @@ export function animate(
     return el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: reducedDuration, easing: "ease-out" });
   }
   return el.animate(keyframes, options);
-}
-
-/** True once the element has scrolled [threshold] into view -- fires once, then disconnects. */
-export function useInView<T extends Element>(threshold: number, rootMargin = "0px") {
-  const ref = useRef<T>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || inView) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold, rootMargin },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [threshold, rootMargin, inView]);
-  return [ref, inView] as const;
-}
-
-/** Calls [onFrame] at most once per animation frame while the page scrolls or resizes, and once on mount. */
-export function useScrollFrame(onFrame: () => void) {
-  const callback = useRef(onFrame);
-  useEffect(() => {
-    callback.current = onFrame;
-  });
-  useEffect(() => {
-    let raf = 0;
-    const schedule = () => {
-      if (!raf) {
-        raf = requestAnimationFrame(() => {
-          raf = 0;
-          callback.current();
-        });
-      }
-    };
-    callback.current();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, []);
 }

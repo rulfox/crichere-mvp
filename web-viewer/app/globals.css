@@ -49,9 +49,8 @@
   }
 }
 
-* {
-  box-sizing: border-box;
-}
+/* No global border-box: the design files use the browser's content-box default and opt into
+   border-box per element, so sizes here are copied with that same model. */
 
 body {
   margin: 0;

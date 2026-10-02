@@ -20,6 +20,16 @@ const server = createServer((req, res) => {
   // the plain JSON endpoints which Next's server components fetch from Node -- mirrors why the
   // real backend needs CORS at all (docs/PHASE6.md, WebViewerProperties/SecurityConfig).
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+
+  // GET /api/v1/auctions/live-now (docs/PHASE11.md D5) -- the live fixture, or 204 when
+  // MOCK_NO_LIVE is set so the "nothing live" landing page can be exercised too.
+  if (url.pathname === "/api/v1/auctions/live-now") {
+    if (process.env.MOCK_NO_LIVE) {
+      res.writeHead(204).end();
+      return;
+    }
+    return send(res, 200, { leagueId: "league-live", leagueName: leagues["league-live"].name });
+  }
   const match = url.pathname.match(/^\/api\/v1\/leagues\/([^/]+)(\/auction\/(results|stream))?$/);
 
   if (!match) {
