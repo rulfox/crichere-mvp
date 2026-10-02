@@ -4,7 +4,7 @@ Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infr
 [PHASE6.md](PHASE6.md) for the original web viewer.
 
 **Last updated:** 2026-10-02
-**Status:** implemented (backend + mobile + web-viewer), verified against the design in a browser; not yet deployed. Mobile scheduled-time picker not verified on-device (phone not connected).
+**Status:** implemented (backend + mobile + web-viewer), verified against the design in a browser. Deployed to Railway production 2026-10-02 (commit `ba31d66`, via `railway up` of a clean `git archive` -- not yet pushed to GitHub, so the next GitHub-triggered deploy must include these commits). Mobile scheduled-time picker not verified on-device (phone not connected).
 
 ---
 
@@ -175,6 +175,14 @@ state, role on results rows, a lot number, scheduled auction time, a "which leag
 - **Tests**: 32 Vitest (every viewer state, SOLD/UNSOLD + fallback, reconnect + backoff, skeleton,
   below-min, style chips, helpers, badges) and 11 Playwright e2e against the mock backend, whose
   fixtures now mirror the design's sample league with scripted SOLD / UNSOLD / dropped-connection streams.
+
+### Deployment (2026-10-02)
+- Web: https://web-viewer-production-dca0.up.railway.app -- backend:
+  https://backend-production-f74e7.up.railway.app (project `crichere`, environment `production`).
+- Backend `WEB_VIEWER_ORIGINS` was unset in production, which left CORS off and would have blocked
+  the browser's SSE stream and results fetch; set to the web-viewer domain.
+- Verified after deploy: landing 200, unknown league 404, live-now 204 (nothing live), CORS header
+  on results + stream, and a real league page rendering from the stream.
 
 ## 7. Open items needing owner input
 
