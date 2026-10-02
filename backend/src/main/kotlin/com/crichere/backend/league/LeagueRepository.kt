@@ -66,6 +66,24 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
      * same stale current-bid value (see docs/PHASE5.md's Security section). Only ever called
      * inside a `@Transactional` method; the lock releases at commit.
      */
+    /**
+     * The `IN_PROGRESS` auction with the most recent (unreversed) bid, falling back to the most
+     * recently updated one when none has a bid yet -- feeds the public "live now" lookup
+     * (docs/PHASE11.md D5). Native SQL for `NULLS LAST` on the aggregated bid time.
+     */
+    @Query(
+        value = """
+            SELECT l.* FROM leagues l
+            LEFT JOIN auction_bids b ON b.league_id = l.id AND b.reversed = FALSE
+            WHERE l.auction_status = 'IN_PROGRESS'
+            GROUP BY l.id
+            ORDER BY MAX(b.placed_at) DESC NULLS LAST, l.updated_at DESC
+            LIMIT 1
+        """,
+        nativeQuery = true,
+    )
+    fun findLiveNow(): LeagueEntity?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT l FROM LeagueEntity l WHERE l.id = :id")
     fun findByIdForUpdate(@Param("id") id: UUID): LeagueEntity?

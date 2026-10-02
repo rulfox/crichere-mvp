@@ -127,6 +127,14 @@ class LeagueEntity(
     @Column(name = "auction_last_action_player_id")
     var auctionLastActionPlayerId: UUID? = null,
 
+    /** +1 each time `next-player` opens a player -- the viewer's "Lot N" (docs/PHASE11.md D2). Undo never touches it. */
+    @Column(name = "auction_lot_counter", nullable = false)
+    var auctionLotCounter: Int = 0,
+
+    /** Optional "bidding opens at" time, informational only (docs/PHASE11.md D3). */
+    @Column(name = "auction_scheduled_at")
+    var auctionScheduledAt: Instant? = null,
+
     @Column(name = "completed_at")
     var completedAt: Instant? = null,
 

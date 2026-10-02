@@ -122,6 +122,7 @@ class AuctionService(
 
         val next = pending.random()
         league.auctionCurrentPlayerId = next.id
+        league.auctionLotCounter += 1
         league.auctionCurrentBidAmount = null
         league.auctionCurrentLeadingFranchiseId = null
         return saveAndBroadcast(league)
@@ -420,6 +421,10 @@ class AuctionService(
             playersTotal = playerRepository.countByLeagueIdAndRemovedAtIsNull(leagueId).toInt(),
             playersSold = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.SOLD).toInt(),
             lastResult = if (auctionCurrentPlayerId == null) lastResult() else null,
+            currentPlayerBattingStyle = currentProfile?.battingStyle,
+            currentPlayerBowlingStyle = currentProfile?.bowlingStyle,
+            currentLotNumber = auctionLotCounter.takeIf { it > 0 },
+            playersPending = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING).toInt(),
         )
     }
 
@@ -459,6 +464,7 @@ class AuctionService(
             playerName = profile?.name,
             soldPrice = requireNotNull(soldPrice),
             photoUrl = profile?.photoUrl,
+            playingRole = profile?.playingRole,
         )
     }
 }

@@ -318,6 +318,21 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `the auction's scheduled time is optional, round-trips, and clears on a save without it`() {
+        val leagueId = createLeague()
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody() + ("scheduledAt" to "2026-10-12T13:30:00Z"))
+            .andExpect(status().isOk)
+        mockMvc.perform(get("/api/v1/leagues/$leagueId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionScheduledAt").value("2026-10-12T13:30:00Z"))
+
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionScheduledAt").doesNotExist())
+    }
+
+    @Test
     fun `only the organizer can update auction settings`() {
         val leagueId = createLeague()
         val otherToken = signInOther()

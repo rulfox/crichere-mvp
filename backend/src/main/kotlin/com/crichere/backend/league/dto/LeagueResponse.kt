@@ -4,6 +4,7 @@ import com.crichere.backend.franchise.dto.LeagueFranchiseResponse
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.player.dto.LeaguePlayerResponse
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -48,4 +49,6 @@ data class LeagueResponse(
     val auctionSquadMaxWarning: Boolean,
     /** Active co-organizer grants (see docs/PHASE7.md) -- public, same posture as [organizerUserId] and every franchise owner's name already on this response. */
     val coOrganizers: List<LeagueRoleResponse>,
+    /** Optional "bidding opens at" time, set with the auction settings (docs/PHASE11.md D3). */
+    val auctionScheduledAt: Instant? = null,
 )

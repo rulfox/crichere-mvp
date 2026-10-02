@@ -1,6 +1,8 @@
 package com.crichere.backend.auction.dto
 
 import com.crichere.backend.league.AuctionStatus
+import com.crichere.backend.profile.BattingStyle
+import com.crichere.backend.profile.BowlingStyle
 import com.crichere.backend.profile.PlayingRole
 import java.math.BigDecimal
 import java.time.Instant
@@ -31,6 +33,13 @@ data class AuctionStateResponse(
     val playersSold: Int = 0,
     /** The player just closed, while nobody is up yet ("Last: X sold to Y for ₹Z"); `null` otherwise. */
     val lastResult: AuctionLastResultResponse? = null,
+    /** The current player's batting/bowling style (docs/PHASE11.md D1) -- profile attributes, public like [currentPlayerRole]. */
+    val currentPlayerBattingStyle: BattingStyle? = null,
+    val currentPlayerBowlingStyle: BowlingStyle? = null,
+    /** How many players have been opened so far (`leagues.auction_lot_counter`) -- "Lot N" (docs/PHASE11.md D2). `null` before the first `next-player`. */
+    val currentLotNumber: Int? = null,
+    /** Players still `PENDING` -- the pool `next-player` draws from, unsold players included once they're back in it. */
+    val playersPending: Int = 0,
 )
 
 /** See [AuctionStateResponse.lastResult]. [franchiseName]/[amount] are `null` when [sold] is false. */

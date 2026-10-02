@@ -2,6 +2,7 @@ package com.crichere.backend.auction
 
 import com.crichere.backend.auth.VerifiedFirebaseToken
 import com.crichere.backend.common.AbstractWebIntegrationTest
+import com.crichere.backend.league.LeagueRepository
 import io.mockk.every
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -30,6 +31,9 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var leagueRepository: LeagueRepository
 
     private lateinit var organizerToken: String
 
@@ -139,6 +143,52 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
         authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/undo")
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.currentBidAmount").doesNotExist())
+    }
+
+    @Test
+    fun `every opened player is a new lot, including an unsold player coming back round`() {
+        val leagueId = createLeague(organizerToken)
+        configureAuction(organizerToken, leagueId, squadMax = 1)
+        joinAsPlayer(signInNewUser(), leagueId)
+        claimFranchise(signInNewUser(), leagueId)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/start")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.currentLotNumber").doesNotExist())
+            .andExpect(jsonPath("$.playersPending").value(1))
+
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.currentLotNumber").value(1))
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/unsold").andExpect(status().isOk)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.currentLotNumber").value(2))
+    }
+
+    @Test
+    fun `live-now is public and picks the in-progress auction with the most recent bid`() {
+        mockMvc.perform(get("/api/v1/auctions/live-now"))
+            .andExpect { result -> assert(result.response.status in setOf(200, 204)) { "expected 200/204, got ${result.response.status}" } }
+
+        val quietLeague = createLeague(organizerToken)
+        configureAuction(organizerToken, quietLeague, squadMax = 1)
+        joinAsPlayer(signInNewUser(), quietLeague)
+        claimFranchise(signInNewUser(), quietLeague)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$quietLeague/auction/start").andExpect(status().isOk)
+
+        val busyLeague = createLeague(organizerToken)
+        configureAuction(organizerToken, busyLeague, squadMax = 1)
+        joinAsPlayer(signInNewUser(), busyLeague)
+        val ownerToken = signInNewUser()
+        val franchiseId = claimFranchise(ownerToken, busyLeague)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$busyLeague/auction/start").andExpect(status().isOk)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$busyLeague/auction/next-player").andExpect(status().isOk)
+        authedPost(ownerToken, "/api/v1/leagues/$busyLeague/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 100))
+            .andExpect(status().isOk)
+
+        // The repository query itself, not the endpoint -- the service memoizes for 15s, so an
+        // earlier test's answer could still be cached in this shared Spring context.
+        assertEquals(UUID.fromString(busyLeague), leagueRepository.findLiveNow()?.id)
     }
 
     @Test

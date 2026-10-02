@@ -15,6 +15,8 @@ import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.AuctionOutcome
 import com.crichere.backend.player.PlayerEntity
 import com.crichere.backend.player.PlayerRepository
+import com.crichere.backend.profile.BattingStyle
+import com.crichere.backend.profile.BowlingStyle
 import com.crichere.backend.profile.PlayingRole
 import com.crichere.backend.profile.ProfileEntity
 import com.crichere.backend.profile.ProfileRepository
@@ -107,6 +109,7 @@ class AuctionServiceTest {
         squadMin: Int? = 1,
         squadMax: Int? = 5,
         bidIncrement: BigDecimal? = BigDecimal("50"),
+        lotCounter: Int = 0,
     ) = LeagueEntity(
         id = leagueId,
         organizerUserId = organizerId,
@@ -128,6 +131,7 @@ class AuctionServiceTest {
         auctionLastActionType = lastActionType,
         auctionLastActionBidId = lastActionBidId,
         auctionLastActionPlayerId = lastActionPlayerId,
+        auctionLotCounter = lotCounter,
     )
 
     private fun franchise() = FranchiseEntity(id = franchiseId, leagueId = leagueId, ownerUserId = franchiseOwnerId, name = "Chennai Kings")
@@ -243,6 +247,24 @@ class AuctionServiceTest {
 
         assertEquals(playerId, result.currentPlayerId)
         assertNull(result.currentBidAmount)
+    }
+
+    @Test
+    fun `nextPlayer advances the lot counter each time it opens a player`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(lotCounter = 13))
+        every { playerRepository.findByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING) } returns listOf(player())
+        mockSaves()
+
+        assertEquals(14, service.nextPlayer(leagueId, organizerId).currentLotNumber)
+    }
+
+    @Test
+    fun `nextPlayer leaves the lot counter alone when it auto-completes`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(lotCounter = 30))
+        every { playerRepository.findByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING) } returns emptyList()
+        mockSaves()
+
+        assertEquals(30, service.nextPlayer(leagueId, organizerId).currentLotNumber)
     }
 
     // ---------------------------------------------------------------- placeBid
@@ -419,6 +441,18 @@ class AuctionServiceTest {
         assertEquals(AuctionStatus.IN_PROGRESS, result.auctionStatus)
     }
 
+    @Test
+    fun `undo after sold reopens the same lot rather than a new one`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(
+            league(currentPlayerId = null, lastActionType = AuctionLastActionType.SOLD, lastActionPlayerId = playerId, lotCounter = 7),
+        )
+        every { playerRepository.findByIdAndLeagueId(playerId, leagueId) } returns Optional.of(player(AuctionOutcome.SOLD))
+        every { auctionBidRepository.findTopByLeagueIdAndPlayerIdAndReversedFalseOrderByAmountDesc(leagueId, playerId) } returns null
+        mockSaves()
+
+        assertEquals(7, service.undo(leagueId, organizerId).currentLotNumber)
+    }
+
     // ---------------------------------------------------------------- end
 
     @Test
@@ -455,6 +489,37 @@ class AuctionServiceTest {
         assertEquals(58, state.playersTotal)
         assertEquals(11, state.playersSold)
         assertNull(state.lastResult)
+    }
+
+    @Test
+    fun `state carries batting and bowling style, the lot number and the pending pool size`() {
+        val userId = UUID.randomUUID()
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league(currentPlayerId = playerId, lotCounter = 14))
+        every { playerRepository.findById(playerId) } returns Optional.of(PlayerEntity(id = playerId, leagueId = leagueId, userId = userId))
+        every { profileRepository.findById(userId) } returns Optional.of(
+            ProfileEntity(
+                userId = userId,
+                name = "Rohan Patil",
+                playingRole = PlayingRole.BOWLER,
+                battingStyle = BattingStyle.LEFT_HAND,
+                bowlingStyle = BowlingStyle.LEFT_ARM_ORTHODOX,
+            ),
+        )
+        every { playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING) } returns 32L
+
+        val state = service.currentState(leagueId)
+
+        assertEquals(BattingStyle.LEFT_HAND, state.currentPlayerBattingStyle)
+        assertEquals(BowlingStyle.LEFT_ARM_ORTHODOX, state.currentPlayerBowlingStyle)
+        assertEquals(14, state.currentLotNumber)
+        assertEquals(32, state.playersPending)
+    }
+
+    @Test
+    fun `lot number is null before the first player is opened`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league())
+
+        assertNull(service.currentState(leagueId).currentLotNumber)
     }
 
     @Test
@@ -513,11 +578,13 @@ class AuctionServiceTest {
                 soldPrice = BigDecimal("900")
             },
         )
-        every { profileRepository.findById(userId) } returns Optional.of(ProfileEntity(userId = userId, name = "Rohan Patil", photoUrl = "https://cdn/p.jpg"))
+        every { profileRepository.findById(userId) } returns
+            Optional.of(ProfileEntity(userId = userId, name = "Rohan Patil", photoUrl = "https://cdn/p.jpg", playingRole = PlayingRole.BATSMAN))
 
         val won = service.results(leagueId).franchises.single().playersWon.single()
 
         assertEquals("Rohan Patil", won.playerName)
         assertEquals("https://cdn/p.jpg", won.photoUrl)
+        assertEquals(PlayingRole.BATSMAN, won.playingRole)
     }
 }

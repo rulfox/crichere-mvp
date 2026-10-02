@@ -3,6 +3,7 @@ package com.crichere.backend.league.dto
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Positive
 import java.math.BigDecimal
+import java.time.Instant
 
 /**
  * Body of `PUT /api/v1/leagues/{id}/auction-settings` -- a dedicated save action, deliberately
@@ -31,4 +32,11 @@ data class AuctionSettingsSaveRequest(
     @field:NotNull(message = "bidIncrement is required")
     @field:Positive(message = "bidIncrement must be positive")
     val bidIncrement: BigDecimal?,
+
+    /**
+     * Optional "bidding opens at" time (docs/PHASE11.md D3). Unlike the five fields above it isn't
+     * required -- `null` clears it, consistent with full-replace. No past-date check: once the time
+     * has passed, re-saving the other settings must still work.
+     */
+    val scheduledAt: Instant? = null,
 )

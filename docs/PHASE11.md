@@ -80,6 +80,11 @@ state, role on results rows, a lot number, scheduled auction time, a "which leag
   Rounded SVGs become small React components (no icon-font download/flash, no external request).
   QR generated once by a script for the Play Store URL; regenerate if the URL changes. No
   third-party QR API (would leak traffic).
+- **D8 — App not in any store yet (2026-10-02).** Store URLs come from `NEXT_PUBLIC_PLAY_STORE_URL`
+  / `NEXT_PUBLIC_APP_STORE_URL`. Unset → that badge renders in the design's "Coming soon" variant
+  (dashed border, not a link, gold "SOON" pill) — today, both. The QR card and the sticky mobile
+  "Open" app banner render only once the Play URL is set. No QR library is added until then
+  (adding one needs owner approval).
 - **D7 — Dependency bumps.** Patch/minor to latest stable as step 0 (Next 16.3.8, React 19.3.0,
   eslint-config-next 16.3.8, vitest/vite/jsdom patches). TypeScript 7 and ESLint 10 are major
   jumps — separate phase.
@@ -114,7 +119,23 @@ state, role on results rows, a lot number, scheduled auction time, a "which leag
 
 ---
 
-## 6. Open items needing owner input
+## 6. Implementation notes
+
+### Backend (step 1)
+- `V18__auction_lot_and_schedule.sql`: `leagues.auction_lot_counter INT NOT NULL DEFAULT 0`,
+  `leagues.auction_scheduled_at TIMESTAMPTZ`.
+- `AuctionService.nextPlayer()` increments the counter only when it actually opens a player (not on
+  auto-complete); `undo` never touches it, so undoing a sale reopens the *same* lot.
+- `AuctionStateResponse` + `currentPlayerBattingStyle`, `currentPlayerBowlingStyle`,
+  `currentLotNumber` (null before the first lot), `playersPending` (the pool `next-player` draws
+  from). `PlayerAuctionResultResponse` + `playingRole`. `LeagueResponse` + `auctionScheduledAt`.
+- `AuctionSettingsSaveRequest.scheduledAt` optional; `null` clears it; no past-date check.
+- `GET /api/v1/auctions/live-now` (`LiveNowController`/`LiveNowService`): `{leagueId, leagueName}`
+  or `204`. `LeagueRepository.findLiveNow()` orders `IN_PROGRESS` leagues by latest unreversed bid
+  (`NULLS LAST`), then `updated_at`. Memoized 15s (`AtomicReference`, null answers included).
+  `permitAll()` GET; no CORS entry (fetched server-side by Next).
+
+## 7. Open items needing owner input
 
 - Official Google Play / App Store badge artwork (design uses mock glyphs).
 - Final Play Store URL (QR + badges) and whether the app has an App Link for `/leagues/{id}`

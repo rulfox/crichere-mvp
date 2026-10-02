@@ -1,6 +1,7 @@
 package com.crichere.backend.auction.dto
 
 import com.crichere.backend.league.AuctionStatus
+import com.crichere.backend.profile.PlayingRole
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -27,4 +28,6 @@ data class PlayerAuctionResultResponse(
     val playerName: String?,
     val soldPrice: BigDecimal,
     val photoUrl: String? = null,
+    /** The player's profile role -- shown on the web viewer's final squad lists (docs/PHASE11.md D1). */
+    val playingRole: PlayingRole? = null,
 )

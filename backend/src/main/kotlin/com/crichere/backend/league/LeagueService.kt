@@ -195,6 +195,7 @@ class LeagueService(
         league.auctionSquadMin = squadMin
         league.auctionSquadMax = squadMax
         league.auctionBidIncrement = request.bidIncrement
+        league.auctionScheduledAt = request.scheduledAt
         league.updatedAt = Instant.now()
         return leagueRepository.save(league).toResponse(callerId)
     }
@@ -438,6 +439,7 @@ class LeagueService(
             auctionBidIncrement = auctionBidIncrement,
             auctionSquadMaxWarning = auctionSquadMaxWarning,
             coOrganizers = coOrganizers,
+            auctionScheduledAt = auctionScheduledAt,
         )
     }
 
