@@ -101,7 +101,7 @@ private val Hairline = Color.White.copy(alpha = 0.08f)
 private val GhostButton = Color.White.copy(alpha = 0.08f)
 private val PhotoPlaceholder = Color(0xFF25362B)
 
-/** Resolves [AuctionViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.AuctionLive`. */
+/** Resolves [AuctionViewModel] via Koin, parameterized on [leagueId] -- see `AppRoute.AuctionLive` (ui/navigation). */
 @Composable
 internal fun AuctionLiveRoute(
     leagueId: String,

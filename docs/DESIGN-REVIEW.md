@@ -648,6 +648,13 @@ Open items found while implementing the redesign, not yet scheduled.
   the owner's real photo; covered by VM tests), N3 no-photo and N5 error not seen on device, iOS
   OwnProfileView only got the load-failed state (no photo sheet; not compiled).
 
+- [ ] **Navigation 3 migration (PHASE10.md Part B), not verified on-device** (2026-10-02):
+  predictive-back gesture animation (phone uses 3-button nav), deep link cold and warm, new-league
+  `replaceTop`, Join/Claim completion, OTP lockout, Edit profile save.
+- [ ] **Same-number re-send hangs on "Sending code…"** (found 2026-10-02 via OTP -> back -> Send
+  code within 60s; pre-existing via OTP's "Edit"). Firebase gives no callback without a
+  force-resend token, and the client has no timeout. See PHASE10.md Open gaps.
+
 ## Decisions made during implementation
 
 - **App start no longer treats transient failures as signed out** (2026-10-01). A refresh that

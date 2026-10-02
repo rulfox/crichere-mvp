@@ -51,7 +51,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private val Chevron = Color(0xFF9AA39C)
 
-/** Resolves [MyLeaguesViewModel] via Koin -- no per-instance key needed, there's only ever one "my leagues" view, unlike per-league-id screens. See `AuthNavHost`'s `MainTab.MY_LEAGUES`. */
+/** Resolves [MyLeaguesViewModel] via Koin -- no per-instance key needed, there's only ever one "my leagues" view, unlike per-league-id screens. See `AuthNavHost`'s `MainRoute`. */
 @Composable
 internal fun MyLeaguesRoute(onOpenLeague: (String) -> Unit, onBrowseLeagues: () -> Unit, onCreateLeague: () -> Unit) {
     val viewModel: MyLeaguesViewModel = koinViewModel()

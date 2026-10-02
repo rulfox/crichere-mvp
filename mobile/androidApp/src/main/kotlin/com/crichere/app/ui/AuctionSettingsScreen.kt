@@ -59,7 +59,7 @@ private val PoolListText = Color(0xFF3E4A41)
 private val DisabledSaveText = Color(0xFF6B756D)
 private const val SAVED_NOTICE_MS = 3_000L
 
-/** Resolves [AuctionSettingsViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.AuctionSettings`. */
+/** Resolves [AuctionSettingsViewModel] via Koin, parameterized on [leagueId] -- see `AppRoute.AuctionSettings` (ui/navigation). */
 @Composable
 internal fun AuctionSettingsRoute(
     leagueId: String,

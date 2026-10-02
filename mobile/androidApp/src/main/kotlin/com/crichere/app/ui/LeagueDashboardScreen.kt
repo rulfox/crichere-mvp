@@ -133,7 +133,7 @@ private enum class AreaLevel(val title: String, val search: String) {
 /**
  * League Dashboard (design board screen D): announced leagues, filterable by State/District/City or
  * "nearest to me" (mutually exclusive -- see `LeagueDashboardViewModel`'s doc). Rendered inside
- * `AuthNavHost`'s `MainRoute` `Scaffold`, which owns the bottom navigation.
+ * `AuthNavHost`'s `MainRoute` tab `Scaffold`, which owns the bottom navigation.
  */
 @Composable
 private fun LeagueDashboardScreen(

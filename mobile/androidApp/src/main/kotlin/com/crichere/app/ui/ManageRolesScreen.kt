@@ -69,7 +69,7 @@ private val RevokeTrack = Color(0xFFEBD6D2)
 private val DialogSurface = Color(0xFFF1F4EE)
 private val DialogBody = Color(0xFF3E4A41)
 
-/** Resolves [ManageRolesViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.ManageRoles`. */
+/** Resolves [ManageRolesViewModel] via Koin, parameterized on [leagueId] -- see `AppRoute.ManageRoles` (ui/navigation). */
 @Composable
 internal fun ManageRolesRoute(
     leagueId: String,

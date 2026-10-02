@@ -59,6 +59,11 @@ coil = "3.6.3"
 # Compose UI test artifacts (androidx, Android-only), aligned with the Jetpack Compose version CMP
 # bundles (1.12.1 for CMP 1.12.1, per kotlinlang.org's "Jetpack Compose artifacts used" table).
 androidxComposeUiTest = "1.12.1"
+# Android navigation (docs/PHASE10.md Part B), checked on dl.google.com/android/maven2 2026-10-02.
+# lifecycle-viewmodel-navigation3 is androidx's (Android-only) artifact, kept on the same lifecycle
+# line as androidxLifecycle above.
+navigation3 = "1.2.0"
+androidxLifecycleNavigation3 = "2.11.0"
 
 [libraries]
 # Compose Multiplatform artifacts, declared directly: CMP 1.12 deprecated the plugin's
@@ -96,6 +101,9 @@ androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycl
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidxDatastore" }
 tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
 
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleNavigation3" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCoreKtx" }
 

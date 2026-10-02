@@ -90,7 +90,7 @@ import java.time.ZoneId
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** Resolves [LeagueDetailViewModel] via Koin, parameterized on [leagueId] -- see `AuthNavHost`'s `MainDestination.LeagueDetail`. */
+/** Resolves [LeagueDetailViewModel] via Koin, parameterized on [leagueId] -- see `AppRoute.LeagueDetail` (ui/navigation). */
 @Composable
 internal fun LeagueDetailRoute(
     leagueId: String,

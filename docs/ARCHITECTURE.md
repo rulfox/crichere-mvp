@@ -129,6 +129,8 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
 
 **Toolchain (updated 2026-10-02, PHASE10.md):** AGP 9.4.1 with built-in Kotlin (no `org.jetbrains.kotlin.android`), Kotlin 2.4.20, Gradle 9.8.0, Compose Multiplatform 1.12.1, compileSdk 37 / targetSdk 36 / minSdk 26. `shared` and `testFakes` use AGP 9's `com.android.kotlin.multiplatform.library` plugin (`kotlin { android { } }`; host tests in `src/androidHostTest`). iOS targets: `iosArm64` + `iosSimulatorArm64` (no `iosX64`).
 
+**Navigation (Android, 2026-10-02, PHASE10.md):** Navigation 3 (`androidx.navigation3` 1.2.0). One `@Serializable` `AppRoute` back stack (`rememberNavBackStack`) rendered by `NavDisplay` in `AuthNavHost.kt`. Entries get their own saveable state and `ViewModelStore` (`koinViewModel()` scopes to the entry), and a keyboard-aware back guard. Stack operations live in `AppNavigator` (unit-tested). iOS keeps its own SwiftUI `NavigationStack`.
+
 **Testing:** `kotlin.test` in `commonTest` — standard. MockK has no stable multiplatform support; **Mokkery** is the emerging Kotlin-native mocking library for `commonTest` (MockK stays fine for Android-only test code).
 
 ### Frontend Code Skeleton

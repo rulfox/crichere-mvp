@@ -5,6 +5,9 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    // @Serializable navigation route keys (ui/navigation/AppRoute.kt), which rememberNavBackStack
+    // saves across process death.
+    alias(libs.plugins.kotlinSerialization)
 }
 
 // Task 6's Firebase Phone Auth wiring needs the real `com.google.gms.google-services` plugin to
@@ -99,6 +102,10 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
@@ -116,6 +123,9 @@ dependencies {
     // not KMP-shareable logic -- see that file's own doc.
     implementation(project.dependencies.platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    // Plain-JVM unit tests (src/test) for the navigation back-stack rules (AppNavigatorTest).
+    testImplementation(libs.junit4)
 
     // Compose UI instrumented tests (docs/ARCHITECTURE.md's Testing section). Real ViewModels
     // wired to `:testFakes`' Fake*Repository doubles, driving the actual screen composables --
