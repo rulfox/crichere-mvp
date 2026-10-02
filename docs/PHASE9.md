@@ -9,7 +9,7 @@ this environment").
 **Status:** implemented (iOS only -- authored, not yet compiled/run; needs a Mac to verify). The
 Kotlin/`commonMain`/`iosMain` side this phase touches (`KoinHelper` additions) is
 compile-verified for real (`./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
-:shared:compileKotlinIosX64` all green). No Android files changed this phase.
+:shared:compileKotlinIosX64` all green; `iosX64` was dropped 2026-10-02, see PHASE10.md). No Android files changed this phase.
 
 ---
 

@@ -1,12 +1,13 @@
 // Root build file: declares plugin versions once (resolved via pluginManagement's
 // gradlePluginPortal/google/mavenCentral) without applying them here. Each module
-// (`shared`, `androidApp`) applies the ones it needs.
+// (`shared`, `androidApp`) applies the ones it needs. No `org.jetbrains.kotlin.android` since
+// AGP 9 (built-in Kotlin, docs/PHASE10.md); kotlinMultiplatform below still puts KGP 2.4.20 on the
+// classpath, which pins the Kotlin version AGP's built-in Kotlin compiles androidApp with.
 plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
-    alias(libs.plugins.kotlinAndroid) apply false
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.androidApplication) apply false
-    alias(libs.plugins.androidLibrary) apply false
+    alias(libs.plugins.androidKmpLibrary) apply false
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.skie) apply false

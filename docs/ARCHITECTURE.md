@@ -127,6 +127,8 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
 
 **Local DB:** not needed for Phase 1 (no offline requirement). Two mature 2026 competitors when it is needed — SQLDelight (longer track record, SQL-first) vs Room 3.0 KMP (shipped March 2026, Google-backed, annotation-based). Deferred, not decided now.
 
+**Toolchain (updated 2026-10-02, PHASE10.md):** AGP 9.4.1 with built-in Kotlin (no `org.jetbrains.kotlin.android`), Kotlin 2.4.20, Gradle 9.8.0, Compose Multiplatform 1.12.1, compileSdk 37 / targetSdk 36 / minSdk 26. `shared` and `testFakes` use AGP 9's `com.android.kotlin.multiplatform.library` plugin (`kotlin { android { } }`; host tests in `src/androidHostTest`). iOS targets: `iosArm64` + `iosSimulatorArm64` (no `iosX64`).
+
 **Testing:** `kotlin.test` in `commonTest` — standard. MockK has no stable multiplatform support; **Mokkery** is the emerging Kotlin-native mocking library for `commonTest` (MockK stays fine for Android-only test code).
 
 ### Frontend Code Skeleton

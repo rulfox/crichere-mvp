@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.skie)
 }
 
@@ -18,10 +18,24 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    // AGP 9's KMP library plugin (com.android.kotlin.multiplatform.library, docs/PHASE10.md)
+    // replaces `androidTarget {}` + the top-level `android {}` block. Namespace is
+    // com.crichere.app.shared, not androidApp's com.crichere.app: AGP 9 fails the manifest merge on
+    // a namespace shared between modules. It only names generated R/BuildConfig classes, and shared
+    // has neither -- Kotlin packages stay com.crichere.app.*. No BuildConfig: the new plugin doesn't
+    // support it, and nothing in shared reads it anymore.
+    android {
+        namespace = "com.crichere.app.shared"
+        compileSdk = 37
+        minSdk = 26
+
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
+        }
+
+        // Robolectric-backed host tests (src/androidHostTest, formerly androidUnitTest).
+        withHostTestBuilder {}.configure {
+            isIncludeAndroidResources = true
         }
     }
 
@@ -31,9 +45,9 @@ kotlin {
     // suspend fun -> async/await for the generated Swift API surface. This target configuration
     // is verifiable here (Gradle accepts and models it); the actual framework build/link only
     // succeeds on macOS with Xcode's Apple SDKs, which this environment does not have -- see
-    // task-5-report.md for what is and isn't verified.
+    // task-5-report.md for what is and isn't verified. No iosX64 (Intel-Mac simulator) since
+    // 2026-10-02: JetBrains lifecycle 2.11.0 stopped publishing it (docs/PHASE10.md).
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
     ).forEach { target ->
@@ -102,7 +116,7 @@ kotlin {
             implementation(libs.firebase.messaging)
         }
 
-        val androidUnitTest by getting {
+        getByName("androidHostTest") {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.coroutines.test)
@@ -119,36 +133,8 @@ kotlin {
     }
 }
 
-android {
-    // Namespace com.crichere.app everywhere per Task 5's brief -- shared has no Android
-    // resources of its own, so sharing the namespace with androidApp doesn't risk an R-class
-    // collision (there's no R class to collide).
-    namespace = "com.crichere.app"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
-
-    buildFeatures {
-        // Generates BuildConfig.DEBUG, which PlatformModule.android.kt reads to decide between
-        // the real FirebasePhoneAuthClient and the debug-only DebugFakePhoneAuthClient -- see
-        // that file's doc (task-8-brief.md's "debug-only toggle" for on-device verification
-        // without a connected Firebase project).
-        buildConfig = true
-    }
-
-    testOptions {
-        unitTests.isIncludeAndroidResources = true
-        unitTests.all {
-            it.systemProperty("robolectric.logging.enabled", "true")
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+tasks.withType<Test>().configureEach {
+    systemProperty("robolectric.logging.enabled", "true")
 }
 
 skie {

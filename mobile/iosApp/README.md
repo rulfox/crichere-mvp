@@ -7,7 +7,7 @@ text instead of a manual "open Xcode, add each file to the target" chore: `xcode
 produces a real `.xcodeproj` from `project.yml`, and re-running it after adding/removing Swift
 files keeps the project in sync with no Xcode-side project surgery. The Kotlin/`commonMain`/
 `iosMain` side is **compile-verified for real** (`./gradlew :shared:compileKotlinIosArm64
-:shared:compileKotlinIosSimulatorArm64 :shared:compileKotlinIosX64` all succeed, using the
+:shared:compileKotlinIosSimulatorArm64` all succeed, using the
 Kotlin/Native cross-compiler's Windows-hosted klib toolchain). What's still unverified is every
 Swift file and the final framework link/run -- both need Xcode's Apple SDKs.
 
@@ -71,4 +71,4 @@ never existed before Phase 9 (`PhoneEntryView`, `OtpVerifyView`) and the main po
 Like every other Swift/`iosMain`-`actual` file in this repo, **none of this has been compiled** --
 no Mac/Xcode available here. What **is** compile-verified for real: every shared `ViewModel` this
 navigation host and these screens depend on builds successfully for all three iOS klib targets
-(`:shared:compileKotlinIosArm64`/`compileKotlinIosSimulatorArm64`/`compileKotlinIosX64`).
+(`:shared:compileKotlinIosArm64`/`compileKotlinIosSimulatorArm64`; no `iosX64` since 2026-10-02, see docs/PHASE10.md).

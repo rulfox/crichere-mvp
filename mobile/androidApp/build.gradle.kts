@@ -1,11 +1,8 @@
-@file:OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -44,7 +41,7 @@ require(placeSearchProvider in setOf("geocoder", "places")) {
 
 android {
     namespace = "com.crichere.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.crichere.app"
@@ -93,11 +90,11 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
 
-    implementation(compose.runtime)
-    implementation(compose.foundation)
-    implementation(compose.material3)
-    implementation(compose.ui)
-    implementation(compose.components.resources)
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.components.resources)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -125,19 +122,19 @@ dependencies {
     // no Koin/DI override needed (see each Route composable's `viewModel: X = koinViewModel()`
     // default-argument seam).
     androidTestImplementation(project(":testFakes"))
-    androidTestImplementation(compose.uiTest)
-    // `compose.uiTest` (Compose Multiplatform's cross-platform test umbrella) doesn't carry the
+    androidTestImplementation(libs.compose.ui.test)
+    // `compose-ui-test` (Compose Multiplatform's cross-platform test umbrella) doesn't carry the
     // JUnit4 Android rule (`createComposeRule`) -- that's Android-only, published separately as
-    // AndroidX's own artifact. Pinned to the same Compose UI version the rest of the graph
-    // already resolves to (1.10.4, per `androidApp:dependencies`) so it can't drift.
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4-android:1.10.4")
+    // AndroidX's own artifact. Pinned (catalog `androidxComposeUiTest`) to the Jetpack Compose
+    // version CMP bundles so it can't drift.
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     // Supplies the placeholder ComponentActivity `createComposeRule()` launches into. Must be
     // `debugImplementation` (the app itself), not `androidTestImplementation` (the separate test
     // APK) -- the instrumented app process (com.crichere.app) is what resolves the launch intent,
     // so the Activity has to live in *its* manifest. Got this wrong on the first attempt: with it
     // on androidTestImplementation, the real device failed with "Intent in process
     // com.crichere.app resolved to different process com.crichere.app.test".
-    debugImplementation("androidx.compose.ui:ui-test-manifest:1.10.4")
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.androidx.test.ext.junit)
