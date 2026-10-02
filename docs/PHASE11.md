@@ -4,7 +4,7 @@ Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infr
 [PHASE6.md](PHASE6.md) for the original web viewer.
 
 **Last updated:** 2026-10-02
-**Status:** implemented (backend + mobile + web-viewer), verified against the design in a browser. Deployed to Railway production 2026-10-02 (commit `ba31d66`, via `railway up` of a clean `git archive` -- not yet pushed to GitHub, so the next GitHub-triggered deploy must include these commits). Mobile scheduled-time picker not verified on-device (phone not connected).
+**Status:** implemented (backend + mobile + web-viewer), verified against the design in a browser. Deployed to Railway production 2026-10-02 (commit `ba31d66`, first via `railway up` of a clean `git archive`, then pushed to GitHub `master` and redeployed from `236e6f5` by Railway's GitHub trigger). Mobile scheduled-time picker not verified on-device (phone not connected).
 
 ---
 
