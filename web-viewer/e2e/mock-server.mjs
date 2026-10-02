@@ -6,9 +6,12 @@
  * whatever state a real auction happens to be in.
  */
 import { createServer } from "node:http";
-import { auctionStates, leagues, results } from "./fixtures.mjs";
+import { auctionStreams, leagues, results } from "./fixtures.mjs";
 
 const PORT = 4310;
+
+/** When league-flaky's stream last dropped its connection -- reconnects within 6s of that are refused (see the stream handler). */
+let flakyDroppedAt = 0;
 
 function send(res, status, body) {
   res.writeHead(status, { "content-type": "application/json", "access-control-allow-origin": "*" });
@@ -46,21 +49,46 @@ const server = createServer((req, res) => {
   }
 
   if (suffix === "stream") {
-    const state = auctionStates[id];
-    if (!state) {
+    const events = auctionStreams[id];
+    if (!events) {
       res.writeHead(404).end();
       return;
     }
-    // A single event, then the connection stays open (matching the real SSE endpoint's shape)
-    // until the client (EventSource) disconnects -- Playwright's page teardown closes it.
+    // league-flaky: every connection drops right after its first event, and reconnects within
+    // 6s of a drop are refused -- the browser's EventSource gives up (CLOSED), the page shows its
+    // reconnecting state, and its own backoff retry gets through once the window has passed.
+    if (id === "league-flaky" && Date.now() - flakyDroppedAt < 6000) {
+      res.writeHead(503, { "access-control-allow-origin": "*" }).end();
+      return;
+    }
     res.writeHead(200, {
       "content-type": "text/event-stream",
       "cache-control": "no-cache",
       connection: "keep-alive",
       "access-control-allow-origin": "*",
     });
-    res.write(`event: auction-state\ndata: ${JSON.stringify(state)}\n\n`);
-    req.on("close", () => res.end());
+    // The scripted events in order, then the connection stays open (matching the real SSE
+    // endpoint's shape) until the client disconnects -- Playwright's page teardown closes it.
+    const timers = events.map(({ afterMs, state }, index) =>
+      setTimeout(() => {
+        // Bid times are re-stamped relative to now, so the ticker reads "just now", "7s ago"...
+        const fresh = { ...state, recentBids: state.recentBids.map((bid, i) => ({ ...bid, placedAt: new Date(Date.now() - i * 7000).toISOString() })) };
+        res.write(`event: auction-state
+data: ${JSON.stringify(fresh)}
+
+`);
+        if (id === "league-flaky" && index === events.length - 1) {
+          setTimeout(() => {
+            flakyDroppedAt = Date.now();
+            res.end();
+          }, 300);
+        }
+      }, afterMs),
+    );
+    req.on("close", () => {
+      timers.forEach(clearTimeout);
+      res.end();
+    });
     return;
   }
 

@@ -31,7 +31,8 @@ export function formatAgo(iso: string, now: number): string {
   const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
   if (seconds < 3) return "just now";
   if (seconds < 60) return `${seconds}s ago`;
-  return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

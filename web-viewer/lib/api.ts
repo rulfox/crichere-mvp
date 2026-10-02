@@ -42,6 +42,7 @@ export type League = {
   groundName?: string | null;
   startsOn: string;
   format: string | null;
+  franchisesRequired?: number | null;
   players: LeaguePlayer[];
   franchises: LeagueFranchise[];
   auctionBasePrice: string | null;

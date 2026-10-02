@@ -18,6 +18,11 @@ const monoFont = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  // JetBrains Mono has no ₹ (U+20B9), so every amount's rupee sign comes from the fallback. The
+  // design falls back to plain `monospace`; next/font's default size-adjusted Arial fallback
+  // would draw a visibly wider, heavier ₹ instead.
+  adjustFontFallback: false,
+  fallback: ["monospace"],
 });
 
 export const metadata: Metadata = {

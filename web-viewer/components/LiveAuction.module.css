@@ -1,350 +1,1366 @@
-.page {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 20px 16px 48px;
+/* Live Auction.dc.html, translated 1:1 from the design's inline styles (docs/PHASE11.md). */
+
+.root {
+  container-type: inline-size;
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--auction-bg);
+  color: var(--chalk);
+  font-family: var(--font-body), system-ui, sans-serif;
+  isolation: isolate;
 }
 
-.status {
+.mono {
+  font-family: var(--font-mono), monospace;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.glowGold,
+.glowGreen {
+  position: absolute;
+  aspect-ratio: 1;
+}
+
+.glowGold {
+  left: -15%;
+  top: -20%;
+  width: 60%;
+  background: radial-gradient(closest-side, rgba(242, 181, 68, 0.1), rgba(242, 181, 68, 0));
+}
+
+.glowGreen {
+  right: -15%;
+  top: -10%;
+  width: 55%;
+  background: radial-gradient(closest-side, rgba(215, 235, 210, 0.08), rgba(215, 235, 210, 0));
+}
+
+/* ---------------------------------------------------------------- top bar */
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(11, 20, 13, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--hairline-dark);
+}
+
+.bar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px clamp(16px, 3cqi, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.logo {
+  color: var(--chalk);
+}
+
+.logo:hover {
+  color: #fff;
+}
+
+.barRight {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  padding-bottom: 16px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--rule);
 }
 
-.liveDot {
-  width: 9px;
-  height: 9px;
+.feed,
+.feedLost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+}
+
+.feed {
+  color: var(--auction-muted);
+}
+
+.feedDot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--flag);
-  box-shadow: 0 0 0 3px rgba(196, 100, 95, 0.25);
-  animation: pulse 1.8s ease-in-out infinite;
-  flex: none;
+  background: var(--live-feed);
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+.feedLost {
+  color: var(--auction-alert-text);
 }
 
-.liveLabel {
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.reconnect {
+  background: rgba(255, 107, 74, 0.12);
+  border-bottom: 1px solid rgba(255, 107, 74, 0.35);
+}
+
+.reconnectBar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px clamp(16px, 3cqi, 32px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.reconnectIcon {
+  color: var(--auction-alert);
+}
+
+.reconnectTitle {
   font-weight: 600;
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-  color: var(--flag);
 }
 
-.leagueName {
-  font-weight: 600;
-  font-size: 1rem;
+.reconnectMeta {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--on-dark-tertiary);
 }
 
-.leagueMeta {
-  color: var(--ink-dim);
-  font-size: 0.9rem;
+/* ---------------------------------------------------------------- main */
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: clamp(20px, 3cqi, 36px) clamp(16px, 3cqi, 32px) 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 2.4cqi, 28px);
 }
 
-.leagueMeta::before {
-  content: "\00b7";
-  margin-right: 10px;
-  color: var(--ink-dim);
-}
+/* Skeleton */
 
-.layout {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 28px;
-  align-items: start;
-}
-
-@media (max-width: 760px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.heroCol {
+.skeleton {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.skelHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.skelLines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--auction-surface);
+}
+
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  animation: skel 1.4s ease-in-out infinite;
+}
+
+.skelBright::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+
+@keyframes skel {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.skelNote {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--auction-muted);
+}
+
+/* League header */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 20px;
+}
+
+.leagueLogo {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 16px;
+  background: repeating-linear-gradient(135deg, #1c2e23 0 6px, #17271d 6px 12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-dark-tertiary);
+  overflow: hidden;
+}
+
+.leagueLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.headerText {
+  flex: 1 1 320px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.onBlock {
-  background: var(--panel-raised);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 24px clamp(18px, 4vw, 32px);
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 
-.onBlockLabel {
-  font-size: 0.85rem;
-  color: var(--ink-dim);
-  margin-bottom: 4px;
+.leagueName {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: clamp(26px, 3.4cqi, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.chipLive {
+  gap: 7px;
+  background: rgba(255, 107, 74, 0.16);
+  color: var(--auction-alert-text);
+}
+
+.chipNotStarted {
+  gap: 6px;
+  border: 1px solid rgba(143, 160, 148, 0.45);
+  color: var(--on-dark-tertiary);
+}
+
+.chipDone {
+  gap: 6px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.liveDot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--auction-alert);
+}
+
+.liveDot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--auction-alert);
+  animation: livePing 1.6s ease-out infinite;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 14px;
+  color: var(--on-dark-secondary);
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metaIcon {
+  color: var(--auction-muted);
+}
+
+/* ---------------------------------------------------------------- not started */
+
+.twoCol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.noticeCard {
+  flex: 1.6 1 480px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--auction-surface);
+  border: 1px solid var(--hairline-dark);
+  border-radius: 16px;
+  padding: clamp(24px, 4cqi, 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.noticeGlow {
+  position: absolute;
+  right: -20%;
+  top: -50%;
+  width: 70%;
+  aspect-ratio: 1;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(242, 181, 68, 0.12), rgba(242, 181, 68, 0));
+}
+
+.goldTile {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(242, 181, 68, 0.14);
+  color: var(--auction-gold);
+  display: grid;
+  place-items: center;
+}
+
+.noticeTitle {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: clamp(28px, 3.6cqi, 44px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.noticeBody {
+  max-width: 34em;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--on-dark-secondary);
+  text-wrap: pretty;
+}
+
+.noticeBody b {
+  color: var(--chalk);
+}
+
+.rule {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 0;
+}
+
+.notify {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.notifyIcon {
+  color: var(--primary-container);
+}
+
+.notifyText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notifyTitle {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.notifyCopy {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--on-dark-secondary);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.facts {
+  flex: 1 1 300px;
+  min-width: 0;
+  background: var(--auction-surface);
+  border: 1px solid var(--hairline-dark);
+  border-radius: 16px;
+  padding: 8px 20px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hairline-dark);
+  font-size: 14px;
+}
+
+.factLabel {
+  color: var(--auction-muted);
+}
+
+.factsHeading {
+  padding: 16px 0 10px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--auction-muted);
+}
+
+.franchiseList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.franchiseItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Franchise badge: oklch hue, initials in the dark ground colour. Sized per use. */
+.fBadge {
+  border-radius: 50%;
+  color: var(--auction-bg);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- live */
+
+.liveWrap {
+  position: relative;
+}
+
+.liveGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  transition: opacity 300ms ease;
+}
+
+.dimmed {
+  opacity: 0.5;
+}
+
+.heroCol {
+  flex: 1.7 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel {
+  background: var(--auction-surface);
+  border: 1px solid var(--hairline-dark);
+  border-radius: 16px;
+}
+
+.playerCard {
+  overflow: hidden;
+  transform-origin: center;
+  backface-visibility: hidden;
+}
+
+.playerTop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: clamp(16px, 2.4cqi, 24px);
+}
+
+.photo {
+  width: clamp(108px, 13cqi, 164px);
+  aspect-ratio: 4 / 5;
+  flex: none;
+  border-radius: 12px;
+  background: repeating-linear-gradient(135deg, #1c2e23 0 8px, #17271d 8px 16px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  transition: filter 600ms ease;
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoGray {
+  filter: grayscale(1) brightness(0.7);
+}
+
+.photoInitials {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--auction-muted);
+}
+
+.playerInfo {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lotRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hammer {
+  color: var(--auction-gold);
+}
+
+.lot {
+  color: var(--auction-muted);
 }
 
 .playerName {
-  font-family: var(--font-display), "Arial Narrow", sans-serif;
-  font-weight: 700;
-  font-size: clamp(1.9rem, 5vw, 2.8rem);
-  line-height: 1.02;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: clamp(30px, 4.4cqi, 54px);
+  line-height: 1;
+  letter-spacing: -0.035em;
 }
 
-.playerMeta {
-  margin-top: 4px;
-  color: var(--ink-dim);
-  font-size: 0.92rem;
+.roleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.roleChip,
+.styleChip {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.roleChip {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-weight: 600;
+}
+
+.styleChip {
+  border: 1px solid var(--chip-border-dark);
+  color: var(--on-dark-tertiary);
+  font-weight: 500;
+}
+
+.base {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--auction-muted);
+}
+
+.baseValue {
+  font-family: var(--font-mono), monospace;
+  font-size: 15px;
+  color: var(--chalk);
+}
+
+.divider {
+  height: 1px;
+  background: var(--hairline-dark);
 }
 
 .bidRow {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 18px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px 28px;
+  padding: clamp(16px, 2.4cqi, 24px);
+}
+
+.bidCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.label {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--auction-muted);
+}
+
+.bidWrap {
+  position: relative;
+}
+
+.bidGlow {
+  position: absolute;
+  left: -12%;
+  top: -40%;
+  width: 124%;
+  height: 180%;
+  background: radial-gradient(closest-side, rgba(242, 181, 68, 0.42), rgba(242, 181, 68, 0));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bid {
+  position: relative;
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  font-size: clamp(48px, 8cqi, 100px);
+  letter-spacing: -0.045em;
+}
+
+.leaderCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.leaderSlot {
+  height: 40px;
+  overflow: hidden;
+}
+
+.leader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+}
+
+.leaderName {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Odometer: one fixed-height column per digit, so nothing shifts layout. */
+.odometer {
+  display: inline-flex;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.bidAmount {
-  font-family: var(--font-display), "Arial Narrow", sans-serif;
-  font-weight: 800;
-  font-size: clamp(3.4rem, 11vw, 5.6rem);
-  line-height: 0.9;
-  color: var(--accent);
+.odoChar {
+  display: inline-block;
+  height: 1.1em;
 }
 
-.bidNone {
-  font-family: var(--font-display), "Arial Narrow", sans-serif;
+.odoDigit {
+  display: inline-block;
+  height: 1.1em;
+  overflow: hidden;
+}
+
+.odoColumn {
+  display: flex;
+  flex-direction: column;
+  transition: transform 700ms var(--spring-snappy);
+  will-change: transform;
+}
+
+.odoColumn span {
+  display: block;
+  height: 1.1em;
+}
+
+/* Ticker */
+
+.ticker {
+  padding: 16px clamp(14px, 2cqi, 20px) 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.panelTitle {
+  font-family: var(--font-display), sans-serif;
   font-weight: 700;
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
-  color: var(--ink-dim);
+  font-size: 17px;
 }
 
-.leadingChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 6px 14px 6px 10px;
-  border-radius: 999px;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  font-size: 0.9rem;
+.panelMeta {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--auction-muted);
 }
 
-.chipDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex: none;
+.tickerEmpty {
+  padding: 22px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  text-align: center;
+  font-size: 14px;
+  color: var(--auction-muted);
 }
 
-.sectionLabel {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--ink-dim);
-  margin-bottom: 10px;
+.tickerEmpty span {
+  font-family: var(--font-mono), monospace;
+  color: var(--chalk);
+}
+
+.tickerClip {
+  overflow: hidden;
+  max-height: 300px;
+  -webkit-mask-image: linear-gradient(#000 78%, transparent);
+  mask-image: linear-gradient(#000 78%, transparent);
 }
 
 .tickerList {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .tickerRow {
-  display: flex;
-  align-items: baseline;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 64px;
+  align-items: center;
   gap: 12px;
-  padding: 10px 2px;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.96rem;
-  color: var(--ink-dim);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
 }
 
-.tickerRow:first-child {
-  color: var(--ink);
-  font-weight: 600;
+.tickerTop {
+  background: rgba(242, 181, 68, 0.09);
 }
 
-.tickerFranchise {
-  flex: 1 1 auto;
-  min-width: 0;
+.tickerName {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tickerAmount {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-family: var(--font-mono), monospace;
+  font-size: 15px;
+  font-weight: 700;
 }
 
-.tickerRow:first-child .tickerAmount {
-  color: var(--accent);
+.tickerTop .tickerAmount {
+  color: var(--auction-gold);
 }
 
-.tickerEmpty {
-  color: var(--ink-dim);
-  font-size: 0.92rem;
-  padding: 10px 2px;
+.tickerAgo {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--auction-muted);
+  text-align: right;
 }
+
+/* Standings */
 
 .standings {
+  flex: 1 1 320px;
+  min-width: 0;
+  padding: 16px clamp(12px, 1.6cqi, 16px);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
-@media (min-width: 761px) {
-  .standingsCol {
-    position: sticky;
-    top: 20px;
-  }
+.standingsHead {
+  padding: 0 4px 6px;
 }
 
-.franchiseRow {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-left: 3px solid transparent;
-  padding: 12px 14px;
+.standing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0);
+  background: rgba(255, 255, 255, 0.02);
+  transition:
+    border-color 300ms ease,
+    background-color 300ms ease;
 }
 
-.franchiseRow.leading {
-  border-left-color: var(--accent);
+.standingLead {
+  border-color: rgba(242, 181, 68, 0.55);
+  background: rgba(242, 181, 68, 0.07);
 }
 
-.franchiseTop {
+.standingTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.standingName {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--auction-gold);
+}
+
+.squad {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.squad span {
+  font-weight: 400;
+  color: var(--auction-muted);
+}
+
+.pips {
+  display: grid;
+  gap: 4px;
+}
+
+.pip {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.purseLine {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
+  font-size: 12px;
 }
 
-.franchiseName {
-  font-weight: 600;
-  font-size: 0.98rem;
+.purseValue {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
 }
 
-.franchiseCount {
-  font-size: 0.82rem;
-  color: var(--ink-dim);
-  flex: none;
-}
-
-.purseBar {
-  height: 5px;
-  background: var(--rule);
+.purseTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 
-.purseBarFill {
+.purseFill {
   height: 100%;
-  background: var(--ink-dim);
+  transform-origin: left;
+  transition:
+    transform 900ms var(--purse-ease),
+    background-color 300ms ease;
 }
 
-.franchiseRow.leading .purseBarFill {
-  background: var(--accent);
+/* SOLD / UNSOLD */
+
+.scrim {
+  position: absolute;
+  inset: -8px;
+  z-index: 10;
+  border-radius: 20px;
+  background: rgba(11, 20, 13, 0.55);
+  pointer-events: none;
 }
 
-.purseLabel {
-  margin: 8px 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-dim);
-  font-variant-numeric: tabular-nums;
+.bandHost {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: clamp(56px, 8cqi, 110px);
+  z-index: 11;
 }
 
-.belowMin {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 0.78rem;
-  color: var(--flag);
-}
-
-.notice {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 28px clamp(18px, 4vw, 32px);
-}
-
-.noticeTitle {
-  font-family: var(--font-display), "Arial Narrow", sans-serif;
-  font-weight: 700;
-  font-size: clamp(1.8rem, 4.5vw, 2.4rem);
-}
-
-.noticeBody {
-  margin-top: 8px;
-  color: var(--ink-dim);
-  max-width: 60ch;
-}
-
-.leagueFacts {
+.soldBand {
+  background: var(--auction-gold);
+  color: var(--auction-bg);
+  border-radius: 16px;
+  padding: clamp(18px, 3cqi, 32px) clamp(18px, 3cqi, 40px);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
-  margin-top: 18px;
-  font-size: 0.9rem;
-  color: var(--ink-dim);
+  align-items: center;
+  justify-content: center;
+  gap: 12px clamp(20px, 4cqi, 48px);
+  box-shadow: 0 30px 90px -20px rgba(242, 181, 68, 0.6);
 }
 
-.resultsList {
+.stamp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: rotate(-4deg);
+}
+
+.gavel {
+  transform-origin: 80% 80%;
+  width: clamp(44px, 6cqi, 72px);
+  height: clamp(44px, 6cqi, 72px);
+}
+
+.soldWord {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: clamp(56px, 9cqi, 116px);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.soldText {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
+  min-width: 0;
 }
 
-.resultRow {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  padding: 16px 18px;
+.soldPlayer {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.resultTop {
+.soldTo {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: clamp(20px, 2.4cqi, 28px);
+  letter-spacing: -0.02em;
+}
+
+.soldPrice {
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  font-size: clamp(26px, 3.4cqi, 40px);
+  letter-spacing: -0.04em;
+}
+
+.sparks {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.unsoldBand {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: clamp(56px, 8cqi, 110px);
+  z-index: 11;
+  background: var(--auction-raised);
+  border: 1px solid rgba(143, 160, 148, 0.35);
+  color: var(--on-dark-tertiary);
+  border-radius: 16px;
+  padding: clamp(18px, 3cqi, 28px) clamp(18px, 3cqi, 40px);
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px clamp(20px, 4cqi, 40px);
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
 }
 
-.resultSpent {
-  font-size: 0.85rem;
-  color: var(--ink-dim);
-  font-variant-numeric: tabular-nums;
+.unsoldWord {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: clamp(44px, 7cqi, 88px);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  color: var(--auction-muted);
 }
 
-.playerList {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
+.unsoldText {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.playerRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 0.92rem;
-  color: var(--ink-dim);
+.unsoldTitle {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 2.2cqi, 24px);
+  color: var(--chalk);
 }
 
-.playerRow span:last-child {
-  font-variant-numeric: tabular-nums;
+.unsoldNote {
+  font-size: 14px;
+  color: var(--auction-muted);
 }
+
+.unsoldNote span {
+  font-family: var(--font-mono), monospace;
+}
+
+/* ---------------------------------------------------------------- completed */
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px clamp(24px, 4cqi, 56px);
+  padding: clamp(18px, 2.6cqi, 28px);
+  border-radius: 16px;
+  background: var(--auction-surface);
+  border: 1px solid var(--hairline-dark);
+}
+
+.summaryLead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 240px;
+}
+
+.summaryTile {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(242, 181, 68, 0.14);
+  color: var(--auction-gold);
+  display: grid;
+  place-items: center;
+}
+
+.summaryTitle {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summaryValue {
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  font-size: 26px;
+}
+
+.summaryLabel {
+  font-size: 13px;
+  color: var(--auction-muted);
+}
+
+.subtle {
+  font-size: 14px;
+  color: var(--auction-muted);
+}
+
+.resultsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.resultCard {
+  background: var(--auction-surface);
+  border: 1px solid var(--hairline-dark);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resultBelow {
+  border-color: rgba(255, 107, 74, 0.45);
+}
+
+.resultHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resultName {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tile {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tileLabel {
+  font-size: 11px;
+  color: var(--auction-muted);
+}
+
+.tileValue {
+  font-family: var(--font-mono), monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 107, 74, 0.12);
+  color: var(--auction-alert-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wonList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wonRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.wonName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wonRole {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--auction-muted);
+}
+
+.wonPrice {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------- footer + app banner */
 
 .footer {
-  margin-top: 36px;
-  padding-top: 16px;
-  border-top: 1px solid var(--rule);
-  font-size: 0.8rem;
-  color: var(--ink-dim);
+  border-top: 1px solid var(--hairline-dark);
+}
+
+.footerBar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px clamp(16px, 3cqi, 32px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--auction-muted);
+  box-sizing: border-box;
+}
+
+.footerLink {
+  color: var(--on-dark-tertiary);
+}
+
+.footerLink:hover {
+  color: #fff;
+}
+
+.appBanner {
+  position: sticky;
+  bottom: 0;
+  z-index: 35;
+  padding: 0 10px 10px;
+}
+
+.appBannerCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 16px;
+  background: var(--auction-surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -10px 40px -10px rgba(0, 0, 0, 0.6);
+}
+
+.appBannerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.appBannerTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.appBannerSub {
+  font-size: 12px;
+  color: var(--auction-muted);
+}
+
+.openPill {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--chalk);
+  color: var(--auction-bg);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dismiss {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--auction-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.dismiss:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* The app banner only shows on narrow screens (container under 720px). */
+@container (min-width: 720px) {
+  .appBanner {
+    display: none;
+  }
 }
