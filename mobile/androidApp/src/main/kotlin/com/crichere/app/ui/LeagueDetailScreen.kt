@@ -183,14 +183,19 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
         }
     }
 
+    // The https watch link (docs/PHASE13.md): chat apps render it as a preview card from the page's
+    // Open Graph tags, it opens the app via App Links when installed, and the web viewer otherwise.
     val share: (LeagueDto) -> Unit = { league ->
+        val link = "$webViewerBaseUrl/leagues/${league.id}"
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "Join my league on Crichere: crichere://leagues/${league.id}")
+            putExtra(Intent.EXTRA_TEXT, "Join ${league.name} on Crichere · ${league.city} · watch the player auction live\n$link")
+            putExtra(Intent.EXTRA_SUBJECT, league.name)
+            putExtra(Intent.EXTRA_TITLE, league.name)
         }
         context.startActivity(Intent.createChooser(intent, "Share league"))
     }
-    // Additive to the crichere:// share (docs/PHASE6.md): for people without the app installed.
+    // Same link as Share, straight to the clipboard (docs/PHASE6.md) -- for pasting into a group.
     val copyWatchLink: (LeagueDto) -> Unit = { league ->
         context.getSystemService(ClipboardManager::class.java)
             .setPrimaryClip(ClipData.newPlainText("Watch link", "$webViewerBaseUrl/leagues/${league.id}"))

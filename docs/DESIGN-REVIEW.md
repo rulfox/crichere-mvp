@@ -579,6 +579,10 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
+- [ ] **Share cards and App Links not verified live** (2026-10-03, [PHASE13.md](PHASE13.md) §4). Not yet
+  seen: a real WhatsApp/Facebook preview of a deployed league link, a real league logo from S3 on the card,
+  App Link verification + tap-to-open on CPH2487, the new share-sheet text, iOS (Universal Links not built).
+
 - [ ] **Country-code picker (future scope)** (2026-10-03). Phone entry and the co-organizer lookup now take
   only the national number with +91 added silently. A picker needs: more `Country` entries
   (`PhoneNumberInput.kt`), a picker UI on both screens, per-country display on the OTP screen, and the

@@ -19,7 +19,7 @@ import com.crichere.app.ui.theme.CrichereTheme
 class MainActivity : ComponentActivity() {
 
     /**
-     * Deep-link target from a `crichere://leagues/{id}` intent, read once at `onCreate` (cold
+     * Deep-link target from a `crichere://leagues/{id}` or `https://crichere.com/leagues/{id}` intent, read once at `onCreate` (cold
      * start) or updated by [onNewIntent] (already running) -- see [AuthNavHost]'s own doc for how
      * this is consumed once `Main` is reached. Backed by `mutableStateOf` (not a `ViewModel`)
      * since `MainActivity` itself is the natural owner of "what intent did we start/resume with".
@@ -51,10 +51,9 @@ class MainActivity : ComponentActivity() {
         leagueIdFrom(intent)?.let { pendingDeepLinkLeagueId = it }
     }
 
-    /** `crichere://leagues/{id}` -> `{id}`, or `null` for any other intent (including the plain launcher intent). */
+    /** `crichere://leagues/{id}` or `https://crichere.com/leagues/{id}` -> `{id}`; see [leagueIdFromLink]. */
     private fun leagueIdFrom(intent: Intent): String? {
         val uri = intent.data ?: return null
-        if (uri.scheme != "crichere" || uri.host != "leagues") return null
-        return uri.pathSegments.firstOrNull()
+        return leagueIdFromLink(uri.scheme, uri.host, uri.pathSegments)
     }
 }

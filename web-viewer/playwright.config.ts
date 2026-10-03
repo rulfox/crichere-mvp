@@ -27,7 +27,7 @@ export default defineConfig({
       command: "npx next dev",
       port: 3000,
       reuseExistingServer: !process.env.CI,
-      env: { NEXT_PUBLIC_API_BASE_URL: "http://localhost:4310" },
+      env: { NEXT_PUBLIC_API_BASE_URL: "http://localhost:4310", NEXT_PUBLIC_SITE_URL: "http://localhost:3000" },
     },
   ],
 });

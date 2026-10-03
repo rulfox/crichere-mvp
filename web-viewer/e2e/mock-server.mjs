@@ -5,6 +5,7 @@
  * without a live backend or Postgres -- fast and deterministic instead of depending on
  * whatever state a real auction happens to be in.
  */
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { auctionStreams, leagues, results } from "./fixtures.mjs";
 
@@ -32,6 +33,17 @@ const server = createServer((req, res) => {
       return;
     }
     return send(res, 200, { leagueId: "league-live", leagueName: leagues["league-live"].name });
+  }
+  // League logos for the share-card fixtures: a real PNG, and an SVG the card must refuse (-> monogram).
+  if (url.pathname === "/mock-assets/logo.png") {
+    res.writeHead(200, { "content-type": "image/png" });
+    res.end(readFileSync(new URL("../public/crichere-icon.png", import.meta.url)));
+    return;
+  }
+  if (url.pathname === "/mock-assets/logo.svg") {
+    res.writeHead(200, { "content-type": "image/svg+xml" });
+    res.end('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');
+    return;
   }
   const match = url.pathname.match(/^\/api\/v1\/leagues\/([^/]+)(\/auction\/(results|stream))?$/);
 

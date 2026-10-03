@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const displayFont = Archivo({
@@ -25,12 +26,30 @@ const monoFont = JetBrains_Mono({
   fallback: ["monospace"],
 });
 
+const description = "The ultimate platform to organize and manage cricket leagues, with live player auctions included.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     template: "%s | Crichere",
     default: "Crichere -- Build. Auction. Compete.",
   },
-  description: "The ultimate platform to organize and manage cricket leagues, with live player auctions included.",
+  description,
+  alternates: { canonical: "/" },
+  // Pages that set their own `openGraph` replace this object wholesale (Next merges metadata
+  // shallowly), so league pages repeat siteName/type themselves -- see app/leagues/[id]/page.tsx.
+  openGraph: {
+    siteName: SITE_NAME,
+    type: "website",
+    url: "/",
+    title: "Crichere -- Build. Auction. Compete.",
+    description,
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [DEFAULT_OG_IMAGE.url],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

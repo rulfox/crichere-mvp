@@ -42,14 +42,29 @@
 
             <!--
                 Deep link into a specific league (Phase 3, see docs/PHASE3.md's Decisions Made):
-                crichere://leagues/{id}. Custom URI scheme, not a domain-based App Link, since no
-                real domain/hosting exists yet; android:autoVerify is not applicable here.
+                crichere://leagues/{id}. No longer what Share sends (see below), but notification
+                taps still open the app through it.
             -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="crichere" android:host="leagues" />
+            </intent-filter>
+
+            <!--
+                Android App Link for the shared watch link (docs/PHASE13.md):
+                https://crichere.com/leagues/{id} opens the league here when the app is installed,
+                and the web viewer otherwise. autoVerify checks
+                https://crichere.com/.well-known/assetlinks.json against this build's signing key.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="crichere.com" />
+                <data android:pathPrefix="/leagues/" />
             </intent-filter>
         </activity>
 

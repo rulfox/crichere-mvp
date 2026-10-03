@@ -41,6 +41,32 @@ export const leagues = {
   "league-unsold": { ...baseLeague, id: "league-unsold", name: "Unsold Moment League" },
   "league-flaky": { ...baseLeague, id: "league-flaky", name: "Flaky Connection League" },
   "league-completed": { ...baseLeague, id: "league-completed", name: "Completed League" },
+  // Share-card (opengraph-image) states, docs/PHASE13.md -- no auction stream, only metadata + image.
+  "league-share-logo": {
+    ...baseLeague,
+    id: "league-share-logo",
+    name: "Kochi Super Sixes",
+    city: "Kochi",
+    state: "Kerala",
+    description: "Six teams, one auction night.",
+    logoUrl: "http://localhost:4310/mock-assets/logo.png",
+  },
+  "league-share-svg-logo": {
+    ...baseLeague,
+    id: "league-share-svg-logo",
+    name: "Thar Strikers",
+    city: "Jodhpur",
+    state: "Rajasthan",
+    logoUrl: "http://localhost:4310/mock-assets/logo.svg",
+  },
+  "league-share-long": {
+    ...baseLeague,
+    id: "league-share-long",
+    name: "Sahyadri Amateur Inter-Society Tennis-Ball Cricket Premier League and Auction Night Series 2027",
+    city: "Thane",
+    state: "Maharashtra",
+    auctionScheduledAt: "2099-01-02T12:30:00Z",
+  },
 };
 
 const idle = {

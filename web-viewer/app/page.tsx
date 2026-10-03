@@ -299,7 +299,7 @@ export default async function Landing() {
             <div className={`${styles.vignette} ${styles.vignetteInline}`} style={{ gap: 10 }}>
               <span className={styles.linkPill}>
                 <Icon name="link" size={16} style={{ color: "var(--ink-muted)" }} />
-                crichere.app/leagues/spl-26
+                crichere.com/leagues/spl-26
               </span>
               {liveHref && (
                 <Link href={liveHref} className={styles.openPill}>

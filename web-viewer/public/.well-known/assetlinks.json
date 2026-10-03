@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.crichere.app",
+      "sha256_cert_fingerprints": [
+        "86:37:16:DF:82:52:0E:0B:77:09:C4:09:1E:BB:B1:43:28:5C:BC:EB:97:EC:E1:80:69:AF:CB:69:66:B9:9D:E6"
+      ]
+    }
+  }
+]

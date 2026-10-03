@@ -33,6 +33,7 @@ export type LeaguePlayer = {
 export type League = {
   id: string;
   name: string;
+  description?: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
   country: string;
