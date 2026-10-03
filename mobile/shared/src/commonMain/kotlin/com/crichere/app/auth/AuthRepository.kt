@@ -13,6 +13,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 
 /** Keys [KtorAuthRepository] persists tokens under -- shared with `di/AppModule.kt`'s `AuthTokenProvider` wiring. */
@@ -40,11 +41,20 @@ class SessionRefreshFailedException(message: String) : Exception(message)
  * `HttpClient` for the backend leg (`POST /api/v1/auth/session|refresh|logout`).
  */
 interface AuthRepository {
-    /** Wraps [PhoneAuthClient.sendVerificationCode]. */
+    /**
+     * Sends (or resends) an OTP through whichever provider the backend currently selects
+     * (`GET /auth/config`; Firebase when that can't be reached) -- see docs/PHASE12.md.
+     * A fresh send (null [resendToken]) re-reads the provider; a resend sticks with the provider
+     * its code was sent through.
+     */
     suspend fun sendOtp(phoneNumber: String, resendToken: Any? = null): Result<PhoneVerificationHandle>
 
-    /** Wraps [PhoneAuthClient.verifyCode]. */
-    suspend fun verifyOtp(verificationId: String, code: String): Result<String>
+    /**
+     * Checks the code with the provider [sendOtp] used. Firebase yields an ID token the caller
+     * must still [exchangeSession]; the backend-driven provider yields an already-issued session
+     * whose tokens this method has persisted -- see [OtpVerification].
+     */
+    suspend fun verifyOtp(verificationId: String, code: String): Result<OtpVerification>
 
     /**
      * Exchanges a real Firebase ID token for a Crichere session, persisting the returned tokens
@@ -116,17 +126,72 @@ internal class KtorAuthRepository(
      */
     private val deviceTokenProvider: DeviceTokenProvider = NoopDeviceTokenProvider,
     private val deviceTokenRepository: DeviceTokenRepository = NoopDeviceTokenRepository,
+    /**
+     * The backend-driven (MSG91) OTP endpoints; see docs/PHASE12.md. Firebase's [phoneAuthClient]
+     * stays fully wired alongside it. `null` (the default) means Firebase only -- no provider
+     * lookup and no extra network call -- which is what every pre-existing caller wants;
+     * `di/AppModule.kt` passes a real client.
+     */
+    private val backendOtpClient: BackendOtpClient? = null,
 ) : AuthRepository {
+
+    /**
+     * Provider the in-flight OTP was sent through, so a resend and the verify that follows use the
+     * same one even if the backend's config is flipped mid-flow. Set by every fresh send.
+     */
+    private var activeProvider: OtpProvider = OtpProvider.FIREBASE
 
     private fun clearCachedBearerToken() {
         authenticatedHttpClientProvider().authProvider<BearerAuthProvider>()?.clearToken()
     }
 
-    override suspend fun sendOtp(phoneNumber: String, resendToken: Any?): Result<PhoneVerificationHandle> =
-        phoneAuthClient.sendVerificationCode(phoneNumber, resendToken)
+    override suspend fun sendOtp(phoneNumber: String, resendToken: Any?): Result<PhoneVerificationHandle> {
+        val backend = backendOtpClient
+        if (backend == null) {
+            activeProvider = OtpProvider.FIREBASE
+            return phoneAuthClient.sendVerificationCode(phoneNumber, resendToken)
+        }
+        // A resend of a backend-driven code goes to that challenge, whatever the config says now.
+        if (resendToken is BackendResendToken) {
+            activeProvider = OtpProvider.MSG91
+            return backend.resend(resendToken.challengeId)
+        }
+        // A fresh send picks the provider; a Firebase resend (platform token or null) stays on Firebase.
+        val provider = if (resendToken == null) {
+            backend.fetchProvider() ?: OtpProvider.FIREBASE
+        } else {
+            OtpProvider.FIREBASE
+        }
+        activeProvider = provider
+        return when (provider) {
+            OtpProvider.MSG91 -> backend.send(phoneNumber)
+            OtpProvider.FIREBASE -> phoneAuthClient.sendVerificationCode(phoneNumber, resendToken)
+        }
+    }
 
-    override suspend fun verifyOtp(verificationId: String, code: String): Result<String> =
-        phoneAuthClient.verifyCode(verificationId, code)
+    override suspend fun verifyOtp(verificationId: String, code: String): Result<OtpVerification> {
+        val backend = backendOtpClient
+        return when {
+            activeProvider == OtpProvider.FIREBASE || backend == null ->
+                phoneAuthClient.verifyCode(verificationId, code).map { OtpVerification.FirebaseIdToken(it) }
+            else ->
+                backend.verify(verificationId, code).fold(
+                    onSuccess = { session ->
+                        try {
+                            onSessionEstablished(session)
+                            Result.success(OtpVerification.BackendSession(session))
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            // A local storage/Keystore failure: same flat message the Firebase path
+                            // shows for a failed exchange; the cause is not actionable for the user.
+                            Result.failure(OtpRequestFailedException(OtpVerifyViewModel.SIGN_IN_FAILED_MESSAGE))
+                        }
+                    },
+                    onFailure = { Result.failure(it) },
+                )
+        }
+    }
 
     override suspend fun exchangeSession(idToken: String): AuthResult {
         val response = authHttpClient.post("/api/v1/auth/session") {
@@ -137,6 +202,12 @@ internal class KtorAuthRepository(
             throw SessionExchangeFailedException("Session exchange failed with status ${response.status}")
         }
         val result: AuthResult = response.body()
+        onSessionEstablished(result)
+        return result
+    }
+
+    /** Everything that follows a fresh sign-in, whichever provider proved the phone. */
+    private suspend fun onSessionEstablished(result: AuthResult) {
         persistTokens(result)
         // A fresh sign-in -- possibly as a different user than whoever was last signed in on this
         // same app process -- so any bearer token Ktor's Auth plugin already has cached must be
@@ -145,7 +216,6 @@ internal class KtorAuthRepository(
         // Best-effort, never blocks sign-in on failure -- see docs/PHASE8.md. `null` on iOS (no
         // FCM wired yet) is a normal, expected outcome, not an error.
         deviceTokenProvider.currentToken()?.let { deviceTokenRepository.register(it, "ANDROID") }
-        return result
     }
 
     override suspend fun refresh(): AuthResult? {

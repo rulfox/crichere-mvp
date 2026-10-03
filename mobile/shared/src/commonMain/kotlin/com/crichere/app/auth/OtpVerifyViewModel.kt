@@ -83,7 +83,17 @@ class OtpVerifyViewModel(
             _state.update { it.copy(isVerifying = true, errorMessage = null) }
 
             authRepository.verifyOtp(verificationId, currentState.code)
-                .onSuccess { idToken -> completeSignIn(idToken) }
+                .onSuccess { verification ->
+                    when (verification) {
+                        // Firebase: still need to trade the ID token for a Crichere session.
+                        is OtpVerification.FirebaseIdToken -> completeSignIn(verification.idToken)
+                        // Backend-driven OTP: the session was issued (and persisted) by verify itself.
+                        is OtpVerification.BackendSession -> {
+                            _state.update { it.copy(isVerifying = false, errorMessage = null) }
+                            navigateAfterSignIn(verification.session)
+                        }
+                    }
+                }
                 .onFailure { throwable -> handleVerifyFailure(throwable) }
         }
     }
@@ -97,10 +107,15 @@ class OtpVerifyViewModel(
      * back to Phone Entry the way 5 genuinely wrong digits does.
      */
     private suspend fun handleVerifyFailure(throwable: Throwable) {
-        if (throwable is InvalidOtpCodeException) {
-            handleWrongCode()
-        } else {
-            _state.update {
+        when (throwable) {
+            is InvalidOtpCodeException -> handleWrongCode(serverAttemptsRemaining = throwable.attemptsRemaining)
+            // The backend says the code is dead (expired / used / out of attempts). No retry here
+            // can succeed, so go back to Phone Entry for a fresh code.
+            is OtpExpiredException -> {
+                _state.update { it.copy(isVerifying = false, errorMessage = throwable.message) }
+                _navigationEvents.send(AuthNavigationEvent.NavigateToPhoneEntry)
+            }
+            else -> _state.update {
                 it.copy(
                     isVerifying = false,
                     errorMessage = throwable.message ?: "Couldn't verify the code right now. Please try again.",
@@ -114,13 +129,7 @@ class OtpVerifyViewModel(
         sessionResult
             .onSuccess { authResult ->
                 _state.update { it.copy(isVerifying = false, errorMessage = null) }
-                _navigationEvents.send(
-                    if (authResult.profileComplete) {
-                        AuthNavigationEvent.NavigateToOwnProfile
-                    } else {
-                        AuthNavigationEvent.NavigateToProfileSetup
-                    },
-                )
+                navigateAfterSignIn(authResult)
             }
             // Never surface the cause: it's a backend status or a local storage/Keystore exception,
             // neither of which the user can act on beyond retrying.
@@ -129,8 +138,23 @@ class OtpVerifyViewModel(
             }
     }
 
-    private suspend fun handleWrongCode() {
-        val attemptsRemaining = (_state.value.attemptsRemaining - 1).coerceAtLeast(0)
+    private suspend fun navigateAfterSignIn(authResult: AuthResult) {
+        _navigationEvents.send(
+            if (authResult.profileComplete) {
+                AuthNavigationEvent.NavigateToOwnProfile
+            } else {
+                AuthNavigationEvent.NavigateToProfileSetup
+            },
+        )
+    }
+
+    /**
+     * @param serverAttemptsRemaining the backend's own count (backend-driven OTP), which wins over
+     *   the local one: the server is what actually enforces the cap. `null` for Firebase, where
+     *   this view model counts.
+     */
+    private suspend fun handleWrongCode(serverAttemptsRemaining: Int? = null) {
+        val attemptsRemaining = (serverAttemptsRemaining ?: (_state.value.attemptsRemaining - 1)).coerceAtLeast(0)
 
         if (attemptsRemaining <= 0) {
             _state.update {

@@ -62,7 +62,7 @@ class AuthRepositoryTest {
 
         val result = repository.verifyOtp("verification-id", "123456")
 
-        assertEquals("fake-firebase-id-token", result.getOrThrow())
+        assertEquals(OtpVerification.FirebaseIdToken("fake-firebase-id-token"), result.getOrThrow())
         assertEquals(listOf("123456"), phoneAuthClient.verifiedCodes)
     }
 

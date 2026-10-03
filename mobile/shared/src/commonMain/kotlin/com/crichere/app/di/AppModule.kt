@@ -3,6 +3,7 @@ package com.crichere.app.di
 import com.crichere.app.auth.AppStartViewModel
 import com.crichere.app.auth.AuthRepository
 import com.crichere.app.auth.AuthTokenProvider
+import com.crichere.app.auth.BackendOtpClient
 import com.crichere.app.auth.KtorAuthRepository
 import com.crichere.app.auth.OtpVerifyViewModel
 import com.crichere.app.auth.PhoneEntryViewModel
@@ -94,6 +95,9 @@ val sharedModule: Module = module {
             authenticatedHttpClientProvider = { get<HttpClient>() },
             deviceTokenProvider = get(),
             deviceTokenRepository = get(),
+            // Backend-driven OTP (docs/PHASE12.md). Which provider is live is the backend's call
+            // (GET /auth/config); Firebase stays wired and is the fallback.
+            backendOtpClient = BackendOtpClient(get(AUTH_HTTP_CLIENT)),
         )
     }
 

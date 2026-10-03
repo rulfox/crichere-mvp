@@ -43,7 +43,15 @@ interface PhoneAuthClient {
  * burn one of the OTP Verify screen's 5 wrong-code attempts; see [PhoneAuthClient.verifyCode]'s
  * doc and `OtpVerifyViewModel.handleVerifyFailure`.
  */
-class InvalidOtpCodeException(message: String = "The code you entered is incorrect.") : Exception(message)
+class InvalidOtpCodeException(
+    message: String = "The code you entered is incorrect.",
+    /**
+     * Attempts the *server* says are left, when the backend counts them (the MSG91 flow). `null`
+     * for Firebase, where the view model keeps its own count. When present it wins: the server's
+     * number is the enforced one.
+     */
+    val attemptsRemaining: Int? = null,
+) : Exception(message)
 
 /**
  * What a platform SDK hands back after successfully sending (or resending) an OTP.

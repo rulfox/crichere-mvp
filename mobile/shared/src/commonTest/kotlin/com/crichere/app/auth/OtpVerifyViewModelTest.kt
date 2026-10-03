@@ -235,7 +235,7 @@ class OtpVerifyViewModelTest {
     @Test
     fun `a failure after a correct code shows a friendly message, never the raw cause`() = viewModelTest {
         val repository = FakeAuthRepository().apply {
-            nextVerifyOtpResult = Result.success("firebase-id-token")
+            nextVerifyOtpResult = Result.success(OtpVerification.FirebaseIdToken("firebase-id-token"))
             exchangeSessionError = IllegalStateException("Keystore cannot load the key with ID: crichere_secure_storage_master_key")
         }
         val viewModel = OtpVerifyViewModel("+919876543210", "initial-verification-id", null, repository)

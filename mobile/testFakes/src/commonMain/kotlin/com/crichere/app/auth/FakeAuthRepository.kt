@@ -6,7 +6,7 @@ class FakeAuthRepository(
 ) : AuthRepository {
 
     var nextSendOtpResult: Result<PhoneVerificationHandle> = Result.failure(IllegalStateException("nextSendOtpResult not stubbed"))
-    var nextVerifyOtpResult: Result<String> = Result.failure(IllegalStateException("nextVerifyOtpResult not stubbed"))
+    var nextVerifyOtpResult: Result<OtpVerification> = Result.failure(IllegalStateException("nextVerifyOtpResult not stubbed"))
     var nextExchangeSessionResult: AuthResult? = null
     var exchangeSessionError: Throwable? = null
     var nextRefreshResult: AuthResult? = null
@@ -22,7 +22,7 @@ class FakeAuthRepository(
         return nextSendOtpResult
     }
 
-    override suspend fun verifyOtp(verificationId: String, code: String): Result<String> {
+    override suspend fun verifyOtp(verificationId: String, code: String): Result<OtpVerification> {
         verifyOtpCalls += verificationId to code
         return nextVerifyOtpResult
     }

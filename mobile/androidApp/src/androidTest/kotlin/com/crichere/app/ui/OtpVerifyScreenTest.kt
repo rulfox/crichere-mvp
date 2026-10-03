@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.crichere.app.auth.AuthResult
 import com.crichere.app.auth.FakeAuthRepository
+import com.crichere.app.auth.OtpVerification
 import com.crichere.app.auth.OtpVerifyViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -20,7 +21,7 @@ class OtpVerifyScreenTest {
     @Test
     fun enteringTheCorrectSixDigitCodeExchangesASession() {
         val authRepository = FakeAuthRepository().apply {
-            nextVerifyOtpResult = Result.success("firebase-id-token")
+            nextVerifyOtpResult = Result.success(OtpVerification.FirebaseIdToken("firebase-id-token"))
             nextExchangeSessionResult = AuthResult(
                 userId = "user-1",
                 accessToken = "access-1",
