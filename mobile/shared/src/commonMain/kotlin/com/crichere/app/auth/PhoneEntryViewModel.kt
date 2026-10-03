@@ -12,7 +12,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class PhoneEntryState(
+    /** What the user typed: the *national* number only (digits), never the country code. */
     val phoneNumber: String = "",
+    /** Whose national number [phoneNumber] is. India until the country-code picker exists. */
+    val country: Country = Countries.default,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -43,19 +46,19 @@ class PhoneEntryViewModel(
     private val _navigationEvents = Channel<PhoneEntryNavigationEvent>(Channel.BUFFERED)
     val navigationEvents: Flow<PhoneEntryNavigationEvent> = _navigationEvents.receiveAsFlow()
 
+    /** Keeps digits only and strips a pasted `+91`/`91`/`0` prefix -- see [PhoneNumberInput.sanitize]. */
     fun onPhoneNumberChanged(value: String) {
-        _state.update { it.copy(phoneNumber = value, errorMessage = null) }
+        _state.update { it.copy(phoneNumber = PhoneNumberInput.sanitize(it.country, value), errorMessage = null) }
     }
 
     fun requestCode() {
         val currentState = _state.value
         if (currentState.isSubmitting) return
 
-        val phoneNumber = currentState.phoneNumber
-        if (!isPlausiblePhoneNumber(phoneNumber)) {
-            _state.update {
-                it.copy(errorMessage = "Enter a valid phone number with country code, e.g. +919876543210.")
-            }
+        // Everything past this point (Firebase, MSG91, OTP Verify, resend) works in E.164.
+        val phoneNumber = PhoneNumberInput.toE164(currentState.country, currentState.phoneNumber)
+        if (phoneNumber == null) {
+            _state.update { it.copy(errorMessage = "Enter a valid 10-digit mobile number.") }
             return
         }
 
@@ -83,16 +86,4 @@ class PhoneEntryViewModel(
         }
     }
 
-    /** A cheap, client-side plausibility check (E.164-shaped) so obviously-bad input never reaches the SDK call. */
-    private fun isPlausiblePhoneNumber(phoneNumber: String): Boolean {
-        if (!phoneNumber.startsWith("+")) return false
-        val digits = phoneNumber.drop(1)
-        if (digits.isEmpty() || !digits.all { it.isDigit() }) return false
-        return phoneNumber.length in MIN_LENGTH..MAX_LENGTH
-    }
-
-    private companion object {
-        const val MIN_LENGTH = 8
-        const val MAX_LENGTH = 16
-    }
 }

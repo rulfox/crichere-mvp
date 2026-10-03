@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crichere.app.R
 import com.crichere.app.auth.OtpVerifyState
 import com.crichere.app.auth.OtpVerifyViewModel
+import com.crichere.app.auth.PhoneNumberInput
 import com.crichere.app.ui.theme.ArchivoFamily
 import com.crichere.app.ui.theme.CrichereErrorBody
 import com.crichere.app.ui.theme.CrichereErrorField
@@ -177,7 +178,7 @@ private fun SentToText(phoneNumber: String, showEdit: Boolean, onEdit: () -> Uni
     val colors = MaterialTheme.colorScheme
     val text = buildAnnotatedString {
         append("We sent a 6-digit code by SMS to ")
-        withStyle(SpanStyle(fontFamily = JetBrainsMonoFamily, color = colors.onBackground)) { append(phoneNumber) }
+        withStyle(SpanStyle(fontFamily = JetBrainsMonoFamily, color = colors.onBackground)) { append(PhoneNumberInput.displayNational(phoneNumber)) }
         append(".")
         if (showEdit) {
             append(" ")
@@ -321,17 +322,9 @@ private fun ResentSnackbar(phoneNumber: String) {
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(
-            text = "New code sent to ${formatIndianNumber(phoneNumber)}",
+            text = "New code sent to ${PhoneNumberInput.displayNational(phoneNumber)}",
             style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.2.sp),
             color = MaterialTheme.colorScheme.onPrimary,
         )
     }
 }
-
-/** "+919876543210" -> "+91 98765 43210"; anything else is shown as typed. */
-private fun formatIndianNumber(number: String): String =
-    if (number.length == 13 && number.startsWith("+91") && number.drop(1).all(Char::isDigit)) {
-        "+91 ${number.substring(3, 8)} ${number.substring(8)}"
-    } else {
-        number
-    }

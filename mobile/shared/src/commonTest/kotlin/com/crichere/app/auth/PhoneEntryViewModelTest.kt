@@ -30,7 +30,7 @@ class PhoneEntryViewModelTest {
         val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
 
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.requestCode()
         advanceUntilIdle()
 
@@ -64,7 +64,7 @@ class PhoneEntryViewModelTest {
         val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
 
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.requestCode()
         advanceUntilIdle()
 
@@ -79,13 +79,54 @@ class PhoneEntryViewModelTest {
         }
         val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.requestCode()
         advanceUntilIdle()
         assertTrue(viewModel.state.value.errorMessage != null)
 
-        viewModel.onPhoneNumberChanged("+919876543211")
+        viewModel.onPhoneNumberChanged("9876543211")
 
         assertNull(viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun `the user types only the national number and the country code is added when sending`() = viewModelTest {
+        val phoneAuthClient = FakePhoneAuthClient()
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
+        val viewModel = PhoneEntryViewModel(repository)
+
+        viewModel.onPhoneNumberChanged("98765 43210")
+        assertEquals("9876543210", viewModel.state.value.phoneNumber, "the field holds the national digits only")
+        viewModel.requestCode()
+        advanceUntilIdle()
+
+        assertEquals(listOf("+919876543210"), phoneAuthClient.sentPhoneNumbers, "the provider is always given E.164")
+        val event = viewModel.navigationEvents.first() as PhoneEntryNavigationEvent.NavigateToOtpVerify
+        assertEquals("+919876543210", event.phoneNumber, "OTP Verify and resend keep working in E.164")
+    }
+
+    @Test
+    fun `a pasted international number is cleaned to the national number`() = viewModelTest {
+        val repository = KtorAuthRepository(unusedHttpClient(), FakePhoneAuthClient(), FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
+        val viewModel = PhoneEntryViewModel(repository)
+
+        viewModel.onPhoneNumberChanged("+91 98765 43210")
+
+        assertEquals("9876543210", viewModel.state.value.phoneNumber)
+    }
+
+    @Test
+    fun `a number that is not a valid 10-digit mobile gets a clear message and never reaches the provider`() = viewModelTest {
+        val phoneAuthClient = FakePhoneAuthClient()
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
+        val viewModel = PhoneEntryViewModel(repository)
+
+        listOf("987654321", "5876543210", "").forEach { typed ->
+            viewModel.onPhoneNumberChanged(typed)
+            viewModel.requestCode()
+            advanceUntilIdle()
+            assertEquals("Enter a valid 10-digit mobile number.", viewModel.state.value.errorMessage, "typed: '$typed'")
+        }
+        assertEquals(0, phoneAuthClient.sendCallCount)
     }
 }

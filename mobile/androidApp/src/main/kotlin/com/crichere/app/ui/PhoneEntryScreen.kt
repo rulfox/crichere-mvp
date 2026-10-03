@@ -240,7 +240,7 @@ private fun PhoneField(
                 Box(modifier = Modifier.weight(1f)) {
                     if (state.phoneNumber.isEmpty()) {
                         Text(
-                            text = "Phone number (e.g. +919876543210)",
+                            text = "10-digit mobile number",
                             style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 15.sp),
                             color = CrichereInkSubtle,
                         )

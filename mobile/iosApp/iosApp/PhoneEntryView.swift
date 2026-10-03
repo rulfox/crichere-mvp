@@ -47,7 +47,7 @@ struct PhoneEntryView: View {
                     .foregroundColor(.secondary)
             }
             Section {
-                TextField("Phone number (e.g. +919876543210)", text: Binding(
+                TextField("10-digit mobile number", text: Binding(
                     get: { wrapper.state.phoneNumber },
                     set: { wrapper.onPhoneNumberChanged($0) }
                 ))

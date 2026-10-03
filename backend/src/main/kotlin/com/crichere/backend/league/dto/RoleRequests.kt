@@ -2,6 +2,7 @@ package com.crichere.backend.league.dto
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Size
 import java.util.UUID
 
 // [LeagueRole] has exactly one value (CO_ORGANIZER) this phase, so the grant request doesn't ask
@@ -12,6 +13,7 @@ import java.util.UUID
 /** Body of `POST /leagues/{id}/roles/lookup`. */
 data class PhoneNumberLookupRequest(
     @field:NotBlank
+    @field:Size(max = 32)
     val phoneNumber: String?,
 )
 

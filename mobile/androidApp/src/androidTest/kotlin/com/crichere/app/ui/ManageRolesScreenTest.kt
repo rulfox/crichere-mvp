@@ -42,7 +42,7 @@ class ManageRolesScreenTest {
         composeRule.setContent { ManageRolesRoute(leagueId = "league-1", onBack = {}, viewModel = viewModel) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Phone number").performTextInput("+919876500000")
+        composeRule.onNodeWithText("Phone number").performTextInput("9876500000")
         composeRule.onNodeWithText("Look up").performClick()
         composeRule.waitForIdle()
 
@@ -61,7 +61,7 @@ class ManageRolesScreenTest {
         composeRule.setContent { ManageRolesRoute(leagueId = "league-1", onBack = {}, viewModel = viewModel) }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Phone number").performTextInput("+919876500000")
+        composeRule.onNodeWithText("Phone number").performTextInput("9876500000")
         composeRule.onNodeWithText("Look up").performClick()
         composeRule.waitForIdle()
 

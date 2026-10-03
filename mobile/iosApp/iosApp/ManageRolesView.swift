@@ -53,7 +53,7 @@ struct ManageRolesView: View {
                     Section("Grant access") {
                         Text("A co-organizer can do everything you can do for this league.")
                             .font(.footnote)
-                        TextField("Phone number", text: Binding(get: { wrapper.state.phoneNumberInput }, set: { wrapper.onPhoneNumberChanged($0) }))
+                        TextField("10-digit mobile number", text: Binding(get: { wrapper.state.phoneNumberInput }, set: { wrapper.onPhoneNumberChanged($0) }))
                         Button(wrapper.state.isLookingUp ? "Looking up..." : "Look up") { wrapper.lookup() }
                             .disabled(wrapper.state.isLookingUp || wrapper.state.phoneNumberInput.isEmpty)
 

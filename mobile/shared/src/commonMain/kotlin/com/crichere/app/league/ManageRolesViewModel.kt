@@ -2,6 +2,8 @@ package com.crichere.app.league
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crichere.app.auth.Countries
+import com.crichere.app.auth.PhoneNumberInput
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,12 +61,27 @@ class ManageRolesViewModel(
         }
     }
 
+    /** The field holds the *national* number only; digits are kept and a pasted `+91`/`91`/`0` prefix is stripped. */
     fun onPhoneNumberChanged(value: String) =
-        _state.update { it.copy(phoneNumberInput = value, lookupResult = null, lookupError = null, grantError = null) }
+        _state.update {
+            it.copy(
+                phoneNumberInput = PhoneNumberInput.sanitize(Countries.default, value),
+                lookupResult = null,
+                lookupError = null,
+                grantError = null,
+            )
+        }
 
     fun lookup() {
-        val phoneNumber = _state.value.phoneNumberInput.trim()
-        if (phoneNumber.isEmpty() || _state.value.isLookingUp) return
+        val input = _state.value.phoneNumberInput
+        if (input.isEmpty() || _state.value.isLookingUp) return
+
+        // The backend matches accounts on the full E.164 number, so add the country code here.
+        val phoneNumber = PhoneNumberInput.toE164(Countries.default, input)
+        if (phoneNumber == null) {
+            _state.update { it.copy(lookupResult = null, lookupError = "Enter a valid 10-digit mobile number.", grantError = null) }
+            return
+        }
 
         _state.update { it.copy(isLookingUp = true, lookupResult = null, lookupError = null, grantError = null) }
         viewModelScope.launch {

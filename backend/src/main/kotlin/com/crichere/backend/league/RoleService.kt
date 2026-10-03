@@ -1,6 +1,7 @@
 package com.crichere.backend.league
 
 import com.crichere.backend.auth.PhoneCryptoService
+import com.crichere.backend.auth.PhoneNumberNormalizer
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
@@ -53,7 +54,12 @@ class RoleService(
             throw ContentRateLimitExceededException(retryAfter)
         }
 
-        val hash = phoneCryptoService.hmacLookupHash(phoneNumber)
+        // Accounts are keyed on the HMAC of the canonical E.164 number (`+91XXXXXXXXXX`), so a number
+        // typed any other way ("98765 43210", "09876543210") must be canonicalized first or it would
+        // silently miss every existing user. Anything that is not an Indian mobile cannot belong to
+        // an account and gets the same generic "not found" as an unregistered number.
+        val canonical = PhoneNumberNormalizer.toIndianE164(phoneNumber) ?: throw UserNotFoundException()
+        val hash = phoneCryptoService.hmacLookupHash(canonical)
         val user = userRepository.findByPhoneLookupHash(hash) ?: throw UserNotFoundException()
         val name = profileRepository.findById(requireNotNull(user.id)).orElse(null)?.name
         return RoleLookupResponse(userId = requireNotNull(user.id), name = name)

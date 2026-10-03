@@ -50,6 +50,21 @@ class OtpVerifyScreenTest {
     }
 
     @Test
+    fun theNumberIsShownWithoutTheCountryCode() {
+        val viewModel = OtpVerifyViewModel(
+            phoneNumber = "+919876543210",
+            initialVerificationId = "verification-1",
+            initialResendToken = null,
+            authRepository = FakeAuthRepository(),
+        )
+
+        composeRule.setContent { OtpVerifyScreen(viewModel, phoneNumber = "+919876543210") }
+
+        composeRule.onNodeWithText("98765 43210", substring = true).assertExists()
+        composeRule.onNodeWithText("+91", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun verifyStaysDisabledUntilSixDigitsAreEntered() {
         val authRepository = FakeAuthRepository()
         val viewModel = OtpVerifyViewModel(

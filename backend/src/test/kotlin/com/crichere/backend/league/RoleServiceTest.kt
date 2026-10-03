@@ -114,6 +114,29 @@ class RoleServiceTest {
     }
 
     @Test
+    fun `lookup canonicalizes however the number was typed, so all spellings hit the same account`() {
+        val targetId = UUID.randomUUID()
+        every { phoneCryptoService.hmacLookupHash("+919876543210") } returns "hash"
+        every { userRepository.findByPhoneLookupHash("hash") } returns UserEntity(id = targetId, phoneLookupHash = "hash", phoneEncrypted = "enc")
+        every { profileRepository.findById(targetId) } returns Optional.empty()
+
+        listOf("9876543210", "98765 43210", "09876543210", "+91 98765 43210", "919876543210").forEach { typed ->
+            givenLeague()
+            assertEquals(targetId, service.lookup(leagueId, organizerId, typed).userId, "typed as: $typed")
+        }
+    }
+
+    @Test
+    fun `lookup of a number that is not an Indian mobile is a plain not-found and never reaches the hash`() {
+        givenLeague()
+
+        listOf("+14155552671", "5876543210", "12345", "abc").forEach { typed ->
+            assertFailsWith<UserNotFoundException> { service.lookup(leagueId, organizerId, typed) }
+        }
+        io.mockk.verify(exactly = 0) { phoneCryptoService.hmacLookupHash(any()) }
+    }
+
+    @Test
     fun `grant rejects a target who is already the organizer`() {
         givenLeague()
         assertFailsWith<CannotGrantRoleToOrganizerException> { service.grant(leagueId, organizerId, organizerId) }

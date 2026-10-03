@@ -44,7 +44,7 @@ class ManageRolesViewModelTest {
         viewModel.retry()
         advanceUntilIdle()
 
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.lookup()
         advanceUntilIdle()
 
@@ -61,7 +61,7 @@ class ManageRolesViewModelTest {
         viewModel.retry()
         advanceUntilIdle()
 
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.lookup()
         advanceUntilIdle()
 
@@ -80,7 +80,7 @@ class ManageRolesViewModelTest {
         val viewModel = ManageRolesViewModel("l1", leagueRepository, roleRepository)
         viewModel.retry()
         advanceUntilIdle()
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.lookup()
         advanceUntilIdle()
 
@@ -114,7 +114,7 @@ class ManageRolesViewModelTest {
         val viewModel = ManageRolesViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(league)), roleRepository)
         viewModel.retry()
         advanceUntilIdle()
-        viewModel.onPhoneNumberChanged("+919876543210")
+        viewModel.onPhoneNumberChanged("9876543210")
         viewModel.lookup()
         advanceUntilIdle()
         return viewModel
@@ -139,7 +139,7 @@ class ManageRolesViewModelTest {
     fun `editing the number clears the found user and any lookup or grant error`() = viewModelTest {
         val viewModel = lookedUp(FakeRoleRepository().apply { nextLookupResult = null })
 
-        viewModel.onPhoneNumberChanged("+91987654321")
+        viewModel.onPhoneNumberChanged("987654321")
 
         assertNull(viewModel.state.value.lookupError)
         assertNull(viewModel.state.value.grantError)
@@ -156,6 +156,31 @@ class ManageRolesViewModelTest {
         viewModel.lookup()
         advanceUntilIdle()
 
+        assertTrue(roleRepository.lookupCalls.isEmpty())
+    }
+
+    @Test
+    fun `the field holds only the national number, and a pasted international number is cleaned`() = viewModelTest {
+        val viewModel = ManageRolesViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), FakeRoleRepository())
+
+        viewModel.onPhoneNumberChanged("+91 98765 43210")
+
+        assertEquals("9876543210", viewModel.state.value.phoneNumberInput)
+    }
+
+    @Test
+    fun `a number that is not a valid 10-digit mobile gets an inline message and is never looked up`() = viewModelTest {
+        val roleRepository = FakeRoleRepository()
+        val viewModel = ManageRolesViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), roleRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.onPhoneNumberChanged("987654321")
+        viewModel.lookup()
+        advanceUntilIdle()
+
+        assertEquals("Enter a valid 10-digit mobile number.", viewModel.state.value.lookupError)
+        assertFalse(viewModel.state.value.isLookingUp)
         assertTrue(roleRepository.lookupCalls.isEmpty())
     }
 

@@ -100,6 +100,22 @@ class RoleFlowIntegrationTest : AbstractWebIntegrationTest {
     )
 
     @Test
+    fun `lookup finds the same account however the number is typed`() {
+        val leagueId = createLeague(organizerToken)
+        val (_, delegatePhone) = signInNewUser()
+        val national = delegatePhone.removePrefix("+91")
+        val expectedUserId = authedPost(organizerToken, "/api/v1/leagues/$leagueId/roles/lookup", mapOf("phoneNumber" to delegatePhone))
+            .andExpect(status().isOk)
+            .andReturn().body()["userId"] as String
+
+        listOf(national, "${national.take(5)} ${national.drop(5)}", "0$national").forEach { typed ->
+            authedPost(organizerToken, "/api/v1/leagues/$leagueId/roles/lookup", mapOf("phoneNumber" to typed))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.userId").value(expectedUserId))
+        }
+    }
+
+    @Test
     fun `lookup 404s for a phone number with no registered account`() {
         val leagueId = createLeague(organizerToken)
         authedPost(organizerToken, "/api/v1/leagues/$leagueId/roles/lookup", mapOf("phoneNumber" to uniquePhone()))

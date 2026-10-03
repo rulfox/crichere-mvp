@@ -28,6 +28,11 @@ from `GET /api/v1/auth/config`, so switching needs a config change, not an app r
 `/auth/session` and all Firebase code (backend verifier, Admin SDK, mobile Phone Auth clients,
 iOS bridge, `ReusingPhoneAuthClient`, dependencies) are **untouched and always available**.
 
+**Phone input (2026-10-03):** users no longer type "+91"; the app adds it and always sends **E.164**
+(`+91XXXXXXXXXX`) to the backend, to Firebase and to `/auth/otp/send`, so the account hash is unchanged.
+`PhoneNumberNormalizer` also accepts bare 10-digit input, and `RoleService.lookup` now canonicalizes
+through it (it previously hashed the number as typed). See PHASE1 decisions.
+
 ## 2. Decisions made
 
 | Decision | Why |

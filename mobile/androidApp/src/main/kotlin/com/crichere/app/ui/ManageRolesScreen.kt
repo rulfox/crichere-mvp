@@ -190,6 +190,7 @@ private fun LookupRow(state: ManageRolesState, onPhoneNumberChanged: (String) ->
             value = state.phoneNumberInput,
             onValueChange = onPhoneNumberChanged,
             label = "Phone number",
+            placeholder = "10-digit mobile number",
             look = FieldVariant.Form,
             error = state.lookupError,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Search),

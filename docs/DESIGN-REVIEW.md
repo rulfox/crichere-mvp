@@ -579,6 +579,15 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
+- [ ] **Country-code picker (future scope)** (2026-10-03). Phone entry and the co-organizer lookup now take
+  only the national number with +91 added silently. A picker needs: more `Country` entries
+  (`PhoneNumberInput.kt`), a picker UI on both screens, per-country display on the OTP screen, and the
+  backend `PhoneNumberNormalizer` (India-only by policy) generalised.
+- [ ] **10-digit phone input not verified on-device / iOS** (2026-10-03). Android unit + compile only until
+  the phone run; the Swift hint changes (`PhoneEntryView`, `ManageRolesView`) are unbuilt; instrumented
+  tests (`PhoneEntryScreenTest`, `ManageRolesScreenTest`, `OtpVerifyScreenTest`) updated but not run
+  (running them uninstalls the app and wipes the phone's session); `RoleFlowIntegrationTest` needs Docker.
+
 - [ ] **MSG91 OTP not verified against the real service** (2026-10-03, [PHASE12.md](PHASE12.md) §6).
   Phase 0 spike (real account): widget API shapes, no-DLT delivery on Jio/Airtel/Vi, price,
   production permission. `OtpFlowIntegrationTest` unrun (no Docker). On-device: SMS autofill (likely

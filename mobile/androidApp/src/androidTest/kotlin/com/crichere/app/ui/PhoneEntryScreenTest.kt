@@ -29,12 +29,12 @@ class PhoneEntryScreenTest {
 
         composeRule.setContent { PhoneEntryScreen(viewModel) }
 
-        composeRule.onNodeWithText("Phone number (e.g. +919876543210)").performTextInput("+919876543210")
+        composeRule.onNodeWithText("10-digit mobile number").performTextInput("9876543210")
         composeRule.onNodeWithText("Send code").performClick()
         composeRule.waitForIdle()
 
         assert(authRepository.sendOtpCalls == listOf("+919876543210")) {
-            "expected sendOtp to be called with +919876543210, got ${authRepository.sendOtpCalls}"
+            "expected sendOtp to be called with the E.164 number +919876543210, got ${authRepository.sendOtpCalls}"
         }
     }
 
@@ -45,11 +45,11 @@ class PhoneEntryScreenTest {
 
         composeRule.setContent { PhoneEntryScreen(viewModel) }
 
-        composeRule.onNodeWithText("Phone number (e.g. +919876543210)").performTextInput("12345")
+        composeRule.onNodeWithText("10-digit mobile number").performTextInput("12345")
         composeRule.onNodeWithText("Send code").performClick()
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Enter a valid phone number with country code, e.g. +919876543210.").assertExists()
+        composeRule.onNodeWithText("Enter a valid 10-digit mobile number.").assertExists()
         assert(authRepository.sendOtpCalls.isEmpty())
     }
 }
