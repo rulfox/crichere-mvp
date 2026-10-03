@@ -1,8 +1,8 @@
 # Phase 14 — Railway cost cuts (backend memory) and move to Singapore
 
 **Last updated:** 2026-10-03
-**Status:** backend memory changes implemented and tested locally; production rollout and region
-move in progress (see section 5).
+**Status:** backend memory cut deployed (~0.81 GB -> ~0.47 GB). Region move to Singapore blocked on
+the Postgres volume migration (section 5).
 
 ---
 
@@ -62,4 +62,16 @@ Backup before the region move (Postgres has a volume, so moving it means downtim
 (outside the repo; it contains user data). Verified: dump-complete marker present, and the row
 counts of all 17 tables in the dump match production exactly.
 
-Results are recorded below as each step is done.
+Results (2026-10-03):
+- **Backend memory: done.** Deployed `63c11ad` with `JAVA_TOOL_OPTIONS` (log shows "Picked up
+  JAVA_TOOL_OPTIONS", started in 7 s). Railway memory: **~0.81 GB -> ~0.47 GB** shortly after deploy
+  (the 1.4 GB max in that window is the old and new containers overlapping during the deploy). API
+  live; `/v3/api-docs` returns 404. Re-check after a day of real traffic and an auction.
+- **Region move: not done.** The Postgres service config now says `asia-southeast1-eqsg3a`, but a
+  redeploy and `railway scale southeast-asia=1 sfo=0` both left the running deployment in `sfo` (the
+  redeploy reuses the old snapshot). The volume (~870 MB) did not migrate; data unchanged and verified
+  (all row counts match the backup; `refresh_tokens` +2 from new logins). Next: trigger the volume
+  migration from the dashboard (Postgres → Settings → Regions → migrate), then move backend and
+  web-viewer (no volume, no downtime) and verify.
+- Backend and web-viewer are still in `sfo` on purpose: keeping the app next to the database until the
+  database moves avoids ~250 ms per query across the Pacific.
