@@ -45,8 +45,14 @@ data class OtpProperties(
  */
 @ConfigurationProperties(prefix = "crichere.msg91")
 data class Msg91Properties(
+    /** Account Auth Key. Not used by the widget send/retry/verify calls (MSG91 rejects it there); kept for account-level APIs. */
     val authKey: String = "",
     val widgetId: String = "",
+    /**
+     * The widget token ("Tokens" page under OTP Widget/SDK in the MSG91 dashboard), sent as the
+     * `tokenAuth` header on every widget call. A secret here, since only the backend uses it.
+     */
+    val tokenAuth: String = "",
     val baseUrl: String = "https://control.msg91.com",
     val connectTimeout: Duration = Duration.ofSeconds(3),
     val readTimeout: Duration = Duration.ofSeconds(8),

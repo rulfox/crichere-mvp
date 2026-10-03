@@ -44,6 +44,8 @@ crichere:
     # Blank in dev/CI. Never commit real values; set in the deployment environment only.
     auth-key: ${MSG91_AUTH_KEY:}
     widget-id: ${MSG91_WIDGET_ID:}
+    # Widget token (OTP > Tokens in the MSG91 dashboard); sent as the tokenAuth header.
+    token-auth: ${MSG91_TOKEN_AUTH:}
   aws:
     s3:
       bucket: ${AWS_S3_BUCKET:}

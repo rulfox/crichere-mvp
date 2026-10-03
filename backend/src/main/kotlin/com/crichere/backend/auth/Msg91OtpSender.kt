@@ -65,15 +65,18 @@ class Msg91OtpSender(private val properties: Msg91Properties) : OtpSender {
     }
 
     private fun post(path: String, body: Map<String, String>): Map<String, Any?> {
-        if (properties.authKey.isBlank() || properties.widgetId.isBlank()) {
-            log.error("MSG91 is not configured (crichere.msg91.auth-key / widget-id blank)")
+        if (properties.tokenAuth.isBlank() || properties.widgetId.isBlank()) {
+            log.error("MSG91 is not configured (crichere.msg91.token-auth / widget-id blank)")
             throw OtpUnavailableException("MSG91 not configured")
         }
         return try {
             val entity = client.post()
                 .uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("authkey", properties.authKey)
+                // Observed in production: the widget endpoints answer 403 "Invalid request" to the
+                // account Auth Key. The widget token is the credential the dashboard points to
+                // ("recommended ... in OTP Widget"). Still to be confirmed with a live send.
+                .header("tokenAuth", properties.tokenAuth)
                 .body(body)
                 .retrieve()
                 // A 4xx from verify can still be a "wrong code" answer, and a 4xx from anything is

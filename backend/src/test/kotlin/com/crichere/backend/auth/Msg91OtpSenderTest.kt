@@ -25,13 +25,18 @@ class Msg91OtpSenderTest {
     private var status = 200
     private var responseBody = """{"type":"success","message":"req-123"}"""
 
-    private data class Seen(val path: String, val authkey: String?, val body: String)
+    private data class Seen(val path: String, val tokenAuth: String?, val authkey: String?, val body: String)
 
     @BeforeEach
     fun startServer() {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
             createContext("/") { ex: HttpExchange ->
-                seen += Seen(ex.requestURI.path, ex.requestHeaders.getFirst("authkey"), ex.requestBody.readBytes().decodeToString())
+                seen += Seen(
+                    ex.requestURI.path,
+                    ex.requestHeaders.getFirst("tokenAuth"),
+                    ex.requestHeaders.getFirst("authkey"),
+                    ex.requestBody.readBytes().decodeToString(),
+                )
                 val bytes = responseBody.toByteArray()
                 ex.responseHeaders.add("Content-Type", "application/json")
                 ex.sendResponseHeaders(status, bytes.size.toLong())
@@ -44,9 +49,10 @@ class Msg91OtpSenderTest {
     @AfterEach
     fun stopServer() = server.stop(0)
 
-    private fun sender(authKey: String = "secret-key", widgetId: String = "widget-1") = Msg91OtpSender(
+    private fun sender(tokenAuth: String = "widget-token", widgetId: String = "widget-1") = Msg91OtpSender(
         Msg91Properties(
-            authKey = authKey,
+            authKey = "account-authkey",
+            tokenAuth = tokenAuth,
             widgetId = widgetId,
             baseUrl = "http://127.0.0.1:${server.address.port}",
             connectTimeout = Duration.ofSeconds(2),
@@ -55,13 +61,14 @@ class Msg91OtpSenderTest {
     )
 
     @Test
-    fun `send posts the identifier without a plus, with the authkey header, and returns the request id`() {
+    fun `send posts the identifier without a plus, with the widget token header only, and returns the request id`() {
         val reqId = sender().send("+919876543210")
 
         assertEquals("req-123", reqId)
         val call = seen.single()
         assertEquals("/api/v5/widget/sendOtp", call.path)
-        assertEquals("secret-key", call.authkey)
+        assertEquals("widget-token", call.tokenAuth)
+        assertEquals(null, call.authkey, "the account Auth Key must not be sent to the widget endpoints")
         assertEquals(true, call.body.contains("\"identifier\":\"919876543210\""))
         assertEquals(true, call.body.contains("\"widgetId\":\"widget-1\""))
     }
@@ -103,7 +110,7 @@ class Msg91OtpSenderTest {
 
     @Test
     fun `blank credentials fail closed without making any request`() {
-        assertThrows<OtpUnavailableException> { sender(authKey = "").send("+919876543210") }
+        assertThrows<OtpUnavailableException> { sender(tokenAuth = "").send("+919876543210") }
         assertThrows<OtpUnavailableException> { sender(widgetId = "").verify("r", "123456") }
         assertEquals(0, seen.size)
     }

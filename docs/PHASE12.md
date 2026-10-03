@@ -63,8 +63,9 @@ cost two SMS. Bounded by the per-phone budget (5/h) and the global cap; not wort
 | Var | Purpose | Default |
 |---|---|---|
 | `OTP_PROVIDER` | `firebase` or `msg91` | `firebase` |
-| `MSG91_AUTH_KEY` | MSG91 authkey (secret) | blank |
+| `MSG91_TOKEN_AUTH` | Widget token (MSG91 dashboard: OTP > Tokens), sent as the `tokenAuth` header on every widget call (secret) | blank |
 | `MSG91_WIDGET_ID` | OTP widget id | blank |
+| `MSG91_AUTH_KEY` | Account Auth Key (secret). **Not used by the widget calls** (see section 6, finding A); kept for account-level APIs | blank |
 | `OTP_GLOBAL_DAILY_CAP` | max OTP SMS per UTC day, all callers | 2000 |
 | `OTP_APP_CHECK_REQUIRED` | require App Check on send/resend | `false` |
 | `FIREBASE_PROJECT_NUMBER` | App Check issuer/audience (project *number*, not id) | blank |
@@ -85,6 +86,23 @@ Mobile (`mobile/shared/.../auth/`): `BackendOtpClient`, `OtpVerification` (+ `Ot
 returns `Result<OtpVerification>`.
 
 ## 6. NOT verified — must be done before enabling (Phase 0)
+
+**Findings from the first live attempts (2026-10-03, production):**
+
+- **A. The account Auth Key is rejected by the widget endpoints.** `POST /api/v5/widget/sendOtp`
+  with the Auth Key in an `authkey` header returned `403 {"type":"error","message":"Invalid request"}`
+  from Railway (static IPs whitelisted) and `{"message":"AuthenticationFailure","type":"error","code":"207"}`
+  from a developer PC. So IP whitelisting was not the cause. The sender now sends the **widget token**
+  as a `tokenAuth` header instead (`MSG91_TOKEN_AUTH`). That is the credential the dashboard points to
+  (OTP > Tokens: "recommended to use a token in OTP Widget") but it is **still unconfirmed with a
+  live send**.
+- **B. "Retry Time 15 min" on the widget is the OTP lifetime (expiry).** Our challenge expires after 5
+  minutes regardless, so a code is never accepted after 5 minutes, but MSG91 itself would still honour
+  it for 15. Set the widget expiry to 5 minutes or less if the dashboard allows.
+- **C. Demo phone numbers on the widget (fixed OTP `123456`) are a login backdoor** for those accounts
+  if that widget is the production one. Keep them on a separate dev/test widget.
+- **D. Ops:** production `backend` has static outbound IPs enabled (3 shared IPs, sfo). `OTP_PROVIDER=msg91`
+  was set on production while sends still fail closed (503); installed app builds ignore `/auth/config`.
 
 1. **`Msg91OtpSender` is written against an assumed contract.** MSG91 does not publish the widget
    endpoints' shapes. Assumed: `POST {base}/api/v5/widget/sendOtp|retryOtp|verifyOtp`, `authkey`
