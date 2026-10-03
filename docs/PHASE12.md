@@ -4,10 +4,10 @@ Part of the Crichere full rewrite. See [PHASE1.md](PHASE1.md) for the original a
 extends (Firebase stays; nothing in it is removed).
 
 **Last updated:** 2026-10-03
-**Status:** backend + mobile **code complete, unit-tested, NOT enabled and NOT verified against real MSG91.**
-`crichere.otp.provider` defaults to `firebase`, so merging changes nothing for users until it is
-flipped. **Phase 0 (live MSG91 spike) has not been done** — it needs a real MSG91 account, which
-this session did not have. Do not set the provider to `msg91` before it is done (section 6).
+**Status:** backend + mobile **code complete and unit-tested; the MSG91 path is verified live end to end with a demo number (section 6), real-SMS delivery is not.**
+`crichere.otp.provider` defaults to `firebase`; on production it is currently set to `msg91`
+(2026-10-03) while installed app builds still ignore it. Before treating MSG91 as launched, close the
+"Still open" list in section 6 — in particular the live demo-credential accounts and real-SMS delivery.
 
 ---
 
@@ -85,7 +85,33 @@ Mobile (`mobile/shared/.../auth/`): `BackendOtpClient`, `OtpVerification` (+ `Ot
 `OtpVerification`, trusts server attempts, expired → Phone Entry). `AuthRepository.verifyOtp` now
 returns `Result<OtpVerification>`.
 
-## 6. NOT verified — must be done before enabling (Phase 0)
+## 6. Live results and what is still NOT verified
+
+**Verified live on production, 2026-10-03, against real MSG91 with a demo number** (no SMS sent):
+`send` 200; `resend` 200 and an immediate second resend 429 with `Retry-After`; wrong code 400
+`INVALID_OTP` with `attemptsRemaining: 4`; correct demo OTP 200 with a session, signed into the
+**existing** account for that number (`profileComplete=true`), i.e. phone-hash parity with Firebase;
+reusing a spent challenge 410. Auth shape that works: header `tokenAuth` (the widget token), body
+`widgetId` + `identifier`; resend with `reqId`+`widgetId` and no channel.
+
+**Root cause of the earlier 403s, in order:** (1) the account Auth Key is not accepted by the widget
+endpoints; (2) the widget's **Country Wise Restriction** (Allow Specific: India) rejects requests from
+Railway's US servers (Railway has no India region: US, Europe, Southeast Asia only). The widget was
+switched to **Allow All**; the backend's own `+91`-only check is what restricts destinations now.
+
+**Still open:**
+- **Real SMS delivery to a non-demo number** (Jio/Airtel/Vi, arrival time, sender/text, price) is untested.
+- **Widget resend count is 2 but the backend allows 3:** a third resend will fail with a 503. Set the
+  widget's resend count to 3, or lower `OtpProperties.maxResends` to 2.
+- **Demo credentials (fixed OTP 123456) are live on the production widget**, so those three phone
+  numbers can be signed into by anyone who knows them. Remove them from the production widget or switch
+  `OTP_PROVIDER` back to `firebase`.
+- Provider outages burn the per-phone send budget (counted before the call); consider refunding on failure.
+- Rotate the Auth Key and the widget token (both surfaced in session output on 2026-10-03).
+- Widget expiry is 15 minutes; our challenge expires at 5.
+- App Check, on-device (CPH2487) run, and `OtpFlowIntegrationTest` (needs Docker) remain unrun.
+
+**Earlier findings (kept for the record):**
 
 **Findings from the first live attempts (2026-10-03, production):**
 
