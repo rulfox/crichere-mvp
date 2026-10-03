@@ -109,14 +109,22 @@ export type AuctionResults = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
+/**
+ * Base for fetches made by this server (never the browser): Railway's private network when
+ * `API_INTERNAL_BASE_URL` is set (docs/PHASE14.md), skipping the public edge and TLS. Falls back to
+ * the public URL, so local dev and the e2e mock backend need nothing extra.
+ */
+const SERVER_API_BASE = process.env.API_INTERNAL_BASE_URL || API_BASE;
+
 /** Server-side fetch of a league by id. `null` on a 404 -- the caller decides what that means (this app calls Next's `notFound()`). Never cached: an auction's readiness/state changes constantly. */
 export async function fetchLeague(id: string): Promise<League | null> {
-  const response = await fetch(`${API_BASE}/api/v1/leagues/${id}`, { cache: "no-store" });
+  const response = await fetch(`${SERVER_API_BASE}/api/v1/leagues/${id}`, { cache: "no-store" });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Couldn't load this league (${response.status}).`);
   return response.json();
 }
 
+/** Called from the browser (useAuctionStream), so it must use the public URL. */
 export async function fetchResults(id: string): Promise<AuctionResults> {
   const response = await fetch(`${API_BASE}/api/v1/leagues/${id}/auction/results`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Couldn't load results (${response.status}).`);
@@ -130,7 +138,7 @@ export async function fetchResults(id: string): Promise<AuctionResults> {
  */
 export async function fetchLiveNow(): Promise<{ leagueId: string; leagueName: string } | null> {
   try {
-    const response = await fetch(`${API_BASE}/api/v1/auctions/live-now`, { next: { revalidate: 15 } });
+    const response = await fetch(`${SERVER_API_BASE}/api/v1/auctions/live-now`, { next: { revalidate: 15 } });
     if (response.status !== 200) return null;
     return await response.json();
   } catch {

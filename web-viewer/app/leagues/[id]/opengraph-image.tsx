@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { fetchLeague, fetchLiveNow, type League } from "@/lib/api";
+import { LruCache } from "@/lib/lru-cache";
 import { cardStatus, locationLine, monogram, nameFontSize, type CardStatus } from "@/lib/og-card";
 
 /**
@@ -35,6 +36,9 @@ const LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const LOGO_MAX_BYTES = 2_000_000;
 const CACHE_HEADERS = { "Cache-Control": "public, max-age=300, s-maxage=300" };
 
+// ~130 KB per card, so at most ~13 MB (docs/PHASE14.md).
+const renderedCards = new LruCache<ArrayBuffer>(100, 60 * 60 * 1000);
+
 /** The league's logo as a data URI, or `null` (-> monogram) when it's missing, slow, too big or not a raster image. */
 async function loadLogo(url: string | null): Promise<string | null> {
   if (!url) return null;
@@ -63,16 +67,18 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     // Stray whitespace from the organizer's input would otherwise count toward the size band.
     const league = { ...fetched, name: fetched.name.trim() };
 
-    const [logo, liveNow, fonts, [iconSrc, wordmarkSrc]] = await Promise.all([
-      loadLogo(league.logoUrl),
-      fetchLiveNow(),
-      fontsPromise,
-      brandPromise,
-    ]);
-    const png = await renderCard(
-      { league, logo, status: cardStatus(liveNow?.leagueId === league.id, league.auctionScheduledAt), iconSrc, wordmarkSrc },
-      fonts,
-    );
+    const liveNow = await fetchLiveNow();
+    const status = cardStatus(liveNow?.leagueId === league.id, league.auctionScheduledAt);
+    // Everything the card shows is in the key, so an edit (new logo, rename, going live) is a
+    // miss and re-renders at once; repeat crawler hits skip the logo fetch and the render.
+    const key = JSON.stringify([league.id, league.name, league.city, league.state, league.logoUrl, status]);
+    const cached = renderedCards.get(key);
+    if (cached) return new Response(cached, { headers: { "Content-Type": "image/png", ...CACHE_HEADERS } });
+
+    const [logo, fonts, [iconSrc, wordmarkSrc]] = await Promise.all([loadLogo(league.logoUrl), fontsPromise, brandPromise]);
+    const png = await renderCard({ league, logo, status, iconSrc, wordmarkSrc }, fonts);
+    // A logo that failed to load renders the monogram; don't pin that fallback for the whole TTL.
+    if (logo || !league.logoUrl) renderedCards.set(key, png);
     return new Response(png, { headers: { "Content-Type": "image/png", ...CACHE_HEADERS } });
   } catch {
     return defaultCard();
