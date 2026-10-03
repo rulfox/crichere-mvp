@@ -80,7 +80,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     // A logo that failed to load renders the monogram; don't pin that fallback for the whole TTL.
     if (logo || !league.logoUrl) renderedCards.set(key, png);
     return new Response(png, { headers: { "Content-Type": "image/png", ...CACHE_HEADERS } });
-  } catch {
+  } catch (error) {
+    // Logged so a fallback in production can be diagnosed; the share still gets the default card.
+    console.error("[share-card] falling back to the default card:", error);
     return defaultCard();
   }
 }
