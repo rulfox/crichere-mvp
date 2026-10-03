@@ -58,8 +58,10 @@ async function defaultCard(): Promise<Response> {
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const league = await fetchLeague(id);
-    if (!league) return defaultCard();
+    const fetched = await fetchLeague(id);
+    if (!fetched) return defaultCard();
+    // Stray whitespace from the organizer's input would otherwise count toward the size band.
+    const league = { ...fetched, name: fetched.name.trim() };
 
     const [logo, liveNow, fonts, [iconSrc, wordmarkSrc]] = await Promise.all([
       loadLogo(league.logoUrl),

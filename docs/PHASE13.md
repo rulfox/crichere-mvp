@@ -5,8 +5,8 @@ Part of the Crichere full rewrite. Builds on the custom domain set up 2026-10-03
 Phase 6 public web viewer ([PHASE6.md](PHASE6.md)).
 
 **Last updated:** 2026-10-03
-**Status:** web + Android **implemented and tested locally (unit + e2e + production build); not yet
-deployed; App Link verification and the share sheet not yet verified on-device.**
+**Status:** web + Android **implemented; web deployed and verified live on crichere.com (2026-10-03);
+App Link verification and the share sheet not yet verified on-device.**
 
 ---
 
@@ -79,9 +79,17 @@ Done (2026-10-03):
 - `next build` clean, no warnings; output trace includes fonts, SVGs and the default PNG.
 - Android: `LeagueLinksTest` 4/4, existing unit tests pass, `assembleDebug` builds.
 
+Live (2026-10-03, after deploy):
+- Facebook and WhatsApp crawler User-Agents on a real league (`/leagues/f4a66e7c-…`) get og:title,
+  description, url, site_name, og:image (generated card, 1200×630, image/png) and twitter tags; the image
+  returns 200 PNG (129 KB) with the real S3 league logo; landing page gets the default card;
+  `/.well-known/assetlinks.json` is 200 `application/json`.
+- Fix found live: a league name with a trailing space leaked into og:title; names are now trimmed in the
+  metadata and the card.
+
 Still open:
-- Deploy, then: `curl -A facebookexternalhit/1.1` / `-A WhatsApp/2` on a real league, Facebook Sharing
-  Debugger, a real WhatsApp send to self. Previews are cached per URL, so do this before any public share.
+- Facebook Sharing Debugger and a real WhatsApp send to self (previews are cached per URL, so do this
+  before any public share).
 - On-device (CPH2487): `adb shell pm get-app-links com.crichere.app` shows `crichere.com: verified`;
   tapping a shared link opens the league; share sheet text; `crichere://` notification tap still works.
 - Release / Play App Signing SHA-256 into `assetlinks.json` before release.

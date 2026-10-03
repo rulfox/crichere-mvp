@@ -24,6 +24,8 @@ describe("leagueShareDescription", () => {
     expect(leagueShareDescription({ name: "Kochi Super Sixes", city: "Kochi", description: "  " })).toBe(
       "Follow Kochi Super Sixes's live player auction in Kochi -- no account needed.",
     );
-    expect(leagueShareDescription({ name: "Kochi Super Sixes", city: "Kochi" })).toContain("Kochi Super Sixes");
+    expect(leagueShareDescription({ name: "Kochi Super Sixes ", city: "Kochi" })).toBe(
+      "Follow Kochi Super Sixes's live player auction in Kochi -- no account needed.",
+    );
   });
 });

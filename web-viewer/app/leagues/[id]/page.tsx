@@ -18,23 +18,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const league = await fetchLeague(id);
   if (!league) return {};
 
+  const name = league.name.trim();
   const description = leagueShareDescription(league);
   const path = `/leagues/${league.id}`;
 
   return {
-    title: league.name,
+    title: name,
     description,
     alternates: { canonical: path },
     openGraph: {
       siteName: SITE_NAME,
       type: "website",
       url: path,
-      title: league.name,
+      title: name,
       description,
     },
     twitter: {
       card: "summary_large_image",
-      title: league.name,
+      title: name,
       description,
     },
   };
