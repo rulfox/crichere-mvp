@@ -109,16 +109,29 @@ export type AuctionResults = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
+const API_INTERNAL_BASE = process.env.API_INTERNAL_BASE_URL;
+
 /**
- * Base for fetches made by this server (never the browser): Railway's private network when
- * `API_INTERNAL_BASE_URL` is set (docs/PHASE14.md), skipping the public edge and TLS. Falls back to
- * the public URL, so local dev and the e2e mock backend need nothing extra.
+ * Fetch made by this server (never the browser). Uses Railway's private network when
+ * `API_INTERNAL_BASE_URL` is set (docs/PHASE14.md), skipping the public edge and TLS. If that call
+ * can't connect -- the private network takes a few seconds to come up in a fresh container -- it
+ * retries once over the public URL, so a link crawled right after a deploy still gets the real
+ * league (chat apps cache whatever they get first). HTTP error statuses are returned, not retried.
  */
-const SERVER_API_BASE = process.env.API_INTERNAL_BASE_URL || API_BASE;
+export async function serverFetch(path: string, init?: RequestInit): Promise<Response> {
+  if (API_INTERNAL_BASE) {
+    try {
+      return await fetch(`${API_INTERNAL_BASE}${path}`, init);
+    } catch {
+      // Fall through to the public URL.
+    }
+  }
+  return fetch(`${API_BASE}${path}`, init);
+}
 
 /** Server-side fetch of a league by id. `null` on a 404 -- the caller decides what that means (this app calls Next's `notFound()`). Never cached: an auction's readiness/state changes constantly. */
 export async function fetchLeague(id: string): Promise<League | null> {
-  const response = await fetch(`${SERVER_API_BASE}/api/v1/leagues/${id}`, { cache: "no-store" });
+  const response = await serverFetch(`/api/v1/leagues/${id}`, { cache: "no-store" });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Couldn't load this league (${response.status}).`);
   return response.json();
@@ -138,7 +151,7 @@ export async function fetchResults(id: string): Promise<AuctionResults> {
  */
 export async function fetchLiveNow(): Promise<{ leagueId: string; leagueName: string } | null> {
   try {
-    const response = await fetch(`${SERVER_API_BASE}/api/v1/auctions/live-now`, { next: { revalidate: 15 } });
+    const response = await serverFetch("/api/v1/auctions/live-now", { next: { revalidate: 15 } });
     if (response.status !== 200) return null;
     return await response.json();
   } catch {

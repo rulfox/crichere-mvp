@@ -84,10 +84,19 @@ Results (2026-10-03):
   - **Old Postgres (`Postgres`, US West) kept untouched as rollback.** Delete it, with its ~870 MB volume,
     once the owner approves; until then it still costs a little memory and storage.
 
+Share card speed (2026-10-03, after the move):
+- Measured inside the web viewer: logo from the US-East bucket 0.5–1.3 s; league via the public API
+  ~250 ms cold vs ~25–40 ms over the private network; full card render 0.8–1.7 s.
+- Fixes (`1c2b386` + follow-up): server-side API calls go over Railway's private network
+  (`API_INTERNAL_BASE_URL=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080`), retrying once over the
+  public URL if the private call can't connect; rendered cards cached in a 100-entry LRU (1 h TTL,
+  ~13 MB max) keyed by everything the card shows, so any edit re-renders at once.
+- Result: a cached card is served in 43–260 ms inside the container (from 760–1,700 ms).
+- Found live: right after the deploy, the first requests got the **default** card. The private
+  network takes a few seconds to come up in a new container, and a chat app would have cached that
+  default for the URL. That is what the public-URL retry fixes.
+
 Open items found during the move:
-- **Share card takes 2.5–3.5 s** to render: logo fetched from the US-East bucket, and the league fetched
-  through the public API URL. Fixes: server-side fetches over the private network, and caching the
-  rendered card. Below WhatsApp's limit today (preview verified), but too close.
 - **Media bucket in `us-east-1`** (`crichere-media-dev`, checked via S3's response headers; the
   `crichere-claude` IAM user may not call GetBucketLocation/ListBuckets). A 100 KB logo takes ~1.5 s
   from India, and objects have no `Cache-Control`. Options: CloudFront in front, or a bucket in
