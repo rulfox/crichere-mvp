@@ -187,11 +187,13 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
     // Open Graph tags, it opens the app via App Links when installed, and the web viewer otherwise.
     val share: (LeagueDto) -> Unit = { league ->
         val link = "$webViewerBaseUrl/leagues/${league.id}"
+        // Names can carry stray whitespace from the organizer's input.
+        val name = league.name.trim()
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "Join ${league.name} on Crichere · ${league.city} · watch the player auction live\n$link")
-            putExtra(Intent.EXTRA_SUBJECT, league.name)
-            putExtra(Intent.EXTRA_TITLE, league.name)
+            putExtra(Intent.EXTRA_TEXT, "Join $name on Crichere · ${league.city.trim()} · watch the player auction live\n$link")
+            putExtra(Intent.EXTRA_SUBJECT, name)
+            putExtra(Intent.EXTRA_TITLE, name)
         }
         context.startActivity(Intent.createChooser(intent, "Share league"))
     }

@@ -5,8 +5,9 @@ Part of the Crichere full rewrite. Builds on the custom domain set up 2026-10-03
 Phase 6 public web viewer ([PHASE6.md](PHASE6.md)).
 
 **Last updated:** 2026-10-03
-**Status:** web + Android **implemented; web deployed and verified live on crichere.com (2026-10-03);
-App Link verification and the share sheet not yet verified on-device.**
+**Status:** web + Android **implemented; web deployed and verified live on crichere.com; Android App
+Link + Share verified on-device (CPH2487, debug build) 2026-10-03.** Open: real WhatsApp/Facebook
+preview, release signing key in assetlinks.json, iOS.
 
 ---
 
@@ -87,11 +88,18 @@ Live (2026-10-03, after deploy):
 - Fix found live: a league name with a trailing space leaked into og:title; names are now trimmed in the
   metadata and the card.
 
+On-device (CPH2487, debug build, 2026-10-03):
+- `pm get-app-links com.crichere.app` -> `crichere.com: verified`.
+- `https://crichere.com/leagues/{id}` opens the league in the app on cold start and while running;
+  `https://crichere.com/` (not a league path) still opens Chrome; `crichere://leagues/{id}` still opens the app.
+- Share sheet: title = league name, text "Join … on Crichere · Thrissur · watch the p…". Fix found here:
+  the name's trailing space gave a double space, so Share now trims name and city too.
+
 Still open:
 - Facebook Sharing Debugger and a real WhatsApp send to self (previews are cached per URL, so do this
   before any public share).
-- On-device (CPH2487): `adb shell pm get-app-links com.crichere.app` shows `crichere.com: verified`;
-  tapping a shared link opens the league; share sheet text; `crichere://` notification tap still works.
+- A real notification tap (only the `crichere://` intent was fired by adb) and tapping a link inside
+  WhatsApp itself (both should behave like the adb VIEW intents above).
 - Release / Play App Signing SHA-256 into `assetlinks.json` before release.
 - iOS Universal Links: `apple-app-site-association` (no extension, `application/json`) in
   `public/.well-known/`, `applinks:crichere.com` entitlement, link handling in `iosAppApp.swift`.
