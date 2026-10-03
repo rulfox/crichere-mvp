@@ -11,7 +11,14 @@ import com.crichere.backend.auction.NoBidsToSellException
 import com.crichere.backend.auction.NothingToUndoException
 import com.crichere.backend.auction.PurseExceededException
 import com.crichere.backend.auction.SquadFullException
+import com.crichere.backend.auth.AppCheckFailedException
 import com.crichere.backend.auth.AuthenticationFailedException
+import com.crichere.backend.auth.InvalidPhoneNumberException
+import com.crichere.backend.auth.OtpChallengeExpiredException
+import com.crichere.backend.auth.OtpDisabledException
+import com.crichere.backend.auth.OtpInvalidCodeException
+import com.crichere.backend.auth.OtpResendLimitReachedException
+import com.crichere.backend.auth.OtpUnavailableException
 import com.crichere.backend.auth.RateLimitExceededException
 import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
 import com.crichere.backend.franchise.NoLeaveRequestPendingException as FranchiseNoLeaveRequestPendingException
@@ -167,6 +174,89 @@ class GlobalExceptionHandler {
             .header(HttpHeaders.RETRY_AFTER, retryAfterSeconds.toString())
             .body(body)
     }
+
+    /** The `/auth/otp` endpoints while the OTP provider is not MSG91: from the caller's view the endpoint does not exist. */
+    @ExceptionHandler(OtpDisabledException::class)
+    fun handleOtpDisabled(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "not-found",
+            title = "Not found",
+            code = "NOT_FOUND",
+            detail = "No endpoint matches this request.",
+            instance = request.requestURI,
+        )
+
+    /** Not an Indian mobile number. The input is never echoed back. */
+    @ExceptionHandler(InvalidPhoneNumberException::class)
+    fun handleInvalidPhoneNumber(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "invalid-phone-number",
+            title = "Invalid phone number",
+            code = "INVALID_PHONE_NUMBER",
+            detail = "Enter a valid Indian mobile number.",
+            instance = request.requestURI,
+        )
+
+    /** Wrong OTP. `attemptsRemaining` is authoritative: the server, not the client, counts attempts. */
+    @ExceptionHandler(OtpInvalidCodeException::class)
+    fun handleOtpInvalidCode(exception: OtpInvalidCodeException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "invalid-otp",
+            title = "Incorrect code",
+            code = "INVALID_OTP",
+            detail = "The code you entered is incorrect.",
+            instance = request.requestURI,
+            extensions = mapOf("attemptsRemaining" to exception.attemptsRemaining),
+        )
+
+    /** Unknown, expired, used, or exhausted challenge -- deliberately indistinguishable. */
+    @ExceptionHandler(OtpChallengeExpiredException::class)
+    fun handleOtpChallengeExpired(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.GONE,
+            slug = "otp-expired",
+            title = "Code expired",
+            code = "OTP_EXPIRED",
+            detail = "This code is no longer valid. Please request a new one.",
+            instance = request.requestURI,
+        )
+
+    @ExceptionHandler(OtpResendLimitReachedException::class)
+    fun handleOtpResendLimitReached(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "otp-resend-limit",
+            title = "Resend limit reached",
+            code = "OTP_RESEND_LIMIT",
+            detail = "No more resends available. Please start over.",
+            instance = request.requestURI,
+        )
+
+    /** Provider outage, missing credentials, or the global send cap: one generic 503, no provider detail. */
+    @ExceptionHandler(OtpUnavailableException::class)
+    fun handleOtpUnavailable(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.SERVICE_UNAVAILABLE,
+            slug = "otp-unavailable",
+            title = "Verification unavailable",
+            code = "OTP_UNAVAILABLE",
+            detail = "We couldn't send a code right now. Please try again later.",
+            instance = request.requestURI,
+        )
+
+    @ExceptionHandler(AppCheckFailedException::class)
+    fun handleAppCheckFailed(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.FORBIDDEN,
+            slug = "app-check-failed",
+            title = "Request not allowed",
+            code = "APP_CHECK_FAILED",
+            detail = "This request could not be verified as coming from the app.",
+            instance = request.requestURI,
+        )
 
     /** Same shape as [handleRateLimitExceeded], for the content-creation endpoints (league/ground/award). */
     @ExceptionHandler(ContentRateLimitExceededException::class)

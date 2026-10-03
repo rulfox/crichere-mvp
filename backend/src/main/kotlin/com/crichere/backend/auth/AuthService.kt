@@ -69,7 +69,19 @@ class AuthService(
             throw RateLimitExceededException(retryAfter)
         }
 
-        val user = findOrCreateUser(lookupHash, verified.phoneNumber)
+        return signInVerifiedPhone(lookupHash, verified.phoneNumber)
+    }
+
+    /**
+     * Mints a session for a phone number some provider has already proven the caller owns.
+     * Shared by the Firebase path ([verifySession]) and the backend-driven OTP path
+     * ([OtpAuthService]) so account resolution and session issuance cannot drift apart.
+     *
+     * @param lookupHash `PhoneCryptoService.hmacLookupHash(phoneNumber)`, passed in because both
+     *   callers have already computed it.
+     */
+    fun signInVerifiedPhone(lookupHash: String, phoneNumber: String): AuthResult {
+        val user = findOrCreateUser(lookupHash, phoneNumber)
         val userId = requireNotNull(user.id) { "persisted user must have an id" }
 
         return issueSession(userId)

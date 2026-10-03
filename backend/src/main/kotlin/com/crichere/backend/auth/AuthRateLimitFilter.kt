@@ -46,7 +46,12 @@ class AuthRateLimitFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        val retryAfter = rateLimiter.tryConsumeForIp(request.remoteAddr ?: UNKNOWN_IP)
+        val ip = request.remoteAddr ?: UNKNOWN_IP
+        val retryAfter = when (request.requestURI) {
+            OTP_SEND_PATH, OTP_RESEND_PATH -> rateLimiter.tryConsumeOtpSendForIp(ip)
+            OTP_VERIFY_PATH -> rateLimiter.tryConsumeOtpVerifyForIp(ip)
+            else -> rateLimiter.tryConsumeForIp(ip)
+        }
         if (retryAfter != null) {
             writeTooManyRequests(request, response, retryAfter)
             return
@@ -56,7 +61,7 @@ class AuthRateLimitFilter(
 
     /** Restricts this filter to the one endpoint it guards. */
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        !(request.method.equals("POST", ignoreCase = true) && request.requestURI == SESSION_PATH)
+        !(request.method.equals("POST", ignoreCase = true) && request.requestURI in GUARDED_PATHS)
 
     private fun writeTooManyRequests(
         request: HttpServletRequest,
@@ -83,6 +88,10 @@ class AuthRateLimitFilter(
 
     private companion object {
         const val SESSION_PATH = "/api/v1/auth/session"
+        const val OTP_SEND_PATH = "/api/v1/auth/otp/send"
+        const val OTP_RESEND_PATH = "/api/v1/auth/otp/resend"
+        const val OTP_VERIFY_PATH = "/api/v1/auth/otp/verify"
+        val GUARDED_PATHS = setOf(SESSION_PATH, OTP_SEND_PATH, OTP_RESEND_PATH, OTP_VERIFY_PATH)
         const val UNKNOWN_IP = "unknown"
     }
 }

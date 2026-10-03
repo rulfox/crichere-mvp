@@ -31,6 +31,19 @@ crichere:
     # content itself) takes priority over service-account-path (a file on disk) when both are set.
     service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
     service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+  otp:
+    # Which mechanism proves phone ownership: firebase (client-side Firebase Phone Auth, the
+    # default) or msg91 (backend-driven OTP, docs/PHASE12.md). The app reads this from
+    # GET /auth/config, so flipping it needs no app release.
+    provider: ${OTP_PROVIDER:firebase}
+    # Require a valid Firebase App Check token on OTP send/resend. Turn on once the mobile
+    # client ships App Check.
+    app-check-required: ${OTP_APP_CHECK_REQUIRED:false}
+    app-check-project-number: ${FIREBASE_PROJECT_NUMBER:}
+  msg91:
+    # Blank in dev/CI. Never commit real values; set in the deployment environment only.
+    auth-key: ${MSG91_AUTH_KEY:}
+    widget-id: ${MSG91_WIDGET_ID:}
   aws:
     s3:
       bucket: ${AWS_S3_BUCKET:}
@@ -41,6 +54,10 @@ crichere:
     phone-capacity: 10
     ip-capacity: 20
     window: 1h
+    otp-send-phone-capacity: 5
+    otp-send-ip-capacity: 20
+    otp-verify-ip-capacity: 60
+    otp-global-daily-cap: ${OTP_GLOBAL_DAILY_CAP:2000}
   content-rate-limit:
     # See ContentRateLimiter for the reasoning behind these numbers.
     enabled: true

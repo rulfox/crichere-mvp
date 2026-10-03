@@ -2,6 +2,7 @@ package com.crichere.backend.common
 
 import com.crichere.backend.auth.AuthRateLimiter
 import com.crichere.backend.auth.FirebaseTokenVerifier
+import com.crichere.backend.auth.OtpSender
 import io.mockk.clearMocks
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
@@ -32,15 +33,26 @@ class MockedFirebaseConfiguration {
 }
 
 /**
+ * Supplies a mocked [OtpSender] so no test ever calls MSG91. `@Primary` for the same reason as
+ * [MockedFirebaseConfiguration]; the real `Msg91OtpSender` stays in the context unused.
+ */
+@TestConfiguration
+class MockedOtpConfiguration {
+    @Bean
+    @Primary
+    fun mockOtpSender(): OtpSender = mockk()
+}
+
+/**
  * Base for HTTP-level integration tests: the whole application, a real Postgres, real Flyway
  * migrations, the real Spring Security filter chain, and requests driven through `MockMvc` so
  * every filter, converter and exception handler on the path is exercised.
  *
- * **Exactly one thing is faked: [FirebaseTokenVerifier].** Verifying a real Firebase ID token
- * would mean a network call to Google and a service account this project does not have.
- * Nothing else -- not the database, not the JWT signing, not the phone encryption, not the
- * rate limiter -- is stubbed, and no test in this codebase ever reaches the real Firebase
- * Admin SDK.
+ * **Exactly two things are faked: [FirebaseTokenVerifier] and [OtpSender].** Verifying a real
+ * Firebase ID token would mean a network call to Google and a service account this project
+ * does not have; sending a real OTP would call MSG91 and cost money. Nothing else -- not the
+ * database, not the JWT signing, not the phone encryption, not the rate limiter -- is stubbed,
+ * and no test in this codebase ever reaches the real Firebase Admin SDK or MSG91.
  *
  * The container is a shared singleton started once for the JVM rather than a `@Container`
  * managed per class, so sibling test classes reuse it instead of each paying container
@@ -49,7 +61,7 @@ class MockedFirebaseConfiguration {
 @ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(MockedFirebaseConfiguration::class)
+@Import(MockedFirebaseConfiguration::class, MockedOtpConfiguration::class)
 abstract class AbstractWebIntegrationTest {
 
     @Autowired
@@ -57,6 +69,9 @@ abstract class AbstractWebIntegrationTest {
 
     @Autowired
     protected lateinit var firebaseTokenVerifier: FirebaseTokenVerifier
+
+    @Autowired
+    protected lateinit var otpSender: OtpSender
 
     @Autowired
     private lateinit var authRateLimiter: AuthRateLimiter
@@ -76,7 +91,7 @@ abstract class AbstractWebIntegrationTest {
      */
     @BeforeEach
     fun resetSharedContextState() {
-        clearMocks(firebaseTokenVerifier)
+        clearMocks(firebaseTokenVerifier, otpSender)
         authRateLimiter.reset()
         contentRateLimiter.reset()
     }

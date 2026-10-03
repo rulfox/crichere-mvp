@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
@@ -48,6 +49,21 @@ data class RateLimitProperties(
      * a very large number of distinct keys; see [AuthRateLimiter] for what happens then.
      */
     val maxTrackedKeys: Int = 100_000,
+    /**
+     * OTP *sends* (initial + resends) per [window] for one phone. One challenge allows 1 send +
+     * 3 resends (OtpProperties), so 5 leaves room for exactly one restart per hour.
+     */
+    val otpSendPhoneCapacity: Long = 5,
+    /** OTP sends per [window] for one client IP. Same CGNAT reasoning as [ipCapacity]. */
+    val otpSendIpCapacity: Long = 20,
+    /** OTP verify calls per [window] for one client IP; above the send limit because each challenge allows several guesses. */
+    val otpVerifyIpCapacity: Long = 60,
+    /**
+     * Hard ceiling on OTP SMS sent per UTC day across *all* callers: the last line of defence
+     * against SMS pumping (a distributed attack stays under every per-key limit) and a cost
+     * cap on the prepaid MSG91 wallet. Tune to a multiple of real daily sign-ins.
+     */
+    val otpGlobalDailyCap: Long = 2_000,
 )
 
 @Configuration
@@ -79,10 +95,20 @@ class RateLimitConfiguration
  * so no plaintext phone number is held in the limiter's memory.
  */
 @Component
-class AuthRateLimiter(private val properties: RateLimitProperties) {
+class AuthRateLimiter(
+    private val properties: RateLimitProperties,
+    private val clock: Clock = Clock.systemUTC(),
+) {
 
     private val phoneBuckets = ConcurrentHashMap<String, Bucket>()
     private val ipBuckets = ConcurrentHashMap<String, Bucket>()
+    private val otpSendPhoneBuckets = ConcurrentHashMap<String, Bucket>()
+    private val otpSendIpBuckets = ConcurrentHashMap<String, Bucket>()
+    private val otpVerifyIpBuckets = ConcurrentHashMap<String, Bucket>()
+
+    /** Day number (UTC) the global counter belongs to, and sends counted on it. Guarded by `this`. */
+    private var globalDay: Long = -1
+    private var globalSends: Long = 0
 
     /**
      * @return `null` if the attempt is allowed, or how long the caller must wait if it is not.
@@ -96,10 +122,48 @@ class AuthRateLimiter(private val properties: RateLimitProperties) {
     fun tryConsumeForIp(clientIp: String): Duration? =
         consume(ipBuckets, clientIp, properties.ipCapacity)
 
+    /** OTP send/resend, per phone (keyed on the HMAC lookup hash, like [tryConsumeForPhone]). */
+    fun tryConsumeOtpSendForPhone(phoneLookupHash: String): Duration? =
+        consume(otpSendPhoneBuckets, phoneLookupHash, properties.otpSendPhoneCapacity)
+
+    /** OTP send/resend, per client IP. */
+    fun tryConsumeOtpSendForIp(clientIp: String): Duration? =
+        consume(otpSendIpBuckets, clientIp, properties.otpSendIpCapacity)
+
+    /** OTP verify, per client IP. */
+    fun tryConsumeOtpVerifyForIp(clientIp: String): Duration? =
+        consume(otpVerifyIpBuckets, clientIp, properties.otpVerifyIpCapacity)
+
+    /**
+     * Counts one OTP SMS against today's global ceiling.
+     *
+     * @return `true` if the send may go ahead, `false` once [RateLimitProperties.otpGlobalDailyCap]
+     *   is reached for the current UTC day. Counted *before* the provider is called, so a
+     *   provider outage cannot be used to burn through retries uncounted.
+     */
+    @Synchronized
+    fun tryConsumeGlobalOtpSend(): Boolean {
+        if (!properties.enabled) return true
+        val today = clock.instant().epochSecond / SECONDS_PER_DAY
+        if (today != globalDay) {
+            globalDay = today
+            globalSends = 0
+        }
+        if (globalSends >= properties.otpGlobalDailyCap) return false
+        globalSends++
+        return true
+    }
+
     /** Test hook: forget every bucket. Not used by production code. */
+    @Synchronized
     fun reset() {
         phoneBuckets.clear()
         ipBuckets.clear()
+        otpSendPhoneBuckets.clear()
+        otpSendIpBuckets.clear()
+        otpVerifyIpBuckets.clear()
+        globalDay = -1
+        globalSends = 0
     }
 
     private fun consume(buckets: ConcurrentHashMap<String, Bucket>, key: String, capacity: Long): Duration? {
@@ -129,4 +193,8 @@ class AuthRateLimiter(private val properties: RateLimitProperties) {
                     .build(),
             )
             .build()
+
+    private companion object {
+        const val SECONDS_PER_DAY = 86_400L
+    }
 }
