@@ -95,7 +95,13 @@ returns `Result<OtpVerification>`.
   from a developer PC. So IP whitelisting was not the cause. The sender now sends the **widget token**
   as a `tokenAuth` header instead (`MSG91_TOKEN_AUTH`). That is the credential the dashboard points to
   (OTP > Tokens: "recommended to use a token in OTP Widget") but it is **still unconfirmed with a
-  live send**.
+  live send**. MSG91's public widget/SDK documentation agrees with this shape: `POST .../widget/sendOtp`
+  with a `tokenAuth` header, `widgetId` and `identifier` (country code, no `+`), returning a `reqId`
+  that retry/verify need. What is not documented is using these calls from a backend rather than from
+  MSG91's client SDKs; MSG91's own "Server Side Integration" panel only describes
+  `POST /api/v5/widget/verifyAccessToken` (Auth Key + the access token a client-side widget produced).
+  If a live backend send with the token fails, the fallback is that client-driven design (a security
+  trade-off: the backend then cannot enforce send limits).
 - **B. "Retry Time 15 min" on the widget is the OTP lifetime (expiry).** Our challenge expires after 5
   minutes regardless, so a code is never accepted after 5 minutes, but MSG91 itself would still honour
   it for 15. Set the widget expiry to 5 minutes or less if the dashboard allows.
