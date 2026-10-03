@@ -184,6 +184,23 @@ state, role on results rows, a lot number, scheduled auction time, a "which leag
 - Verified after deploy: landing 200, unknown league 404, live-now 204 (nothing live), CORS header
   on results + stream, and a real league page rendering from the stream.
 
+### Custom domain (2026-10-03)
+- Domain `crichere.com` (bought and DNS-hosted at Hostinger) is split: web viewer on
+  `crichere.com`, backend on `api.crichere.com`. Both added as Railway custom domains
+  (production environment).
+- Hostinger DNS records (applied 2026-10-03 via zone-file import, "replace existing"): CNAME `api` -> `5tmuned9.up.railway.app`, TXT
+  `_railway-verify.api` -> `railway-verify=5277d81f...e37c7`; CNAME/ALIAS `@` ->
+  `vqka1eh2.up.railway.app`, TXT `_railway-verify` -> `railway-verify=d1e469d1...390ce`
+  (full values: `railway domain status`). If Hostinger refuses a CNAME on `@`, use `www` + redirect.
+- Done and verified 2026-10-03: certs valid, landing 200, live-now 204, unknown league 404, CORS
+  preflight returns `access-control-allow-origin: https://crichere.com`. Railway env now:
+  web-viewer `NEXT_PUBLIC_API_BASE_URL=https://api.crichere.com`; backend `WEB_VIEWER_ORIGINS` =
+  `https://crichere.com` + the old Railway web URL (drop the old one later).
+- `www.crichere.com` still points at an old Railway target (`fpqf46bj`); not wired up yet.
+- Code: mobile `backendBaseUrl` = `https://api.crichere.com`, `webViewerBaseUrl` =
+  `https://crichere.com`. `NEXT_PUBLIC_API_BASE_URL` is build-time, so changing it needs a redeploy.
+- MSG91 widget: if its allowed-domain list is set, add `crichere.com` (not touched here).
+
 ## 7. Open items needing owner input
 
 - Official Google Play / App Store badge artwork (design uses mock glyphs).
