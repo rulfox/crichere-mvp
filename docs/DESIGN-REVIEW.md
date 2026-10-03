@@ -579,6 +579,11 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
+- [ ] **MSG91 OTP not verified against the real service** (2026-10-03, [PHASE12.md](PHASE12.md) §6).
+  Phase 0 spike (real account): widget API shapes, no-DLT delivery on Jio/Airtel/Vi, price,
+  production permission. `OtpFlowIntegrationTest` unrun (no Docker). On-device: SMS autofill (likely
+  absent), switching `OTP_PROVIDER` back to `firebase`. App Check needs the mobile client first.
+
 - [ ] **Uploads go live before Save** (found on screen C, 2026-10-01). Photo uploads use a fixed
   S3 key per owner (`users/{userId}/profile.jpg`, `leagues/{id}/logo.jpg`, ...), so the live image
   is replaced the moment the upload finishes, even if the user then cancels or never taps Save.
