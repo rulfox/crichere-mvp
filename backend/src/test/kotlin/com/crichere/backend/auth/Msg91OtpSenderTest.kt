@@ -75,6 +75,20 @@ class Msg91OtpSenderTest {
     }
 
     @Test
+    fun `a 4xx on verify is read as a wrong code, not an outage`() {
+        status = 400
+        responseBody = """{"type":"error","message":"OTP not match"}"""
+        assertEquals(OtpCheckResult.INVALID, sender().verify("req-123", "000000"))
+    }
+
+    @Test
+    fun `a 4xx on send is a generic unavailable failure`() {
+        status = 403
+        responseBody = """{"message":"AuthenticationFailure","type":"error","code":"207"}"""
+        assertThrows<OtpUnavailableException> { sender().send("+919876543210") }
+    }
+
+    @Test
     fun `a provider rejection on send is a generic unavailable failure`() {
         responseBody = """{"type":"error","message":"insufficient balance"}"""
         assertThrows<OtpUnavailableException> { sender().send("+919876543210") }

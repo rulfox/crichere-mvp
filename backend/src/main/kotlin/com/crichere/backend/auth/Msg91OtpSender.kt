@@ -70,18 +70,25 @@ class Msg91OtpSender(private val properties: Msg91Properties) : OtpSender {
             throw OtpUnavailableException("MSG91 not configured")
         }
         return try {
-            client.post()
+            val entity = client.post()
                 .uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("authkey", properties.authKey)
                 .body(body)
                 .retrieve()
-                // A 4xx from verify can still be a "wrong code" answer; let the caller read the body.
+                // A 4xx from verify can still be a "wrong code" answer, and a 4xx from anything is
+                // MSG91 explaining itself: keep the body instead of letting RestClient throw.
+                .onStatus({ it.is4xxClientError }) { _, _ -> }
                 .onStatus({ it.is5xxServerError }) { _, res ->
+                    log.error("MSG91 {} returned HTTP {}", path, res.statusCode.value())
                     throw OtpUnavailableException("MSG91 returned ${res.statusCode.value()}")
                 }
-                .body(object : ParameterizedTypeReference<Map<String, Any?>>() {})
-                ?: emptyMap()
+                .toEntity(object : ParameterizedTypeReference<Map<String, Any?>>() {})
+            val response = entity.body ?: emptyMap()
+            if (!entity.statusCode.is2xxSuccessful) {
+                log.error("MSG91 {} returned HTTP {}: {}", path, entity.statusCode.value(), describe(response))
+            }
+            response
         } catch (e: OtpUnavailableException) {
             throw e
         } catch (e: Exception) {
@@ -92,8 +99,24 @@ class Msg91OtpSender(private val properties: Msg91Properties) : OtpSender {
 
     private fun requireSuccess(response: Map<String, Any?>) {
         if (response["type"] != "success") {
-            log.error("MSG91 rejected the request (type={})", response["type"])
+            log.error("MSG91 rejected the request: {}", describe(response))
             throw OtpUnavailableException()
         }
+    }
+
+    /**
+     * MSG91's own error fields (`type`, `code`, `message`) for the log, so an auth or whitelist
+     * problem is diagnosable. Digit runs of six or more are masked: a reply can echo a phone
+     * number, and we never log phone numbers or codes. The authkey is never part of a reply.
+     */
+    private fun describe(response: Map<String, Any?>): String =
+        listOf("type", "code", "message")
+            .mapNotNull { key -> response[key]?.let { "$key=${it.toString().take(MAX_LOGGED).replace(LONG_DIGITS, "***")}" } }
+            .ifEmpty { listOf("(no recognisable fields)") }
+            .joinToString(" ")
+
+    private companion object {
+        const val MAX_LOGGED = 200
+        val LONG_DIGITS = Regex("[0-9]{6,}")
     }
 }
