@@ -70,7 +70,7 @@ Every `PHASEn.md` follows this structure, in order:
 - [Phase 10](PHASE10.md) — Android toolchain upgrade to latest stable (AGP 9.4.1, Kotlin 2.4.20, CMP 1.12.1, compileSdk 37) and migration of Android navigation to Navigation 3 (real back stack, hardware back, keyboard-aware back). **Status: Part A (toolchain) implemented and verified on-device; Part B (Navigation 3) implemented and verified on-device.**
 - [Phase 11](PHASE11.md) — public web redesign (Claude Design handoff): marketing landing page + rebuilt Live Auction viewer, with backend parity fields (lot counter, scheduled auction time, batting/bowling style, live-now endpoint) and a mobile scheduled-time picker. **Status: implemented (backend + mobile + web), verified in-browser against the design; mobile picker not yet verified on-device; deployed to Railway production 2026-10-02.**
 - [Phase 13](PHASE13.md) — branded link sharing on crichere.com: per-league Open Graph share card (Claude Design), default Crichere card, https Share link, Android App Links (iOS Universal Links deferred). **Status: implemented (web + Android), tested locally; not yet deployed or verified on-device.**
-- [Phase 14](PHASE14.md) — Railway cost cuts: backend JVM right-sized (256 MB heap, Serial GC, virtual threads, smaller DB pool, API docs off in production) and all services moved to Singapore. **Status: in progress.**
+- [Phase 14](PHASE14.md) — Railway cost cuts: backend JVM right-sized (256 MB heap, Serial GC, virtual threads, smaller DB pool, API docs off in production) and all services moved to Singapore (new database, verified restore). **Status: done; old US-West database kept as rollback.**
 
 ## Open Questions
 
