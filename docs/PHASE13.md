@@ -6,8 +6,7 @@ Phase 6 public web viewer ([PHASE6.md](PHASE6.md)).
 
 **Last updated:** 2026-10-03
 **Status:** web + Android **implemented; web deployed and verified live on crichere.com; Android App
-Link + Share verified on-device (CPH2487, debug build) 2026-10-03.** Open: real WhatsApp/Facebook
-preview, release signing key in assetlinks.json, iOS.
+Link + Share verified on-device (CPH2487, debug build) 2026-10-03.** Open: Facebook preview, release signing key in assetlinks.json, iOS.
 
 ---
 
@@ -95,9 +94,12 @@ On-device (CPH2487, debug build, 2026-10-03):
 - Share sheet: title = league name, text "Join … on Crichere · Thrissur · watch the p…". Fix found here:
   the name's trailing space gave a double space, so Share now trims name and city too.
 
+- Real WhatsApp send (2026-10-03, owner's phone): large preview card with the generated league card
+  (S3 logo, name, "Thrissur, Kerala", footer), title, organizer description, crichere.com, and the new
+  share text with a clickable https link.
+
 Still open:
-- Facebook Sharing Debugger and a real WhatsApp send to self (previews are cached per URL, so do this
-  before any public share).
+- Facebook Sharing Debugger / a Facebook post preview.
 - A real notification tap (only the `crichere://` intent was fired by adb) and tapping a link inside
   WhatsApp itself (both should behave like the adb VIEW intents above).
 - Release / Play App Signing SHA-256 into `assetlinks.json` before release.
