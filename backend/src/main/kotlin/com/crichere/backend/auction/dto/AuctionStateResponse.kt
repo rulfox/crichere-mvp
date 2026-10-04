@@ -40,6 +40,8 @@ data class AuctionStateResponse(
     val currentLotNumber: Int? = null,
     /** Players still `PENDING` -- the pool `next-player` draws from, unsold players included once they're back in it. */
     val playersPending: Int = 0,
+    /** `false` when the auction is running with players waiting but no franchise can bid (squads full / purses spent) -- the organizer's cue to end the auction or allow exceeding the purse. */
+    val canAnyoneBid: Boolean = true,
 )
 
 /** See [AuctionStateResponse.lastResult]. [franchiseName]/[amount] are `null` when [sold] is false. */

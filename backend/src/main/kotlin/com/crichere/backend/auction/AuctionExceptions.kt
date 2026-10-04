@@ -30,6 +30,9 @@ class AuctionNoPlayerOpenException : RuntimeException("No player is currently op
 /** A bid was below the required minimum (current bid + increment, or base price if no bid yet). */
 class BidTooLowException(val minimumAmount: java.math.BigDecimal) : RuntimeException("Bid must be at least $minimumAmount")
 
+/** The bidding franchise already holds the leading bid -- a franchise cannot outbid itself. */
+class AlreadyLeadingException : RuntimeException("This franchise already has the leading bid")
+
 /** The bidding franchise would exceed `auctionSquadMax` if this bid won. */
 class SquadFullException : RuntimeException("This franchise's squad is already full")
 

@@ -2,6 +2,7 @@ package com.crichere.app.league
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crichere.app.auth.AuthRepository
 import com.crichere.app.auth.Countries
 import com.crichere.app.auth.PhoneNumberInput
 import kotlinx.coroutines.Job
@@ -30,6 +31,8 @@ data class ManageRolesState(
     val revokingRoleIds: Set<String> = emptySet(),
     /** Above the co-organizer list when a revoke fails. */
     val revokeError: RoleNotice? = null,
+    /** The signed-in user just revoked their own access: nothing on this screen is theirs to manage any more, so the screen leaves. */
+    val accessRevoked: Boolean = false,
 )
 
 /**
@@ -44,6 +47,8 @@ class ManageRolesViewModel(
     private val leagueId: String,
     private val leagueRepository: LeagueRepository,
     private val roleRepository: RoleRepository,
+    /** Who the signed-in user is, to notice a co-organizer revoking themselves. `null` (tests) never leaves the screen. */
+    private val authRepository: AuthRepository? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ManageRolesState())
@@ -115,7 +120,11 @@ class ManageRolesViewModel(
         _state.update { it.copy(revokingRoleIds = it.revokingRoleIds + roleId, revokeError = null) }
         viewModelScope.launch {
             runCatching { roleRepository.revoke(leagueId, roleId) }
-                .onSuccess { league -> _state.update { it.copy(revokingRoleIds = it.revokingRoleIds - roleId, league = league) } }
+                .onSuccess { league ->
+                    val me = authRepository?.getCurrentUserId()
+                    val lostAccess = me != null && !league.isOrganizerOrCoOrganizer(me)
+                    _state.update { it.copy(revokingRoleIds = it.revokingRoleIds - roleId, league = league, accessRevoked = lostAccess) }
+                }
                 .onFailure { throwable ->
                     if ((throwable as? RoleActionFailedException)?.code == "NOT_FOUND") {
                         // Someone else already revoked it -- the outcome the user wanted; just refresh the list.

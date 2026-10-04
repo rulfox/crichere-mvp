@@ -201,6 +201,8 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
         joinAsPlayer(player2, leagueId)
         val ownerToken = signInNewUser()
         val franchiseId = claimFranchise(ownerToken, leagueId)
+        val owner2Token = signInNewUser()
+        val franchise2Id = claimFranchise(owner2Token, leagueId, "Bengaluru Blasters")
         authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/start").andExpect(status().isOk)
         authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player").andExpect(status().isOk)
 
@@ -210,7 +212,8 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
             .andExpect(jsonPath("$.recentBids[0].amount").value(100))
             .andExpect(jsonPath("$.recentBids[0].franchiseName").value("Chennai Kings"))
 
-        authedPost(ownerToken, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 150))
+        // A franchise cannot outbid itself, so the raise comes from the other franchise.
+        authedPost(owner2Token, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchise2Id, "amount" to 150))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.recentBids.length()").value(2))
             .andExpect(jsonPath("$.recentBids[0].amount").value(150))
@@ -298,6 +301,44 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
         authedPatchNoBody(organizerToken, "/api/v1/leagues/$leagueId/complete")
             .andExpect(status().isConflict)
             .andExpect(jsonPath("$.code").value("AUCTION_IN_PROGRESS"))
+    }
+
+    @Test
+    fun `a franchise that already leads cannot raise its own bid`() {
+        val leagueId = createLeague(organizerToken)
+        configureAuction(organizerToken, leagueId, squadMax = 1)
+        joinAsPlayer(signInNewUser(), leagueId)
+        val ownerToken = signInNewUser()
+        val franchiseId = claimFranchise(ownerToken, leagueId)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/start").andExpect(status().isOk)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player").andExpect(status().isOk)
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 100))
+            .andExpect(status().isOk)
+
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 150))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.code").value("ALREADY_LEADING"))
+    }
+
+    @Test
+    fun `canAnyoneBid turns false once the only franchise's squad is full with players still waiting`() {
+        val leagueId = createLeague(organizerToken)
+        configureAuction(organizerToken, leagueId, squadMax = 1)
+        joinAsPlayer(signInNewUser(), leagueId)
+        joinAsPlayer(signInNewUser(), leagueId)
+        val ownerToken = signInNewUser()
+        val franchiseId = claimFranchise(ownerToken, leagueId)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/start")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.canAnyoneBid").value(true))
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player").andExpect(status().isOk)
+        authedPost(ownerToken, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseId, "amount" to 100))
+            .andExpect(status().isOk)
+
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/sold")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.playersPending").value(1))
+            .andExpect(jsonPath("$.canAnyoneBid").value(false))
     }
 
     @Test

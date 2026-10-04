@@ -9,6 +9,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
@@ -144,6 +145,32 @@ class AuctionViewModelTest {
     }
 
     @Test
+    fun `a stream that goes quiet and times out is a drop, not a cancelled screen -- it reconnects`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        var attempts = 0
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = flow {
+                attempts++
+                emit(auctionState(AuctionStatus.IN_PROGRESS, currentBidAmount = attempts * 100.0))
+                // The idle watchdog's failure is a TimeoutCancellationException -- a CancellationException.
+                if (attempts == 1) withTimeout(500) { awaitCancellation() } else awaitCancellation()
+            }
+        }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("organizer-1"), listOf(1_000L))
+
+        viewModel.retry()
+        runCurrent()
+        advanceTimeBy(501)
+        runCurrent()
+        assertTrue(viewModel.state.value.connectionLost)
+
+        advanceTimeBy(1_001)
+        runCurrent()
+        assertFalse(viewModel.state.value.connectionLost)
+        assertEquals(200.0, viewModel.state.value.auction?.currentBidAmount)
+    }
+
+    @Test
     fun `a stream that ends cleanly is treated as dropped and reconnected`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         var attempts = 0
@@ -184,6 +211,30 @@ class AuctionViewModelTest {
 
         assertTrue(viewModel.state.value.connectionLost)
         assertEquals(1, attempts)
+    }
+
+    @Test
+    fun `a franchise owner who already leads is told so without a request, and ALREADY_LEADING from the server reads the same`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague(franchises = listOf(franchise()))))
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = MutableSharedFlow<AuctionStateDto>(replay = 1).apply {
+                tryEmit(
+                    AuctionStateDto(
+                        auctionStatus = AuctionStatus.IN_PROGRESS, currentPlayerId = "p1", currentBidAmount = 100.0,
+                        currentLeadingFranchiseId = "f1",
+                    ),
+                )
+            }
+        }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("owner-1"))
+
+        viewModel.retry()
+        advanceUntilIdle()
+        viewModel.onBidAmountChanged("150")
+        viewModel.placeBid()
+
+        assertEquals("You already have the leading bid.", viewModel.state.value.bidError)
+        assertTrue(auctionRepository.placeBidRequests.isEmpty())
     }
 
     @Test

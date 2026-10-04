@@ -33,6 +33,8 @@ data class AuctionStateDto(
     val playersSold: Int = 0,
     /** The player just sold / sent back unsold, while nobody is up yet (design L8). */
     val lastResult: AuctionLastResultDto? = null,
+    /** `false` while players wait but no franchise can bid (squads full / purses spent) -- the organizer's cue to end the auction or allow exceeding the purse. */
+    val canAnyoneBid: Boolean = true,
 )
 
 /** Mirrors the backend's `AuctionBidTickerResponse`. [placedAt] is an ISO-8601 instant. */

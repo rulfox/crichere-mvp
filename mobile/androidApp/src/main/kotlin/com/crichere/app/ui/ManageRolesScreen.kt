@@ -79,6 +79,8 @@ internal fun ManageRolesRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.retry() }
+    // A co-organizer who revokes their own access has nothing left to manage here.
+    LaunchedEffect(state.accessRevoked) { if (state.accessRevoked) onBack() }
 
     ManageRolesScreen(state = state, viewModel = viewModel, onBack = onBack)
 }

@@ -71,6 +71,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.SubcomposeAsyncImage
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import com.crichere.app.league.groupIndianAmount
 import com.crichere.app.R
 import com.crichere.app.league.AuctionBidTickerDto
 import com.crichere.app.league.AuctionState
@@ -365,7 +370,12 @@ private fun EmptyBlockCard(auction: AuctionStateDto, isOrganizer: Boolean) {
             if (it.sold) "Last: $name sold to ${it.franchiseName ?: "a franchise"}" + (it.amount?.let { a -> " for ${rupees(a)}." } ?: ".")
             else "Last: $name went unsold."
         }
-        val body = listOfNotNull(lastLine, if (isOrganizer) "Bring up the next player." else "Waiting for the organizer to bring up the next player.").joinToString(" ")
+        val nextStep = when {
+            isOrganizer && !auction.canAnyoneBid -> "No franchise can bid on the remaining players: squads are full or purses are spent. End the auction, or allow exceeding the purse if purses are the limit."
+            isOrganizer -> "Bring up the next player."
+            else -> "Waiting for the organizer to bring up the next player."
+        }
+        val body = listOfNotNull(lastLine, nextStep).joinToString(" ")
         Spacer(Modifier.height(7.dp))
         Text(body, style = text(13.sp, lineHeight = 18.85.sp), color = CrichereAuctionMuted)
     }
@@ -626,6 +636,20 @@ private fun BidForm(state: AuctionState, viewModel: AuctionViewModel) {
     }
 }
 
+/** Draws the typed amount with Indian grouping (15,500) while the text itself stays plain digits. */
+private object IndianAmountTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val grouped = groupIndianAmount(text.text)
+        return TransformedText(
+            AnnotatedString(grouped.text),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int) = grouped.toTransformed(offset)
+                override fun transformedToOriginal(offset: Int) = grouped.toOriginal(offset)
+            },
+        )
+    }
+}
+
 /** The ₹ amount field in the dock's dark style: notched label, gold when focused, coral on error. */
 @Composable
 private fun AmountField(value: String, onValueChange: (String) -> Unit, error: String?, enabled: Boolean) {
@@ -650,6 +674,7 @@ private fun AmountField(value: String, onValueChange: (String) -> Unit, error: S
                     textStyle = mono(18.sp, FontWeight.SemiBold).copy(color = Color.White),
                     cursorBrush = SolidColor(CrichereAuctionGold),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    visualTransformation = IndianAmountTransformation,
                     modifier = Modifier.weight(1f),
                 )
                 if (error != null) {

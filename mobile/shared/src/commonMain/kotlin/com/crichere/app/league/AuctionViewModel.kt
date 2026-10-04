@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crichere.app.auth.AuthRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.coroutines.cancellation.CancellationException
 
 /** Design L1's "Bidding as Satara Titans · ₹42,000 left · 11/12 players". */
 data class BiddingContext(
@@ -131,9 +132,10 @@ class AuctionViewModel(
                         applyAuctionState(newState)
                     }
                     null
-                } catch (e: CancellationException) {
-                    throw e
                 } catch (e: Exception) {
+                    // A timeout also arrives as a CancellationException, so the type can't tell "the screen
+                    // closed" from "the stream went quiet": only our own scope being cancelled should stop us.
+                    currentCoroutineContext().ensureActive()
                     e
                 }
                 if (received) failures = 0
@@ -209,6 +211,10 @@ class AuctionViewModel(
         val amount = current.bidAmountInput.trim().toDoubleOrNull()
         val minimum = current.minimumNextBid
         when {
+            current.auction?.currentLeadingFranchiseId == franchiseId -> {
+                _state.update { it.copy(bidError = "You already have the leading bid.") }
+                return
+            }
             amount == null -> {
                 _state.update { it.copy(bidError = "Enter a bid amount.") }
                 return
@@ -235,6 +241,7 @@ class AuctionViewModel(
         return when ((throwable as? AuctionActionFailedException)?.code) {
             // Someone outbid in the meantime -- the stream will bring the new minimum; say what it was when we knew.
             "BID_TOO_LOW" -> state.minimumNextBid?.let { "Bid must be at least ${rupeeText(it)}." } ?: "Someone bid higher. Try again."
+            "ALREADY_LEADING" -> "You already have the leading bid."
             "SQUAD_FULL" -> context?.squadMax?.let { "Your squad is full ($it/$it)." } ?: "Your squad is full."
             "PURSE_EXCEEDED" -> context?.purseLeft?.let { "This bid is more than your remaining purse (${rupeeText(it)})." }
                 ?: "This bid is more than your remaining purse."

@@ -2,6 +2,8 @@
 
 package com.crichere.app.league
 
+import com.crichere.app.auth.AuthRepository
+import com.crichere.app.auth.AuthResult
 import com.crichere.app.auth.viewModelTest
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
@@ -108,6 +110,45 @@ class ManageRolesViewModelTest {
         assertEquals(listOf("r1"), roleRepository.revokeCalls)
         assertEquals(0, viewModel.state.value.league?.coOrganizers?.size)
         assertTrue(viewModel.state.value.revokingRoleIds.isEmpty())
+    }
+
+    private class StubAuth(private val userId: String) : AuthRepository {
+        override suspend fun sendOtp(phoneNumber: String, resendToken: Any?) = error("not used")
+        override suspend fun verifyOtp(verificationId: String, code: String) = error("not used")
+        override suspend fun exchangeSession(idToken: String) = error("not used")
+        override suspend fun refresh(): AuthResult? = error("not used")
+        override suspend fun logout() = error("not used")
+        override suspend fun getCurrentUserId(): String? = userId
+    }
+
+    private val delegate = LeagueRoleDto(id = "r1", userId = "u2", name = "Delegate Name", grantedAt = "2026-09-13T00:00:00Z")
+
+    @Test
+    fun `a co-organizer who revokes their own access leaves the screen`() = viewModelTest {
+        val existing = sampleLeague(coOrganizers = listOf(delegate))
+        val roleRepository = FakeRoleRepository().apply { nextLeague = sampleLeague() } // the response no longer lists u2
+        val viewModel = ManageRolesViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(existing)), roleRepository, StubAuth("u2"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.revoke("r1")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.accessRevoked)
+    }
+
+    @Test
+    fun `the organizer revoking someone else stays on the screen`() = viewModelTest {
+        val existing = sampleLeague(coOrganizers = listOf(delegate))
+        val roleRepository = FakeRoleRepository().apply { nextLeague = sampleLeague() }
+        val viewModel = ManageRolesViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(existing)), roleRepository, StubAuth("organizer-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.revoke("r1")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.accessRevoked)
     }
 
     private suspend fun kotlinx.coroutines.test.TestScope.lookedUp(roleRepository: FakeRoleRepository, league: LeagueDto = sampleLeague()): ManageRolesViewModel {

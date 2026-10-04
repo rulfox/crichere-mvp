@@ -622,7 +622,8 @@ Open items found while implementing the redesign, not yet scheduled.
     fallbacks; free league (G4).
   - H: Retry going through the loading spinner (the test URL failed instantly); opening the viewer
     from League Detail with a real proof (the harness opened it directly); pan clamping by touch
-    (covered by tests only); nav-bar icons hard to see when zoomed into a white image.
+    (covered by tests only); nav-bar icons hard to see when zoomed into a white image (2026-10-04: a dark fade now sits behind the
+    system bars while zoomed; compiled, not seen on a device).
   - I: a real Save end to end (create and edit, with logo/banner upload progress against S3);
     Use my location live; ground search and registration against real data; edit mode live; the
     discard dialog at its new 314dp width; Profile setup (C) after the shared field changes (not
@@ -639,6 +640,7 @@ Open items found while implementing the redesign, not yet scheduled.
   Still not verified: Places mode (needs Places API (New) on the key); iOS centre pin (not
   compiled). Known, not fixed: with the keyboard up for the ground name, the sheet covers nearly
   the whole map and the pin is pushed to the top edge (the saved location is unaffected).
+  Still open 2026-10-04: any fix changes the sheet while the keyboard is open, so it needs a design call.
 
 - [ ] **Auction settings (J) partly unverified** (2026-10-02): a real Save was confirmed working by
   the owner on CPH2487. Still unverified: the J5 failure bar + Retry live, the
@@ -650,8 +652,8 @@ Open items found while implementing the redesign, not yet scheduled.
   3 UI tests (lookup found / not found / revoke confirmation) pass on the phone. Not verified live:
   found user + Grant + dialog, Looking up… / Granting… / Revoking… frames, grant failure banner,
   rate-limit message (needs a second registered account; a live grant changes who manages the
-  league), iOS ManageRolesView (not compiled). Known gap: a co-organizer who revokes their own
-  access stays on the screen; their next action fails with a generic error instead of leaving.
+  league), iOS ManageRolesView (not compiled). Fixed 2026-10-04 (unit-tested, not run live): a co-organizer who
+  revokes their own access now leaves the screen.
 
 - [ ] **Live auction (L) polish + live check** (2026-10-02). Open: the On the block card renders
   ~10dp taller than the board (text box heights; not tracked down); Amount shows "15500" where the
@@ -660,12 +662,13 @@ Open items found while implementing the redesign, not yet scheduled.
   AuctionLiveView updated but not compiled.
   **2026-10-04 (PHASE15.md):** against a *local* backend on an emulator the organizer flow is now verified
   (live bids, Next Player, Sold, Unsold, Undo of a bid and of a sale, exceed-purse toggle, results, auto-complete,
-  Mark completed). Still open: End Auction button, reconnect after a real network drop (unit-tested only),
-  photos, the deployed backend, and Results showing "₹-250 left" once the purse is exceeded.
+  Mark completed). Reconnect after a real outage is now verified too (PHASE15.md section 6). Still open:
+  End Auction button, photos, the deployed backend, Results showing "₹-250 left" once the purse is exceeded
+  (needs design), and the "Amount shows 15500" item is fixed (15,500, Indian grouping). The card-height
+  mismatch above is still open (needs measuring against the design).
 
 - [ ] **My leagues (M) unverified states** (2026-10-02): M2 empty and M3 error not seen on device
-  (the test account has leagues); a long city name truncates the start date ("Thiruvananthapuram,
-  Kerala -- 2026..."); iOS empty state added but not compiled.
+  (the test account has leagues); a long city name truncated the start date (fixed 2026-10-04: only the place ellipsizes; not seen with a real long city); iOS empty state added but not compiled.
 
 - [ ] **My profile (N) unverified** (2026-10-02): Choose new photo was not run live (it would replace
   the owner's real photo; covered by VM tests), N3 no-photo and N5 error not seen on device, iOS

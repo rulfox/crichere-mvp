@@ -139,6 +139,7 @@ class AuctionService(
      * @throws com.crichere.backend.common.ContentRateLimitExceededException the caller has bid too many times recently.
      * @throws NotFranchiseOwnerException [callerId] does not own [franchiseId].
      * @throws AuctionNoPlayerOpenException no player is currently open.
+     * @throws AlreadyLeadingException [franchiseId] already holds the leading bid -- a franchise cannot outbid itself.
      * @throws BidTooLowException [amount] is below the current bid plus increment (or base price if none yet).
      * @throws SquadFullException this bid would push the franchise's squad past `auctionSquadMax`.
      * @throws PurseExceededException this bid would exceed the franchise's remaining purse and exceeding it isn't allowed.
@@ -156,6 +157,9 @@ class AuctionService(
         if (franchise.ownerUserId != callerId) throw NotFranchiseOwnerException()
 
         val currentPlayerId = league.auctionCurrentPlayerId ?: throw AuctionNoPlayerOpenException()
+
+        // Checked under the row lock, so two quick taps from the same owner can't both land.
+        if (league.auctionCurrentLeadingFranchiseId == franchiseId) throw AlreadyLeadingException()
 
         val minimum = league.auctionCurrentBidAmount?.plus(requireNotNull(league.auctionBidIncrement))
             ?: requireNotNull(league.auctionBasePrice)
@@ -407,6 +411,7 @@ class AuctionService(
                     )
                 }
         } ?: emptyList()
+        val playersPending = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING).toInt()
         return AuctionStateResponse(
             auctionStatus = auctionStatus,
             currentPlayerId = auctionCurrentPlayerId,
@@ -424,8 +429,27 @@ class AuctionService(
             currentPlayerBattingStyle = currentProfile?.battingStyle,
             currentPlayerBowlingStyle = currentProfile?.bowlingStyle,
             currentLotNumber = auctionLotCounter.takeIf { it > 0 },
-            playersPending = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING).toInt(),
+            playersPending = playersPending,
+            canAnyoneBid = canAnyoneBid(playersPending),
         )
+    }
+
+    /**
+     * `false` only when the auction is running, players are still waiting, and no active franchise could
+     * place even an opening bid -- every squad is full, or (with exceeding the purse off) every purse is
+     * below the base price. Lets the organizer see why nothing sells instead of looping Next Player /
+     * Unsold. Players already won are read the same way [placeBid] reads them, so the two cannot disagree.
+     */
+    private fun LeagueEntity.canAnyoneBid(playersPending: Int): Boolean {
+        if (auctionStatus != AuctionStatus.IN_PROGRESS || playersPending == 0) return true
+        val squadMax = auctionSquadMax ?: return true
+        val basePrice = auctionBasePrice ?: return true
+        val purse = auctionPurse ?: return true
+        return franchiseRepository.findByLeagueIdAndRemovedAtIsNull(requireNotNull(id)).any { franchise ->
+            val won = playerRepository.findBySoldToFranchiseId(requireNotNull(franchise.id))
+            val spent = won.sumOf { it.soldPrice ?: BigDecimal.ZERO }
+            won.size < squadMax && (auctionAllowExceedPurse || spent + basePrice <= purse)
+        }
     }
 
     /** The player the organizer just sold or sent back unsold -- only while that's still the last action (undo/next player clear it). */

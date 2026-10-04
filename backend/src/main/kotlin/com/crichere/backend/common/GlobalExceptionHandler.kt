@@ -5,6 +5,7 @@ import com.crichere.backend.auction.AuctionInProgressException
 import com.crichere.backend.auction.AuctionNoPlayerOpenException
 import com.crichere.backend.auction.AuctionNotInProgressException
 import com.crichere.backend.auction.AuctionNotReadyException
+import com.crichere.backend.auction.AlreadyLeadingException
 import com.crichere.backend.auction.AuctionPlayerAlreadyOpenException
 import com.crichere.backend.auction.BidTooLowException
 import com.crichere.backend.auction.NoBidsToSellException
@@ -672,6 +673,18 @@ class GlobalExceptionHandler {
             title = "Squad full",
             code = "SQUAD_FULL",
             detail = "This franchise's squad is already full.",
+            instance = request.requestURI,
+        )
+
+    /** The franchise already holds the leading bid. */
+    @ExceptionHandler(AlreadyLeadingException::class)
+    fun handleAlreadyLeading(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "already-leading",
+            title = "Already leading",
+            code = "ALREADY_LEADING",
+            detail = "This franchise already has the leading bid.",
             instance = request.requestURI,
         )
 

@@ -1,5 +1,6 @@
 package com.crichere.backend.auction
 
+import com.crichere.backend.auction.dto.AuctionStateResponse
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.franchise.FranchiseEntity
 import com.crichere.backend.franchise.FranchiseRepository
@@ -334,6 +335,50 @@ class AuctionServiceTest {
         val result = service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("10000"))
 
         assertEquals(BigDecimal("10000"), result.currentBidAmount)
+    }
+
+    @Test
+    fun `placeBid by the franchise that already leads is rejected -- a franchise cannot outbid itself`() {
+        every { leagueRepository.findByIdForUpdate(leagueId) } returns
+            league(currentPlayerId = playerId, currentBidAmount = BigDecimal("100"), currentLeadingFranchiseId = franchiseId)
+        every { franchiseRepository.findById(franchiseId) } returns Optional.of(franchise())
+
+        assertFailsWith<AlreadyLeadingException> {
+            service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("150"))
+        }
+    }
+
+    // ---------------------------------------------------------------- canAnyoneBid
+
+    private fun stateWithPending(pending: Long, league: LeagueEntity, wonByFranchise: List<PlayerEntity>): AuctionStateResponse {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(league)
+        every { leagueRepository.save(any()) } answers { firstArg() }
+        every { playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING) } returns pending
+        every { franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId) } returns listOf(franchise())
+        every { playerRepository.findBySoldToFranchiseId(franchiseId) } returns wonByFranchise
+        return service.toggleExceedPurse(leagueId, organizerId, league.auctionAllowExceedPurse)
+    }
+
+    private fun wonFor(price: String) =
+        PlayerEntity(id = UUID.randomUUID(), leagueId = leagueId, userId = UUID.randomUUID(), auctionOutcome = AuctionOutcome.SOLD, soldPrice = BigDecimal(price))
+
+    @Test
+    fun `canAnyoneBid is false when players wait but every squad is full`() {
+        val state = stateWithPending(1, league(squadMax = 1), listOf(wonFor("100")))
+        assertEquals(false, state.canAnyoneBid)
+    }
+
+    @Test
+    fun `canAnyoneBid is false when every purse is below the base price and exceeding is off`() {
+        val state = stateWithPending(1, league(purse = BigDecimal("150")), listOf(wonFor("100")))
+        assertEquals(false, state.canAnyoneBid)
+    }
+
+    @Test
+    fun `canAnyoneBid is true when exceeding the purse is allowed, or room remains, or nobody is waiting`() {
+        assertEquals(true, stateWithPending(1, league(purse = BigDecimal("150"), allowExceedPurse = true), listOf(wonFor("100"))).canAnyoneBid)
+        assertEquals(true, stateWithPending(1, league(), listOf(wonFor("100"))).canAnyoneBid)
+        assertEquals(true, stateWithPending(0, league(squadMax = 1), listOf(wonFor("100"))).canAnyoneBid)
     }
 
     @Test

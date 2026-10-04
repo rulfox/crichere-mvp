@@ -1,6 +1,6 @@
 # Phase 15 — Local end-to-end auction test (emulator + local backend)
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-04 (fix pass added, section 6)
 **Status:** done. One full run: organizer on an Android emulator logs in, creates a league, sets auction
 settings, adds a co-organizer, runs a live auction to completion and marks the league completed, against a
 local backend and a fresh local Postgres. It found and fixed a real app bug (SSE cut after 15 s, section 4).
@@ -75,3 +75,29 @@ Unit tests added: `LocalFakeOtpSenderTest`, `GlobalExceptionHandlerDisconnectTes
 - Only one run, one device (Pixel_9_Pro AVD, API 36); no Firebase path (the app used the MSG91-style flow).
 - Scripts are not a regression suite yet: they seed, join and bid, but assertions were made by hand with
   `psql`/screenshots. A scripted assertion pass is a possible follow-up.
+
+---
+
+## 6. Fix pass (2026-10-04, same day)
+
+Scope chosen by the owner: the auction findings above plus the older mobile UI defects from DESIGN-REVIEW
+Follow-ups. Items that need a design decision were skipped on purpose (below).
+
+| Item | Result |
+|---|---|
+| **A franchise cannot outbid itself** | Decision: block it. `AuctionService.placeBid` throws `AlreadyLeadingException` (409 `ALREADY_LEADING`) under the league row lock; the app also refuses locally ("You already have the leading bid.") without a request. The bid-ticker integration test used a self-raise and now alternates franchises. |
+| **Dead-end hint for the organizer** | Decision: hint, not auto-end. `AuctionStateResponse.canAnyoneBid` is `false` while the auction runs, players are pending and no active franchise can open a bid (squad full, or purse below base price with exceeding off). The between-players card reuses the existing notice text slot. **Copy is mine, not from Claude Design: send it for review.** Verified live. |
+| **Silent dead stream** | Found while verifying reconnect. The SSE client does not surface comment-only frames, so the old `: keep-alive` was invisible to the app, and Ktor's OkHttp engine ignores a per-request socket timeout for SSE: a connection that died without an error hung forever, with no banner. Decision: the 15 s heartbeat now re-sends the league's latest state as a normal `auction-state` event (no protocol change; the web viewer already ignores repeats), and the app treats 40 s of silence as a drop (`Flow.timeout`). Because that timeout is a `CancellationException`, the ViewModel's loop now stops only when its *own* scope is cancelled (`ensureActive`). Verified live: banner about 24 s after killing the backend, gone and updating again after it restarts. |
+| Amount field shows `15,500` | Indian grouping drawn by a visual transformation (`AmountGrouping.kt`, tested incl. caret mapping); the typed text stays plain digits. Verified on the emulator. |
+| My leagues: long city no longer hides the start date | Place and date are separate texts; only the place can ellipsize. Not seen with a real long city (needs one). |
+| Co-organizer who revokes themselves leaves the screen | `ManageRolesViewModel` gets the signed-in user; if the response no longer lists them as organizer or co-organizer, `accessRevoked` pops the screen. Optional constructor parameter (tests and the instrumented tests unchanged). Unit-tested; not run live (needs a second login with a granted role). |
+| Screenshot viewer: system-bar icons on a white image | While zoomed, a soft dark fade sits behind the status and navigation bars. Compiles; not seen on a device. |
+| Emitter cleanup in `AuctionBroadcastService` | Read, no bug: dead emitters are removed on send failure and on complete/error/timeout. One note: an emptied per-league list stays in the map (removing it would race with a new subscriber). |
+
+**Skipped, needs Claude Design / a decision from the owner**
+- "₹-250 left" on Results (item: show "over purse"?) and a confirm dialog on **Mark completed** (the owner chose to skip; both need design).
+- **On the block card ~10 dp taller than the board**: needs measuring against the design source, which isn't available here.
+- **Register-ground map: keyboard covers the map**: any real fix changes the sheet layout while the keyboard is open (hide the coordinates, collapse the sheet, or move the pin area), which is a design call.
+- Data-integrity group (uploads live before Save, stale refresh token 401, orphaned S3 uploads) and the design/content group were not part of this pass.
+
+**Not verified:** the amount transformation was seen on the emulator only (one device); iOS untouched (nothing compiles here).

@@ -155,13 +155,24 @@ private fun LeagueRow(league: LeagueSummaryDto, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(4.dp))
-            Text(
-                "${league.city}, ${league.state} -- ${league.startsOn}",
-                style = pText(12.sp, lineHeight = 14.4.sp),
-                color = colors.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // Only the place may be cut short, never the start date after it.
+            Row {
+                Text(
+                    "${league.city}, ${league.state}",
+                    style = pText(12.sp, lineHeight = 14.4.sp),
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Text(
+                    " -- ${league.startsOn}",
+                    style = pText(12.sp, lineHeight = 14.4.sp),
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = Chevron, modifier = Modifier.size(20.dp))

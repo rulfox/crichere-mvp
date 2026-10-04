@@ -12,9 +12,12 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.timeout
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
 
 /** Thrown by every mutating [AuctionRepository] call for anything other than a clean 2xx -- same posture as [LeagueSaveFailedException]. */
 class AuctionActionFailedException(message: String, val code: String? = null) : Exception(message)
@@ -53,6 +56,14 @@ interface AuctionRepository {
     fun streamAuctionState(leagueId: String): Flow<AuctionStateDto>
 }
 
+/**
+ * How long the stream may stay silent before it is treated as dead. The server re-sends the current state
+ * every 15s (`AuctionBroadcastService.heartbeat`), so 40s of silence means the connection is gone (signal
+ * lost, NAT dropped) even though the socket never errored; the flow then fails and the ViewModel reconnects.
+ * A comment-only keep-alive wouldn't do: the SSE client doesn't surface those.
+ */
+private val STREAM_IDLE_TIMEOUT = 40.seconds
+
 internal class KtorAuctionRepository(private val httpClient: HttpClient) : AuctionRepository {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -90,11 +101,12 @@ internal class KtorAuctionRepository(private val httpClient: HttpClient) : Aucti
     override suspend fun getResults(leagueId: String): AuctionResultsDto =
         httpClient.get("/api/v1/leagues/$leagueId/auction/results").body()
 
+    @OptIn(FlowPreview::class)
     override fun streamAuctionState(leagueId: String): Flow<AuctionStateDto> = flow {
         httpClient.sse(
             "/api/v1/leagues/$leagueId/auction/stream",
             // The client-wide 15s request timeout (HttpClientFactory) would cut a stream that is meant
-            // to stay open for the whole auction; only this request opts out.
+            // to stay open for the whole auction, so this request has none.
             request = {
                 timeout {
                     requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
@@ -102,7 +114,7 @@ internal class KtorAuctionRepository(private val httpClient: HttpClient) : Aucti
                 }
             },
         ) {
-            incoming.collect { event ->
+            incoming.timeout(STREAM_IDLE_TIMEOUT).collect { event ->
                 event.data?.let { data -> emit(json.decodeFromString(AuctionStateDto.serializer(), data)) }
             }
         }

@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -170,6 +175,22 @@ internal fun ScreenshotViewerScreen(painter: Painter, loaded: Boolean, failed: B
         }
 
         if (zoomed) {
+            // The zoomed image runs edge to edge under the system bars, whose light icons vanish on a
+            // white screenshot; a soft dark fade behind each bar keeps clock, battery and the nav icons readable.
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 24.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent))),
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))),
+            )
             Box(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 18.dp, top = 6.dp)) {
                 Box(
                     Modifier.height(30.dp).background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(15.dp)).padding(horizontal = 12.dp),

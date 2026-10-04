@@ -182,7 +182,7 @@ val sharedModule: Module = module {
             reconnectDelaysMs = AuctionViewModel.STREAM_RECONNECT_DELAYS_MS,
         )
     }
-    factory { (leagueId: String) -> ManageRolesViewModel(leagueId = leagueId, leagueRepository = get(), roleRepository = get()) }
+    factory { (leagueId: String) -> ManageRolesViewModel(leagueId = leagueId, leagueRepository = get(), roleRepository = get(), authRepository = get()) }
 }
 
 /**
