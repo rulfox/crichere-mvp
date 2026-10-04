@@ -13,7 +13,8 @@
   background: var(--chalk);
   color: var(--auction-bg);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
   transition: transform 380ms var(--spring-snappy);
 }
@@ -54,4 +55,24 @@
   font-size: 13px;
   line-height: 1.45;
   color: var(--ink-muted);
+}
+
+/* Design update #4 W1: "Get app" below 480px, "Get the app" from 480; wider padding from 768. */
+.labelWide {
+  display: none;
+}
+
+@container (min-width: 480px) {
+  .labelWide {
+    display: inline;
+  }
+  .labelNarrow {
+    display: none;
+  }
+}
+
+@container (min-width: 768px) {
+  .button {
+    padding: 0 16px;
+  }
 }

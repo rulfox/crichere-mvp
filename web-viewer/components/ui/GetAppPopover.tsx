@@ -40,9 +40,12 @@ export function GetAppPopover() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
+        aria-label="Get the app"
       >
-        <Icon name="download" size={18} />
-        Get the app
+        <Icon name="download" size={17} />
+        {/* Design update #4 W1: "Get app" below 480px. */}
+        <span className={styles.labelWide}>Get the app</span>
+        <span className={styles.labelNarrow}>Get app</span>
       </button>
       {open && (
         <div id={panelId} role="dialog" aria-label="Get the Crichere app" className={styles.panel}>

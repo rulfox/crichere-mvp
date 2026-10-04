@@ -19,13 +19,6 @@ const SPARKS = Array.from({ length: 18 }, (_, i) => ({
   delay: `${((i * 0.43) % 4).toFixed(2)}s`,
 }));
 
-/** Placeholder marketing numbers from the design (docs/PHASE11.md D4) -- replace with real ones before launch. */
-const STATS = [
-  { value: 1240, label: "leagues organized", delay: 0 },
-  { value: 38600, label: "players registered", delay: 100 },
-  { value: 964000, label: "bids placed", delay: 200 },
-];
-
 export default async function Landing() {
   const live = await fetchLiveNow();
   const liveHref = live ? `/leagues/${live.leagueId}` : null;
@@ -111,10 +104,6 @@ export default async function Landing() {
                   <span className={styles.floatTitle}>Auction is live</span>
                   <span className={styles.floatBody}>Spartanz Premier League · 30 players up for bids</span>
                 </span>
-              </div>
-              <div data-depth="0.16" className={`${styles.floatCard} ${styles.floatBids} ${styles.roomyOnly}`}>
-                <span className={styles.floatLabel}>Bids placed tonight</span>
-                <span className={styles.floatValue}>412</span>
               </div>
             </div>
           </div>
@@ -335,19 +324,7 @@ export default async function Landing() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.stats}`} aria-label="Crichere in numbers">
-        <div className={styles.statGrid}>
-          {STATS.map((stat) => (
-            <div key={stat.label} data-reveal="" data-delay={stat.delay} className={styles.stat}>
-              <span data-count={stat.value} className={styles.statValue}>
-                {stat.value.toLocaleString("en-IN")}
-              </span>
-              <span className={styles.statLabel}>{stat.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
+      {/* Design update #4 H4: no stat strip until there are real numbers -- invented figures on a public page are a trust risk. */}
       <section id="download" className={`${styles.section} ${styles.download}`}>
         <div data-reveal="" className={styles.downloadCard}>
           <div aria-hidden="true" className={styles.downloadGlow} />
@@ -372,7 +349,6 @@ export default async function Landing() {
             <span className={styles.footerTagline}>Build. Auction. Compete. Made for local cricket across India.</span>
           </div>
           <nav aria-label="Footer" className={styles.footerNav}>
-            <a href="#">About</a>
             <a href="mailto:hello@crichere.app">Contact</a>
             <a href="#">Privacy</a>
             <a href="#">Terms</a>

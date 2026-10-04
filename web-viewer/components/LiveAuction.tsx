@@ -21,7 +21,6 @@ import { animate, bounce, EXPO_OUT, prefersReducedMotion, springSoft, useReduced
 import { PLAY_STORE_URL } from "@/lib/store";
 import { GetAppPopover } from "./ui/GetAppPopover";
 import { Icon } from "./ui/Icon";
-import { Logo } from "./ui/Logo";
 import { StoreBadge } from "./ui/StoreBadge";
 import { type Connection, useAuctionStream } from "./useAuctionStream";
 import styles from "./LiveAuction.module.css";
@@ -71,23 +70,37 @@ export function LiveAuction({ league }: { league: League }) {
 
 // ---------------------------------------------------------------- chrome
 
+/**
+ * Design update #4 W1: the white wordmark (22px, 24px from 768), and below 480px the short labels
+ * ("Live", "Offline", "Get app") so nothing wraps at 360px. Both label lengths are in the DOM; CSS
+ * container queries pick one.
+ */
 function TopBar({ connection, showFeed }: { connection: Connection; showFeed: boolean }) {
   return (
     <header className={styles.topBar}>
       <div className={styles.bar}>
-        <Logo size={30} fontSize={19} href="/" className={styles.logo} />
+        <Link href="/" aria-label="Crichere home" className={styles.logo}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG wordmark */}
+          <img src="/crichere-wordmark-white.svg" alt="Crichere" className={styles.wordmark} />
+        </Link>
         <div className={styles.barRight}>
           {connection.status === "reconnecting" ? (
             <span className={styles.feedLost}>
-              <Icon name="sync" size={15} className={styles.spin} />
-              Reconnecting
+              <span aria-hidden="true" className={styles.spinRing} />
+              <span className={styles.labelWide}>Reconnecting</span>
+              <span className={styles.labelNarrow} aria-hidden="true">
+                Offline
+              </span>
             </span>
           ) : (
             showFeed &&
             connection.status === "live" && (
               <span className={styles.feed} title="Receiving live updates">
                 <span className={styles.feedDot} />
-                Live feed
+                <span className={styles.labelWide}>Live feed</span>
+                <span className={styles.labelNarrow} aria-hidden="true">
+                  Live
+                </span>
               </span>
             )
           )}
@@ -369,15 +382,71 @@ function PlayerCard({ league, auction, outcome, order }: { league: League; aucti
   }, [playerId, bid, leaderId]);
 
   if (!playerId) {
+    const pending = auction.playersPending;
+    // Design update #4 W3: nothing else can sell -- don't promise a next player.
+    if (auction.canAnyoneBid === false) {
+      return (
+        <article ref={cardRef} aria-label="Bidding closed" className={`${styles.panel} ${styles.playerCard}`}>
+          <div className={styles.playerTop}>
+            <div className={styles.playerInfo}>
+              <div className={styles.lotRow}>
+                <span className={styles.lot}>Bidding closed</span>
+                {pending != null && <span className={styles.lot}>{pending} left in pool</span>}
+              </div>
+              <h2 className={styles.playerName}>Waiting for the organizer</h2>
+              <p className={styles.betweenText}>No franchise can buy the remaining players. Final results appear here when the auction ends.</p>
+            </div>
+          </div>
+        </article>
+      );
+    }
+    // Design update #4 W2: what just happened and how far along the auction is.
+    const total = auction.playersTotal ?? 0;
+    const done = pending != null && total > 0 ? Math.max(0, total - pending) : null;
+    const last = auction.lastResult;
     return (
-      <article ref={cardRef} aria-label="Player under the hammer" className={`${styles.panel} ${styles.playerCard}`}>
+      <article ref={cardRef} aria-label="Between lots" className={`${styles.panel} ${styles.playerCard}`}>
         <div className={styles.playerTop}>
           <div className={styles.playerInfo}>
             <div className={styles.lotRow}>
               <span className={styles.hammer}>Between lots</span>
-              {auction.playersPending != null && <span className={styles.lot}>{auction.playersPending} left in pool</span>}
+              {pending != null && (
+                <span className={styles.lot}>
+                  {auction.currentLotNumber != null ? `Lot ${auction.currentLotNumber + 1} · ` : ""}
+                  {pending} left in pool
+                </span>
+              )}
             </div>
             <h2 className={styles.playerName}>Next player coming up</h2>
+            {last && (
+              <p className={styles.betweenText}>
+                Last: {last.playerName ?? "The last player"}{" "}
+                {last.sold ? (
+                  <>
+                    sold to {last.franchiseName ?? "a franchise"}
+                    {last.amount != null && (
+                      <>
+                        {" "}
+                        for <span className={styles.betweenAmount}>{formatInr(last.amount)}</span>
+                      </>
+                    )}
+                    .
+                  </>
+                ) : (
+                  "went unsold."
+                )}
+              </p>
+            )}
+            {done != null && (
+              <>
+                <div className={styles.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label="Lots done">
+                  <div className={styles.progressFill} style={{ width: `${(done / total) * 100}%` }} />
+                </div>
+                <span className={styles.progressText}>
+                  {done} of {total} lots done
+                </span>
+              </>
+            )}
           </div>
         </div>
       </article>

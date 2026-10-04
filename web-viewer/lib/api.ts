@@ -84,6 +84,8 @@ export type AuctionState = {
   playersPending?: number;
   /** The player just closed, while nobody is up yet -- the explicit SOLD/UNSOLD signal. */
   lastResult?: LastResult | null;
+  /** `false` while players wait but no franchise can open a bid (squads full / purses spent) -- the "Bidding closed" card. */
+  canAnyoneBid?: boolean;
 };
 
 export type LastResult = {

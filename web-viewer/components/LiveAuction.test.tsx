@@ -218,6 +218,43 @@ describe("LiveAuction", () => {
     expect(screen.queryByText("SOLD")).not.toBeInTheDocument();
   });
 
+  it("between lots: the next lot, the last result and the progress (design update #4 W2)", async () => {
+    render(<LiveAuction league={league} />);
+    source().emit("auction-state", {
+      ...idle,
+      currentLotNumber: 12,
+      playersTotal: 57,
+      playersPending: 45,
+      lastResult: { playerName: "Rohan Patil", sold: true, franchiseName: "Victory CC", amount: "15000" },
+    });
+
+    const card = await screen.findByLabelText("Between lots");
+    expect(within(card).getByText("Lot 13 · 45 left in pool")).toBeInTheDocument();
+    expect(within(card).getByRole("heading", { name: "Next player coming up" })).toBeInTheDocument();
+    expect(within(card).getByText(/Last: Rohan Patil/)).toHaveTextContent("Last: Rohan Patil sold to Victory CC for ₹15,000.");
+    expect(within(card).getByRole("progressbar", { name: "Lots done" })).toHaveAttribute("aria-valuenow", "12");
+    expect(within(card).getByText("12 of 57 lots done")).toBeInTheDocument();
+  });
+
+  it("between lots after an unsold player says so", async () => {
+    render(<LiveAuction league={league} />);
+    source().emit("auction-state", { ...idle, lastResult: { playerName: "Rohan Patil", sold: false, franchiseName: null, amount: null } });
+
+    expect(await screen.findByText(/Last: Rohan Patil/)).toHaveTextContent("Last: Rohan Patil went unsold.");
+  });
+
+  it("nobody can bid: the card says bidding has closed instead of promising a next player (W3)", async () => {
+    render(<LiveAuction league={league} />);
+    source().emit("auction-state", { ...idle, playersPending: 28, canAnyoneBid: false });
+
+    const card = await screen.findByLabelText("Bidding closed");
+    expect(within(card).getByRole("heading", { name: "Waiting for the organizer" })).toBeInTheDocument();
+    expect(within(card).getByText("28 left in pool")).toBeInTheDocument();
+    expect(within(card).getByText(/Final results appear here when the auction ends/)).toBeInTheDocument();
+    expect(screen.queryByText("Next player coming up")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
   it("a missed in-between state: the closed player found in the refreshed results is shown as SOLD", async () => {
     render(<LiveAuction league={league} />);
     source().emit("auction-state", openLot);

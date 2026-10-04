@@ -724,18 +724,22 @@ Open items found while implementing the redesign, not yet scheduled.
     before release. Both render "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` /
     `NEXT_PUBLIC_APP_STORE_URL` are set; QR card and the mobile "Open in app" banner stay hidden
     until the Play URL exists (QR generation needs a dependency -- ask first).
-  - Landing stats (1,240 / 38,600 / 9,64,000) and the hero's "Bids placed tonight 412" are design
-    placeholders (D4) -- replace before public launch.
-  - Footer About / Privacy / Terms point at `#`; Contact uses `hello@crichere.app` unverified.
-  - Auction top bar at 360px wraps "Live feed" and "Get the app" onto two lines -- the design does
-    the same; kept for parity, worth a design fix.
+  - Landing stats strip and the hero's "Bids placed tonight 412" card: removed (design update #4 H4 --
+    no invented numbers on a public page; bring the strip back once there are real ones).
+  - Footer: About dropped (H4). Privacy / Terms still point at `#` -- they must ship as real pages before
+    launch (store listings need them). Contact uses `hello@crichere.app`, still unverified: H4 says hide the
+    line if there's no real address.
+  - Auction top bar at 360px: fixed (H1) -- white wordmark 22/24px, "Live" / "Offline" / "Get app" below
+    480px. Checked in Chromium at 360 and 768 against the mock backend.
   - Not verified against the real backend + phone: a full live auction driven from the app (bids,
     sold, unsold, undo, end) watched on the web, a real network drop, the live-now link with a real
     in-progress league, and Safari/iOS (`linear()` fallback, `backdrop-filter`, container queries).
     All states were verified in Chromium against the mock backend only.
   - The landing "nothing live" state (live-now 204 hides every Watch-live link) has no e2e (the
     mock always returns a live league); unit-level only via `fetchLiveNow` returning null.
-  - "Between lots" card (no player open, no band) is not in the design.
+  - "Between lots" card: now designed (H2) -- next lot number, last result, progress bar; and the
+    "Bidding closed" card when nobody can bid (H3, `canAnyoneBid`). Unit-tested; not seen against a real
+    backend or with the reconnect banner over it.
 
 ## Decisions made during implementation
 

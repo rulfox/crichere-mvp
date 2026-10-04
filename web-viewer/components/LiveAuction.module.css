@@ -68,17 +68,59 @@
 }
 
 .logo {
+  display: flex;
   color: var(--chalk);
 }
 
 .logo:hover {
-  color: #fff;
+  opacity: 0.9;
+}
+
+/* Design update #4 W1: 22px wordmark, 24px from 768. */
+.wordmark {
+  display: block;
+  height: 22px;
+  width: auto;
 }
 
 .barRight {
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
+}
+
+/* Short labels below 480px ("Live", "Offline", "Get app"), the full ones from 480. */
+.labelWide {
+  display: none;
+}
+
+@container (min-width: 480px) {
+  .labelWide {
+    display: inline;
+  }
+  .labelNarrow {
+    display: none;
+  }
+}
+
+@container (min-width: 768px) {
+  .wordmark {
+    height: 24px;
+  }
+  .barRight {
+    gap: 14px;
+  }
+}
+
+.spinRing {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
 }
 
 .feed,
@@ -604,6 +646,38 @@
   font-size: clamp(30px, 4.4cqi, 54px);
   line-height: 1;
   letter-spacing: -0.035em;
+}
+
+/* Design update #4 W2/W3: the between-lots and bidding-closed cards. */
+.betweenText {
+  margin: 0;
+  font-size: clamp(14px, 1.2cqi, 16px);
+  line-height: 1.5;
+  color: var(--on-dark-secondary);
+}
+
+.betweenAmount {
+  font-family: var(--font-mono), monospace;
+  color: var(--chalk);
+}
+
+.progressTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--auction-gold);
+}
+
+.progressText {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--auction-muted);
 }
 
 .roleChips {

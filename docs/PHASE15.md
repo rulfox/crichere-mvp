@@ -151,3 +151,14 @@ End Auction (organizer dock) was exercised live for the first time while setting
 | G1 auction time | `CrichereTapField` gained a 40 dp trailing button and an always-present supporting row. Helper with the zone's short name, passed-time warning (non-blocking), "Pick a time later than now." (blocks Save), clear + Undo snackbar, date dialog with past days disabled, time dialog with J11 colours and Back. `AuctionSettingsViewModel` takes an injectable clock. |
 
 Verification and known differences: see DESIGN-REVIEW Follow-ups (ground map, My leagues, H, Profile Setup, Auction settings).
+
+### 7.4 Public web viewer (H1-H4)
+
+| Item | Built |
+|---|---|
+| H1 top bar | White wordmark (`public/crichere-wordmark-white.svg`, from the design asset) at 22px / 24px from 768; short labels below 480px through container queries (both lengths in the DOM); 10px ring spinner for "Offline"; Get-app pill 13px, 0/14 (0/16 from 768), no wrapping. |
+| H2 between lots | Lot {n+1} · {left} left in pool, last result (amount in mono), gold progress of done/total with "{done} of {total} lots done". done = playersTotal − playersPending. |
+| H3 bidding closed | `AuctionState.canAnyoneBid === false` with nobody up: muted "Bidding closed", "Waiting for the organizer", no progress. |
+| H4 pending content | Stat strip and "Bids placed tonight 412" removed; About removed from the footer. Privacy / Terms (`#`) and the contact address left for the owner (see DESIGN-REVIEW). |
+
+Tests: 3 new `LiveAuction.test.tsx` cases (56 unit tests, 21 e2e, all passing).
