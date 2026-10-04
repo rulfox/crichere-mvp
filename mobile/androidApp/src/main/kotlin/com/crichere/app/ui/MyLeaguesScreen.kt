@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.crichere.app.R
+import java.util.Locale
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 import com.crichere.app.league.LeagueSummaryDto
 import com.crichere.app.league.MyLeaguesDto
 import com.crichere.app.league.MyLeaguesState
@@ -151,11 +154,11 @@ private fun LeagueRow(league: LeagueSummaryDto, onClick: () -> Unit) {
                 league.name,
                 style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 16.1.sp),
                 color = colors.onBackground,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(4.dp))
-            // Only the place may be cut short, never the start date after it.
+            // U4 M5: only the place may be cut short, never the start date after it.
             Row {
                 Text(
                     "${league.city}, ${league.state}",
@@ -166,7 +169,7 @@ private fun LeagueRow(league: LeagueSummaryDto, onClick: () -> Unit) {
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Text(
-                    " -- ${league.startsOn}",
+                    " · ${rowDate(league.startsOn)}",
                     style = pText(12.sp, lineHeight = 14.4.sp),
                     color = colors.onSurfaceVariant,
                     maxLines = 1,
@@ -236,3 +239,7 @@ private fun LoadFailed(onRetry: () -> Unit) {
         ) { Text("Retry", style = pText(13.5.sp, FontWeight.SemiBold, 13.5.sp), color = colors.primary) }
     }
 }
+
+/** "2026-10-10" -> "10 Oct 2026" in the device locale (U4 D1), or the raw string if it isn't an ISO date. */
+private fun rowDate(iso: String): String =
+    runCatching { LocalDate.parse(iso).format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault())) }.getOrDefault(iso)

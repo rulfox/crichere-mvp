@@ -627,7 +627,7 @@ private fun LeagueFacts(league: LeagueDto) {
     Text(
         buildAnnotatedString {
             append("Starts ${longDate(league.startsOn)}")
-            league.format?.takeIf { it.isNotBlank() }?.let { append(" -- $it") }
+            league.format?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
             append(" · ")
             withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)) { append(statusLabel(league)) }
         },

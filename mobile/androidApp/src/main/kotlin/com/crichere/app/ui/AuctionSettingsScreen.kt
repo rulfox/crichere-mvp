@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -43,6 +44,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import java.util.TimeZone
+import java.util.Date
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.SelectableDates
+import android.text.format.DateFormat
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -107,6 +113,14 @@ internal fun AuctionSettingsRoute(
 @Composable
 private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel, onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    // U4 J9: clearing the auction time is instant; "Auction time cleared" offers Undo for 4 s.
+    var clearedSchedule by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(clearedSchedule) {
+        if (clearedSchedule != null) {
+            delay(4_000)
+            clearedSchedule = null
+        }
+    }
     Column(Modifier.fillMaxSize().background(colors.background).imePadding()) {
         BackTitleBar("Auction Settings", onBack)
         val league = state.league
@@ -124,7 +138,7 @@ private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Auctio
                             .padding(start = 19.dp, end = 19.dp, top = 5.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Fields(state, viewModel)
+                        Fields(state, viewModel, onScheduleCleared = { clearedSchedule = it })
                         state.squadWarning?.let { warning ->
                             SquadWarningNote(
                                 "Squad max × franchises (${warning.squadMax} × ${warning.franchises} = ${warning.total}) is more than " +
@@ -143,6 +157,15 @@ private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Auctio
                             modifier = bottom,
                         )
                         state.showSavedNotice -> CrichereSnackbar(message = "Auction settings saved", modifier = bottom)
+                        clearedSchedule != null -> CrichereSnackbar(
+                            message = "Auction time cleared",
+                            actionLabel = "Undo",
+                            onAction = {
+                                viewModel.onScheduledAtChanged(clearedSchedule)
+                                clearedSchedule = null
+                            },
+                            modifier = bottom,
+                        )
                     }
                 }
                 SaveBar(state, onSave = viewModel::submit)
@@ -156,7 +179,7 @@ private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Auctio
  * its box for the notched label, so the board's 12dp gaps are 5dp here.
  */
 @Composable
-private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel) {
+private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel, onScheduleCleared: (String) -> Unit) {
     val errors = state.fieldErrors
     val amount = KeyboardOptions(keyboardType = KeyboardType.Decimal)
     val count = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -168,49 +191,75 @@ private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewMo
             SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Squad size (max)", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f))
         }
         SettingField(state.bidIncrement, viewModel::onBidIncrementChanged, "Bid increment", errors[AuctionField.BidIncrement], amount, state.isSaving)
-        ScheduledAtField(state.scheduledAt, viewModel::onScheduledAtChanged, state.isSaving)
+        ScheduledAtField(state, viewModel::onScheduledAtChanged, onCleared = onScheduleCleared)
     }
 }
 
 /**
- * Optional "bidding opens at" time (docs/PHASE11.md D3) -- shown on the public web viewer's
- * not-started page. Not on the design board; picks a date, then a time, in the phone's zone and
- * stores the instant. A clear button sits beside it once set.
+ * Optional "bidding opens at" time (docs/PHASE11.md D3), design update #4 J9-J12: a read-only tap field
+ * that opens the date dialog (past days disabled), then the time dialog (Back returns to the date). The
+ * row under it always holds the time-zone helper, or the passed-time warning (J9), or the error (J12).
+ * Clearing is immediate; [onCleared] lets the screen offer Undo.
  */
 @Composable
-private fun ScheduledAtField(scheduledAt: String?, onChange: (String?) -> Unit, readOnly: Boolean) {
+private fun ScheduledAtField(state: AuctionSettingsState, onChange: (String?) -> Unit, onCleared: (String) -> Unit) {
+    val readOnly = state.isSaving
     var pickingDate by remember { mutableStateOf(false) }
     var pickedDate by remember { mutableStateOf<LocalDate?>(null) }
     val zone = ZoneId.systemDefault()
+    val scheduledAt = state.scheduledAt
     val current = scheduledAt?.let { runCatching { Instant.parse(it).atZone(zone) }.getOrNull() }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        CrichereTapField(
-            label = "Auction date & time (optional)",
-            value = current?.format(DateTimeFormatter.ofPattern("EEE d MMM, h:mm a", Locale.ENGLISH)),
-            onClick = { if (!readOnly) pickingDate = true },
-            look = FieldVariant.Form,
-            trailingIcon = R.drawable.ic_schedule,
-            modifier = Modifier.weight(1f),
-        )
-        if (current != null && !readOnly) {
-            Box(
-                Modifier.padding(top = 7.dp).size(44.dp).clip(CircleShape).clickable(onClickLabel = "Clear auction time") { onChange(null) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(painterResource(R.drawable.ic_close), contentDescription = "Clear auction time", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+    val error = state.scheduledAtError
+    CrichereTapField(
+        label = "Auction date & time (optional)",
+        value = current?.format(DateTimeFormatter.ofPattern("d MMM yyyy · h:mm a", Locale.getDefault())),
+        onClick = { if (!readOnly) pickingDate = true },
+        look = FieldVariant.Form,
+        error = error,
+        valueSize = 14.5.sp,
+        trailingIcon = if (current != null) R.drawable.ic_close else R.drawable.ic_event,
+        trailingSize = if (current != null) 20.dp else 22.dp,
+        trailingLabel = if (current != null) "Clear auction time" else "Pick auction time",
+        onTrailingClick = {
+            if (readOnly) return@CrichereTapField
+            if (scheduledAt != null) {
+                onChange(null)
+                onCleared(scheduledAt)
+            } else {
+                pickingDate = true
             }
-        }
-    }
+        },
+        supporting = {
+            val colors = MaterialTheme.colorScheme
+            when {
+                error != null -> Text(error, style = pText(12.sp, FontWeight.Medium, 16.sp), color = colors.error, modifier = Modifier.padding(start = 14.dp))
+                state.scheduledAtPassed -> Row(Modifier.padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(painterResource(R.drawable.ic_schedule), contentDescription = null, tint = PassedWarning, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("This time has passed. Pick a new one or clear it.", style = pText(12.sp, FontWeight.Medium, 16.sp), color = PassedWarning)
+                }
+                else -> Text(
+                    "Shown in your phone's time zone (${zoneAbbreviation()}).",
+                    style = pText(12.sp, lineHeight = 16.sp),
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 14.dp),
+                )
+            }
+        },
+    )
     if (pickingDate) {
         ScheduleDatePicker(
-            initial = current?.toLocalDate(),
-            onDismiss = { pickingDate = false },
+            initial = pickedDate ?: current?.toLocalDate(),
+            onDismiss = { pickingDate = false; pickedDate = null },
             onPicked = { pickingDate = false; pickedDate = it },
         )
     }
-    pickedDate?.let { date ->
+    val date = pickedDate
+    if (date != null && !pickingDate) {
         ScheduleTimePicker(
+            date = date,
             initial = current?.toLocalTime() ?: LocalTime.of(19, 0),
+            onBack = { pickingDate = true },
             onDismiss = { pickedDate = null },
             onPicked = { time ->
                 pickedDate = null
@@ -220,16 +269,27 @@ private fun ScheduledAtField(scheduledAt: String?, onChange: (String?) -> Unit, 
     }
 }
 
+/** J10: M3 date dialog titled "Auction date"; days before today can't be picked; Next opens the time. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPicked: (LocalDate) -> Unit) {
-    val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli())
+    val today = LocalDate.now()
+    val pickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initial?.takeIf { !it.isBefore(today) }?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli(),
+        selectableDates = object : SelectableDates {
+            // The picker hands over UTC midnight of each calendar day.
+            override fun isSelectableDate(utcTimeMillis: Long) =
+                !Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate().isBefore(today)
+            override fun isSelectableYear(year: Int) = year >= today.year
+        },
+    )
     val colors = MaterialTheme.colorScheme
     val pickerColors = DatePickerDefaults.colors(
         containerColor = ScheduleDialogSurface,
         selectedDayContainerColor = colors.primary,
         selectedDayContentColor = Color.White,
         todayDateBorderColor = colors.primary,
+        todayContentColor = colors.primary,
     )
     DatePickerDialog(
         onDismissRequest = onDismiss,
@@ -245,32 +305,88 @@ private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPic
             TextButton(onClick = onDismiss) { Text("Cancel", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
         },
     ) {
-        DatePicker(state = pickerState, colors = pickerColors, showModeToggle = false)
+        DatePicker(
+            state = pickerState,
+            colors = pickerColors,
+            showModeToggle = false,
+            title = {
+                Text("Auction date", style = pText(12.sp, FontWeight.Medium, 12.sp), color = DialogLabel, modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 20.dp))
+            },
+            headline = {
+                val selected = pickerState.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
+                Text(
+                    selected?.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())).orEmpty(),
+                    style = pText(30.sp, lineHeight = 30.sp),
+                    color = colors.onBackground,
+                    modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 22.dp, bottom = 14.dp),
+                )
+            },
+        )
     }
 }
 
+/** J11: M3 time picker in a dialog, 12- or 24-hour as the phone is set; Back returns to the date (kept). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ScheduleTimePicker(initial: LocalTime, onDismiss: () -> Unit, onPicked: (LocalTime) -> Unit) {
-    val pickerState = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = false)
+private fun ScheduleTimePicker(date: LocalDate, initial: LocalTime, onBack: () -> Unit, onDismiss: () -> Unit, onPicked: (LocalTime) -> Unit) {
+    val context = LocalContext.current
+    val pickerState = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = DateFormat.is24HourFormat(context))
     val colors = MaterialTheme.colorScheme
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = ScheduleDialogSurface,
         shape = RoundedCornerShape(28.dp),
+        title = {
+            Text(
+                "Auction time · ${date.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))}",
+                style = pText(12.sp, FontWeight.Medium, 12.sp),
+                color = DialogLabel,
+            )
+        },
         confirmButton = {
             TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
                 Text("OK", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
+            TextButton(onClick = onBack) { Text("Back", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
         },
-        text = { TimePicker(state = pickerState) },
+        text = {
+            TimePicker(
+                state = pickerState,
+                // J11's palette: green for the active part, the board's neutral for the rest, warm amber for AM/PM.
+                colors = TimePickerDefaults.colors(
+                    containerColor = ScheduleDialogSurface,
+                    clockDialColor = TimeNeutral,
+                    selectorColor = colors.primary,
+                    timeSelectorSelectedContainerColor = Color(0xFFD7EBD2),
+                    timeSelectorSelectedContentColor = Color(0xFF0B2E10),
+                    timeSelectorUnselectedContainerColor = TimeNeutral,
+                    timeSelectorUnselectedContentColor = colors.onBackground,
+                    periodSelectorBorderColor = Color(0xFF9FAE9A),
+                    periodSelectorSelectedContainerColor = Color(0xFFF9D9C9),
+                    periodSelectorSelectedContentColor = Color(0xFF5A2B12),
+                    periodSelectorUnselectedContentColor = colors.onSurfaceVariant,
+                ),
+            )
+        },
     )
 }
 
+/**
+ * "IST" for India: java.time's short zone name (what the board shows). `TimeZone.getDisplayName(SHORT)`
+ * gives "GMT+05:30" on Android, so it is only the fallback.
+ */
+private fun zoneAbbreviation(): String =
+    runCatching { DateTimeFormatter.ofPattern("zzz", Locale.getDefault()).format(java.time.ZonedDateTime.now()) }
+        .getOrNull()
+        ?.takeIf { it.isNotBlank() }
+        ?: TimeZone.getDefault().getDisplayName(TimeZone.getDefault().inDaylightTime(Date()), TimeZone.SHORT)
+
 private val ScheduleDialogSurface = Color(0xFFF1F4EE)
+private val DialogLabel = Color(0xFF3E4A41)
+private val PassedWarning = Color(0xFF7A5B12)
+private val TimeNeutral = Color(0xFFE2E5DC)
 
 @Composable
 private fun SettingField(

@@ -50,6 +50,8 @@ data class ProfileSetupState(
     val isLocating: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
+    /** Under the name field after Save with fewer than 2 letters (design update #4, C11); cleared on the next keystroke. */
+    val nameError: String? = null,
     val photoUploadErrorMessage: String? = null,
     /**
      * The field the screen should focus first: computed once, on load, from resumability
@@ -159,7 +161,7 @@ class ProfileSetupViewModel(
     }
 
     fun onNameChanged(value: String) {
-        _state.update { it.copy(name = value, errorMessage = null) }
+        _state.update { it.copy(name = value, errorMessage = null, nameError = null) }
     }
 
     /** [stateDto] comes from [ProfileSetupState.states] -- selecting a state clears the district/city and re-fetches its districts. */
@@ -329,6 +331,10 @@ class ProfileSetupViewModel(
     fun save() {
         val current = _state.value
         if (!current.isSaveEnabled) return
+        if (current.name.trim().length < MIN_NAME_LENGTH) {
+            _state.update { it.copy(nameError = NAME_TOO_SHORT_MESSAGE) }
+            return
+        }
 
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true, errorMessage = null) }
@@ -384,6 +390,8 @@ class ProfileSetupViewModel(
 
     companion object {
         const val SAVE_FAILED_MESSAGE = "Couldn't save your profile. Please try again."
+        const val NAME_TOO_SHORT_MESSAGE = "Enter your full name."
+        const val MIN_NAME_LENGTH = 2
     }
 
     /**

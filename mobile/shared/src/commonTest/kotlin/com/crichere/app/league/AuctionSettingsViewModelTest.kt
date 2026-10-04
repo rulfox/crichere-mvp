@@ -41,8 +41,11 @@ class AuctionSettingsViewModelTest {
 
     private fun loaded(league: LeagueDto = configured, configure: FakeLeagueRepository.() -> Unit = {}): Pair<AuctionSettingsViewModel, FakeLeagueRepository> {
         val repository = FakeLeagueRepository(leaguesByArea = listOf(league)).apply(configure)
-        return AuctionSettingsViewModel("l1", repository) to repository
+        return AuctionSettingsViewModel("l1", repository, nowMillis = { NOW }) to repository
     }
+
+    /** 2026-10-04T06:00:00Z -- the fixed "now" every test's ViewModel sees. */
+    private val NOW = 1_791_093_600_000L
 
     @Test
     fun `retry pre-fills the fields, whole amounts without a decimal`() = viewModelTest {
@@ -185,6 +188,48 @@ class AuctionSettingsViewModelTest {
         viewModel.submit()
         advanceUntilIdle()
         assertNull(repository.updateAuctionSettingsRequests.last().scheduledAt)
+    }
+
+    @Test
+    fun `a newly picked time that isn't in the future blocks Save with an inline error`() = viewModelTest {
+        val (viewModel, repository) = loaded { nextAuctionSettingsUpdated = configured }
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.onScheduledAtChanged("2026-10-04T05:00:00Z") // an hour ago
+        assertEquals(AuctionSettingsViewModel.SCHEDULED_TIME_PAST, viewModel.state.value.scheduledAtError)
+        assertFalse(viewModel.state.value.canSave)
+        viewModel.submit()
+        advanceUntilIdle()
+        assertTrue(repository.updateAuctionSettingsRequests.isEmpty())
+
+        viewModel.onScheduledAtChanged("2026-10-04T07:00:00Z")
+        assertNull(viewModel.state.value.scheduledAtError)
+        assertTrue(viewModel.state.value.canSave)
+    }
+
+    @Test
+    fun `a saved time that has since passed only warns, and Save still works`() = viewModelTest {
+        val (viewModel, repository) = loaded(
+            sampleLeague(auctionBasePrice = 500.0, auctionPurse = 10000.0, auctionSquadMin = 5, auctionSquadMax = 15, auctionBidIncrement = 100.0, auctionScheduledAt = "2026-10-02T13:00:00Z"),
+        ) { nextAuctionSettingsUpdated = configured }
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.scheduledAtPassed)
+        assertNull(viewModel.state.value.scheduledAtError)
+        assertTrue(viewModel.state.value.canSave)
+
+        // Clear then Undo puts the saved time back: still just the warning.
+        viewModel.onScheduledAtChanged(null)
+        assertFalse(viewModel.state.value.scheduledAtPassed)
+        viewModel.onScheduledAtChanged("2026-10-02T13:00:00Z")
+        assertTrue(viewModel.state.value.scheduledAtPassed)
+        assertNull(viewModel.state.value.scheduledAtError)
+
+        viewModel.submit()
+        advanceUntilIdle()
+        assertEquals(1, repository.updateAuctionSettingsRequests.size)
     }
 
     @Test

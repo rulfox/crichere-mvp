@@ -41,6 +41,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -102,6 +112,7 @@ private const val AS_YOU_TYPE_DEBOUNCE_MS = 300L
  * user has actually placed it (a gesture, a search pick, or an existing seed) -- the camera's
  * starting point (India, or the league's city) is not a location anyone chose.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: LeagueCreationViewModel) {
     val colors = MaterialTheme.colorScheme
@@ -186,7 +197,15 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
     // map's content padding matches, so the camera target is exactly what the pin points at.
     var mapTopPx by remember { mutableIntStateOf(0) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
-    val mapPadding = with(density) { PaddingValues(top = mapTopPx.toDp(), bottom = sheetHeightPx.toDp()) }
+    // U4 C1: while the ground name is being typed the sheet shrinks to a 68 dp bar (field + Register) and
+    // the search box, hint and coordinates step aside, so the pin keeps most of the map. It follows the
+    // keyboard: the bar shows while the name field has focus and the IME is up.
+    var nameFocused by remember { mutableStateOf(false) }
+    val compact = nameFocused && WindowInsets.isImeVisible
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val mapPadding = with(density) {
+        PaddingValues(top = if (compact) statusBarTop else mapTopPx.toDp(), bottom = sheetHeightPx.toDp())
+    }
 
     Box(Modifier.fillMaxSize().background(colors.background).clickable(enabled = false) {}) {
         GoogleMap(
@@ -199,9 +218,14 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
 
         CentrePin(lifted = cameraPositionState.isMoving, modifier = Modifier.fillMaxSize().padding(mapPadding))
 
+        AnimatedVisibility(
+            visible = !compact,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
         Column(
             Modifier
-                .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .padding(start = 13.dp, end = 13.dp, top = 1.dp)
                 .fillMaxWidth(),
@@ -235,25 +259,49 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                 else -> MoveMapHint()
             }
         }
+        }
 
+        val sheetShape = RoundedCornerShape(topStart = if (compact) 20.dp else 24.dp, topEnd = if (compact) 20.dp else 24.dp)
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .onSizeChanged { sheetHeightPx = it.height }
-                .background(colors.background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .then(if (compact) Modifier.shadow(14.dp, sheetShape, ambientColor = Color.Black.copy(alpha = 0.08f), spotColor = Color.Black.copy(alpha = 0.08f)) else Modifier)
+                .background(colors.background, sheetShape)
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(start = 19.dp, end = 19.dp, top = 11.dp, bottom = 26.dp),
+                // Compact: 10 dp around a 48 dp field; the field's own 7 dp notch room counts toward the top 10.
+                .padding(start = if (compact) 12.dp else 19.dp, end = if (compact) 12.dp else 19.dp, top = if (compact) 3.dp else 11.dp, bottom = if (compact) 10.dp else 26.dp),
         ) {
-            CrichereTextField(
-                value = state.newGroundName,
-                onValueChange = viewModel::onNewGroundNameChanged,
-                label = "New ground name",
-                look = FieldVariant.Form,
-                error = if (state.newGroundNameError) "Enter the ground name" else null,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-            )
+            // One field in both layouts, so focus and the keyboard survive the switch.
+            Row(verticalAlignment = Alignment.Bottom) {
+                CrichereTextField(
+                    value = state.newGroundName,
+                    onValueChange = viewModel::onNewGroundNameChanged,
+                    label = "New ground name",
+                    look = if (compact) FieldVariant.Form.copy(height = 48.dp) else FieldVariant.Form,
+                    error = if (state.newGroundNameError) "Enter the ground name" else null,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                    modifier = Modifier.weight(1f).onFocusChanged { nameFocused = it.isFocused },
+                )
+                if (compact) {
+                    Spacer(Modifier.width(8.dp))
+                    val canRegister = state.newGroundName.isNotBlank() && !state.isRegisteringGround
+                    Box(
+                        Modifier
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(if (canRegister) colors.primary else CompactRegisterDisabled)
+                            .clickable(enabled = canRegister, onClick = viewModel::registerNewGround)
+                            .padding(horizontal = 18.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Register", style = pText(13.5.sp, FontWeight.SemiBold), color = if (canRegister) Color.White else CompactRegisterDisabledText)
+                    }
+                }
+            }
+            if (!compact) {
             Spacer(Modifier.height(12.dp))
             val lat = state.newGroundLatitude
             val lng = state.newGroundLongitude
@@ -305,9 +353,13 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                     Text(if (state.isRegisteringGround) "Registering…" else "Register ground", style = pText(13.5.sp, FontWeight.SemiBold), color = Color.White)
                 }
             }
+            }
         }
     }
 }
+
+private val CompactRegisterDisabled = Color(0xFFDCE0D7)
+private val CompactRegisterDisabledText = Color(0xFF8A948C)
 
 /**
  * `PLACE_SEARCH_PROVIDER` in local.properties picks the search backend (see androidApp's

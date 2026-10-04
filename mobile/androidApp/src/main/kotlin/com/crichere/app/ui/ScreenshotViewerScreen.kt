@@ -37,6 +37,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -174,23 +176,30 @@ internal fun ScreenshotViewerScreen(painter: Painter, loaded: Boolean, failed: B
             !loaded -> CircularProgressIndicator(color = Color.White, modifier = Modifier.align(Alignment.Center))
         }
 
+        // U4 E1: the zoomed image runs edge to edge under the system bars, whose light icons vanish on a white
+        // screenshot; a dark fade behind each bar keeps clock, battery and the nav icons readable. The mid stop
+        // removes the band a straight ramp leaves on white. It fades in on the first zoom and then stays (on the
+        // 1x black letterbox it is invisible), so the unzoomed first view is untouched.
+        var everZoomed by remember { mutableStateOf(false) }
+        if (zoomed) everZoomed = true
+        val fadeAlpha by animateFloatAsState(if (everZoomed) 1f else 0f, tween(150), label = "barFades")
+        Box(
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 24.dp)
+                .alpha(fadeAlpha)
+                .background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.6f), 0.5f to Color.Black.copy(alpha = 0.35f), 1f to Color.Transparent)),
+        )
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp)
+                .alpha(fadeAlpha)
+                .background(Brush.verticalGradient(0f to Color.Transparent, 0.5f to Color.Black.copy(alpha = 0.35f), 1f to Color.Black.copy(alpha = 0.6f))),
+        )
         if (zoomed) {
-            // The zoomed image runs edge to edge under the system bars, whose light icons vanish on a
-            // white screenshot; a soft dark fade behind each bar keeps clock, battery and the nav icons readable.
-            Box(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 24.dp)
-                    .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent))),
-            )
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))),
-            )
             Box(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = 18.dp, top = 6.dp)) {
                 Box(
                     Modifier.height(30.dp).background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(15.dp)).padding(horizontal = 12.dp),

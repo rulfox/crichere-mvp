@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 enum class AuctionField { BasePrice, Purse, SquadMin, SquadMax, BidIncrement }
 
@@ -28,8 +30,12 @@ data class AuctionSettingsState(
     val squadMin: String = "",
     val squadMax: String = "",
     val bidIncrement: String = "",
-    /** Optional "bidding opens at" time as an ISO-8601 instant (docs/PHASE11.md D3); never validated, `null` = not set. */
+    /** Optional "bidding opens at" time as an ISO-8601 instant (docs/PHASE11.md D3), `null` = not set. */
     val scheduledAt: String? = null,
+    /** A newly picked time that isn't in the future (design update #4, J12): blocks Save until changed or cleared. */
+    val scheduledAtError: String? = null,
+    /** The saved time has since passed (J9): a quiet warning, Save still allowed. */
+    val scheduledAtPassed: Boolean = false,
     /** Fields the user has changed -- their errors show as they type (owner decision 2026-10-02). */
     val touched: Set<AuctionField> = emptySet(),
     /** Save was tapped with errors -- every field's error shows from then on. */
@@ -50,7 +56,7 @@ data class AuctionSettingsState(
     fun errorFor(field: AuctionField): String? = fieldErrors[field]
 
     /** Design J2: Save greys out while any error is showing. */
-    val canSave: Boolean get() = !isSaving && fieldErrors.isEmpty()
+    val canSave: Boolean get() = !isSaving && fieldErrors.isEmpty() && scheduledAtError == null
 
     /** Live from the typed squad max -- the league's own server flag only reflects the last save. */
     val squadWarning: SquadWarning?
@@ -115,6 +121,7 @@ fun amountText(value: Double?): String = when {
 class AuctionSettingsViewModel(
     private val leagueId: String,
     private val leagueRepository: LeagueRepository,
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AuctionSettingsState())
@@ -145,9 +152,14 @@ class AuctionSettingsViewModel(
         squadMax = league.auctionSquadMax?.toString() ?: "",
         bidIncrement = amountText(league.auctionBidIncrement),
         scheduledAt = league.auctionScheduledAt,
+        scheduledAtError = null,
+        scheduledAtPassed = isPast(league.auctionScheduledAt),
         touched = emptySet(),
         submitAttempted = false,
     )
+
+    private fun isPast(instant: String?): Boolean =
+        instant?.let { runCatching { Instant.parse(it).toEpochMilliseconds() <= nowMillis() }.getOrNull() } == true
 
     fun onBasePriceChanged(value: String) = edit(AuctionField.BasePrice) { it.copy(basePrice = value) }
     fun onPurseChanged(value: String) = edit(AuctionField.Purse) { it.copy(purse = value) }
@@ -155,8 +167,20 @@ class AuctionSettingsViewModel(
     fun onSquadMaxChanged(value: String) = edit(AuctionField.SquadMax) { it.copy(squadMax = value) }
     fun onBidIncrementChanged(value: String) = edit(AuctionField.BidIncrement) { it.copy(bidIncrement = value) }
 
-    /** The picked date-time as an ISO-8601 instant, or `null` to clear it. */
-    fun onScheduledAtChanged(value: String?) = _state.update { it.copy(scheduledAt = value, saveError = null) }
+    /**
+     * The picked date-time as an ISO-8601 instant, or `null` to clear it. A newly picked time must be in the
+     * future (J12); putting back the saved one (Undo after a clear) only warns if it has passed (J9).
+     */
+    fun onScheduledAtChanged(value: String?) = _state.update {
+        val saved = it.league?.auctionScheduledAt
+        val past = isPast(value)
+        it.copy(
+            scheduledAt = value,
+            scheduledAtError = if (past && value != saved) SCHEDULED_TIME_PAST else null,
+            scheduledAtPassed = past && value == saved,
+            saveError = null,
+        )
+    }
 
     private fun edit(field: AuctionField, change: (AuctionSettingsState) -> AuctionSettingsState) =
         _state.update { change(it).copy(touched = it.touched + field, saveError = null) }
@@ -172,6 +196,7 @@ class AuctionSettingsViewModel(
             _state.update { it.copy(submitAttempted = true) }
             return
         }
+        if (current.scheduledAtError != null) return
 
         val request = AuctionSettingsSaveRequestDto(
             basePrice = current.basePrice.trim().toDouble(),
@@ -187,6 +212,10 @@ class AuctionSettingsViewModel(
                 .onSuccess { league -> _state.update { it.withLeague(league).copy(isSaving = false, showSavedNotice = true) } }
                 .onFailure { throwable -> _state.update { it.copy(isSaving = false, saveError = saveErrorFor(throwable)) } }
         }
+    }
+
+    companion object {
+        const val SCHEDULED_TIME_PAST = "Pick a time later than now."
     }
 
     private fun saveErrorFor(throwable: Throwable): AuctionSaveError = when {

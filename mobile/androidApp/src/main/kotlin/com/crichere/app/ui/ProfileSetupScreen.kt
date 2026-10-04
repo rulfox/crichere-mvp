@@ -197,6 +197,8 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
                 value = state.name,
                 onValueChange = viewModel::onNameChanged,
                 label = "Full name",
+                error = state.nameError,
+                reserveErrorSlot = true,
                 modifier = Modifier.field(ProfileField.NAME),
             )
             Spacer(Modifier.height(14.dp))

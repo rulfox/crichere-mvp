@@ -542,6 +542,33 @@ class ProfileSetupViewModelTest {
     }
 
     @Test
+    fun `a one-letter name is caught on save with an inline error that clears on the next keystroke`() = viewModelTest {
+        val profileRepository = FakeProfileRepository().apply { nextProfileComplete = true }
+        val viewModel = newViewModel(profileRepository = profileRepository)
+        advanceUntilIdle()
+        viewModel.onNameChanged(" R ")
+        viewModel.uploadPhoto(byteArrayOf(1), "image/jpeg")
+        advanceUntilIdle()
+        viewModel.onStateSelected(karnataka)
+        advanceUntilIdle()
+        viewModel.onDistrictSelected(bengaluruUrban)
+        advanceUntilIdle()
+        viewModel.onCitySelected(bengaluru)
+        viewModel.onRoleSelected(PlayingRole.BATSMAN)
+        viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
+
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals(ProfileSetupViewModel.NAME_TOO_SHORT_MESSAGE, viewModel.state.value.nameError)
+        assertFalse(viewModel.state.value.isSaving)
+        assertEquals(0, profileRepository.saveProfileCallCount)
+
+        viewModel.onNameChanged(" Ra")
+        assertEquals(null, viewModel.state.value.nameError)
+    }
+
+    @Test
     fun `save sends the full accumulated snapshot and navigates when the profile becomes complete`() = viewModelTest {
         val profileRepository = FakeProfileRepository().apply { nextProfileComplete = true }
         val viewModel = newViewModel(profileRepository = profileRepository)

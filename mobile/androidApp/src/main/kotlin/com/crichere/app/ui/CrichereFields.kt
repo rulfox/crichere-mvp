@@ -28,6 +28,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -86,6 +88,9 @@ private fun FieldFrame(
     error: String? = null,
     height: Dp = look.height,
     topAligned: Boolean = false,
+    reserveErrorSlot: Boolean = false,
+    /** A 16 dp row under the field that is always there (helper, warning or error); the caller draws the error in it. */
+    supporting: (@Composable () -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -124,7 +129,22 @@ private fun FieldFrame(
                 )
             }
         }
-        if (error != null) {
+        if (supporting != null) {
+            Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(16.dp), contentAlignment = Alignment.CenterStart) { supporting() }
+        } else if (reserveErrorSlot) {
+            // U4 F1: the 16 dp row is always there, so an error doesn't push the fields below down.
+            Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(16.dp)) {
+                if (error != null) {
+                    Text(
+                        error,
+                        style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
+                        color = colors.error,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 14.dp),
+                    )
+                }
+            }
+        } else if (error != null) {
             Text(
                 error,
                 style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 15.6.sp),
@@ -175,6 +195,8 @@ fun CrichereTextField(
     minLines: Int = 1,
     multiLineHeight: Dp = 80.dp,
     readOnly: Boolean = false,
+    /** Keep a 16 dp error row under the field even without an error (no jump when one appears). */
+    reserveErrorSlot: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -199,6 +221,7 @@ fun CrichereTextField(
                 error = error,
                 height = if (multiLine) multiLineHeight else look.height,
                 topAligned = multiLine,
+                reserveErrorSlot = reserveErrorSlot,
             ) {
                 if (value.isEmpty() && (!isFocused || placeholder != null)) {
                     // An errored empty mono field shows its label in-box in mono too (board J2).
@@ -232,6 +255,12 @@ fun CrichereTapField(
     look: FieldVariant = FieldVariant(),
     error: String? = null,
     trailingIcon: Int? = null,
+    valueSize: TextUnit = 14.sp,
+    /** Makes [trailingIcon] its own 40 dp button (a clear "x"), separate from the field's tap. */
+    onTrailingClick: (() -> Unit)? = null,
+    trailingLabel: String? = null,
+    trailingSize: Dp = 18.dp,
+    supporting: (@Composable () -> Unit)? = null,
 ) {
     FieldFrame(
         label = label,
@@ -239,19 +268,28 @@ fun CrichereTapField(
         mode = FieldMode.Idle,
         look = look,
         error = error,
+        supporting = supporting,
         modifier = modifier.semantics(mergeDescendants = true) {}.clickable(role = Role.Button, onClick = onClick),
     ) {
         if (value != null) {
-            Text(value, style = valueStyle(14.sp), maxLines = 1, modifier = Modifier.padding(end = 26.dp))
+            Text(value, style = valueStyle(valueSize), maxLines = 1, modifier = Modifier.padding(end = if (onTrailingClick != null) 36.dp else 26.dp))
         } else {
             Text(label, style = placeholderStyle(14.5.sp, disabled = false, subtle = error != null), maxLines = 1)
         }
-        if (trailingIcon != null) {
+        if (trailingIcon != null && onTrailingClick != null) {
+            // The frame pads 11 dp on the right; the board's button sits 6 dp from the edge.
+            Box(
+                Modifier.align(Alignment.CenterEnd).offset(x = 5.dp).size(40.dp).clip(CircleShape).clickable(onClickLabel = trailingLabel, onClick = onTrailingClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(painterResource(trailingIcon), contentDescription = trailingLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(trailingSize))
+            }
+        } else if (trailingIcon != null) {
             Icon(
                 painterResource(trailingIcon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 3.dp).size(18.dp),
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 3.dp).size(trailingSize),
             )
         }
     }
