@@ -63,16 +63,47 @@ because a leaked URL would stay public forever.
 4. Apply the same exclusion to the old `crichere-media-dev` bucket, or delete that bucket. It still
    holds copies of the screenshots.
 
+**Verified locally (2026-10-04)** against the local backend and the real `crichere-media-prod`
+bucket (read-only). The local league and payer were given the ids of the one real screenshot in the
+bucket. 10 of 10 checks passed:
+- **Before the fix:** the plain object URL answered 200 to anyone.
+- **Who gets a link:** the payer's own join response and the organizer's league view return a signed
+  link. Other users and anonymous callers get `null`.
+- **Borrowed key:** an attacker who submits the payer's key as their own proof (player or franchise)
+  gets `null`.
+- **The link itself:** it opens the real object (200 `image/jpeg`, 62,933 bytes), and S3 rejects a
+  tampered signature with 403.
+
+**Not verified yet:** the signed link once the prefix is private. Locally it was signed with the
+`crichere-claude` IAM user while the bucket was still public. Check this in step 3 above.
+
 **Known limits:**
 - A signed link works for one hour for whoever holds it.
 - An organizer who leaves the league screen open for more than an hour must refresh it before opening a proof.
 - Co-organizers still can't see screenshots. That's an existing rule (`callerId == organizerUserId`),
   unchanged here.
 
-## Finding 2: a removed franchise could still bid (Medium), next
+## Finding 2: a removed franchise could still bid (Medium), fixed
 
-`AuctionService.placeBid` doesn't check `removedAt`. A franchise that was removed, or whose leave
-request was approved, can still bid through the API.
+**Problem:**
+- `AuctionService.placeBid` looked the franchise up by id and league, then checked ownership.
+- A removed franchise keeps its row and its `ownerUserId`; only `removedAt` is set, either by the
+  organizer's Remove or by an approved leave.
+- So its owner could call `POST /auction/bids` with the old `franchiseId` and bid. The app hides
+  this option, but the API accepted it.
+- If that bid led when the organizer clicked Sold, the player went to a franchise that isn't in the
+  league.
+
+**Fix:** `placeBid` now rejects a franchise whose `removedAt` is set, with the same 404 as an unknown
+franchise. The check runs before the ownership check and before anything is saved. No other auction
+path takes a franchise id from the client: `sold` uses the leading bid, which can now only come from
+an active franchise.
+
+**Verified:**
+- **Unit test:** a new case in `AuctionServiceTest` failed before the fix and passes after it.
+- **Full suite:** 504 of 504 backend tests pass.
+- **Locally against the backend:** the removed owner's bid is refused with 404 and no bid row is
+  stored, and an active franchise still bids normally (200).
 
 ## Below the bar
 

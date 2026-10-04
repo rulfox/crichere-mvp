@@ -1,5 +1,7 @@
 package com.crichere.backend.auction
 
+import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
+import java.time.Instant
 import com.crichere.backend.auction.dto.AuctionStateResponse
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.franchise.FranchiseEntity
@@ -278,6 +280,17 @@ class AuctionServiceTest {
         assertFailsWith<NotFranchiseOwnerException> {
             service.placeBid(leagueId, franchiseId, UUID.randomUUID(), BigDecimal("100"))
         }
+    }
+
+    @Test
+    fun `placeBid for a franchise the organizer removed is rejected as not found -- its owner keeps the id but not the seat`() {
+        every { leagueRepository.findByIdForUpdate(leagueId) } returns league(currentPlayerId = playerId)
+        every { franchiseRepository.findById(franchiseId) } returns Optional.of(franchise().apply { removedAt = Instant.now() })
+
+        assertFailsWith<LeagueFranchiseNotFoundException> {
+            service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("100"))
+        }
+        verify(exactly = 0) { auctionBidRepository.save(any()) }
     }
 
     @Test

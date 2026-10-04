@@ -137,6 +137,7 @@ class AuctionService(
      * squad max, purse, or the minimum-bid rule.
      *
      * @throws com.crichere.backend.common.ContentRateLimitExceededException the caller has bid too many times recently.
+     * @throws LeagueFranchiseNotFoundException [franchiseId] is not an active franchise in this league.
      * @throws NotFranchiseOwnerException [callerId] does not own [franchiseId].
      * @throws AuctionNoPlayerOpenException no player is currently open.
      * @throws AlreadyLeadingException [franchiseId] already holds the leading bid -- a franchise cannot outbid itself.
@@ -154,6 +155,9 @@ class AuctionService(
         requireInProgress(league)
 
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
+        // A removed franchise (organizer removal or approved leave) keeps its row and owner, so the
+        // ownership check alone would still pass (docs/SECURITY-AUDIT.md, finding 2).
+        if (franchise.removedAt != null) throw LeagueFranchiseNotFoundException()
         if (franchise.ownerUserId != callerId) throw NotFranchiseOwnerException()
 
         val currentPlayerId = league.auctionCurrentPlayerId ?: throw AuctionNoPlayerOpenException()

@@ -27,7 +27,6 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 
 | Item | Notes | Where |
 |---|---|---|
-| Removed franchise can still bid | `placeBid` ignores `removedAt`. | SECURITY-AUDIT 2 |
 | Uploads go live before Save | Fixed S3 key per owner; a cancelled edit still replaces the live image. Fix: fresh key, point the record at it on save. | DESIGN-REVIEW |
 | Stale refresh token → 401 after reinstall | Seen once (2026-10-01); cause unconfirmed. Consider a short reuse grace window. | DESIGN-REVIEW |
 | Orphaned test uploads in S3 | Delete, or clean up never-referenced uploads. | DESIGN-REVIEW |
