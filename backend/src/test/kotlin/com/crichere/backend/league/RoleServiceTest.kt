@@ -53,6 +53,7 @@ class RoleServiceTest {
         mockk<com.crichere.backend.common.PhotoUploadService>(),
         leagueAuthorization,
         leagueRoleRepository,
+        com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url },
     )
     private val fcmSender = mockk<FcmSender>(relaxed = true)
     private val service = RoleService(

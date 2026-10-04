@@ -73,6 +73,7 @@ class LeagueServiceTest {
         photoUploadService,
         leagueAuthorization,
         leagueRoleRepository,
+        com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url },
     )
 
     private val organizerId: UUID = UUID.randomUUID()

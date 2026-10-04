@@ -11,6 +11,7 @@ were answered by update #5 (PHASE15 8).
 | Item | Why it matters | Where |
 |---|---|---|
 | Privacy and Terms text | Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
+| Make payment screenshots private in S3 | Backend now serves them only as 1-hour signed links; the bucket must stop serving `leagues/*/payments/*` publicly (IAM GetObject first, then bucket policy). Until then they stay downloadable. | SECURITY-AUDIT 1 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 
 ## 2. Decided (2026-10-04)
@@ -26,6 +27,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 
 | Item | Notes | Where |
 |---|---|---|
+| Removed franchise can still bid | `placeBid` ignores `removedAt`. | SECURITY-AUDIT 2 |
 | Uploads go live before Save | Fixed S3 key per owner; a cancelled edit still replaces the live image. Fix: fresh key, point the record at it on save. | DESIGN-REVIEW |
 | Stale refresh token → 401 after reinstall | Seen once (2026-10-01); cause unconfirmed. Consider a short reuse grace window. | DESIGN-REVIEW |
 | Orphaned test uploads in S3 | Delete, or clean up never-referenced uploads. | DESIGN-REVIEW |

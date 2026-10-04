@@ -2,6 +2,7 @@ package com.crichere.backend.player
 
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.common.PaymentScreenshotUrlSigner
 import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueCapacityFullException
 import com.crichere.backend.league.LeagueCompletedException
@@ -35,6 +36,7 @@ class PlayerService(
     private val contentRateLimiter: ContentRateLimiter,
     private val leagueAuthorization: LeagueAuthorization,
     private val fcmSender: FcmSender,
+    private val screenshotSigner: PaymentScreenshotUrlSigner,
 ) {
 
     /**
@@ -182,5 +184,5 @@ class PlayerService(
     }
 
     private fun PlayerEntity.toResponse(callerId: UUID?, organizerUserId: UUID): LeaguePlayerResponse =
-        toResponse(callerId, organizerUserId, profileRepository)
+        toResponse(callerId, organizerUserId, profileRepository, screenshotSigner)
 }

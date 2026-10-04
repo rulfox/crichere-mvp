@@ -3,6 +3,7 @@ package com.crichere.backend.league
 import com.crichere.backend.auction.AuctionInProgressException
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.common.PaymentScreenshotUrlSigner
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.franchise.FranchiseRepository
@@ -35,6 +36,7 @@ class LeagueService(
     private val photoUploadService: PhotoUploadService,
     private val leagueAuthorization: LeagueAuthorization,
     private val leagueRoleRepository: LeagueRoleRepository,
+    private val screenshotSigner: PaymentScreenshotUrlSigner,
 ) {
 
     /**
@@ -392,8 +394,8 @@ class LeagueService(
     private fun LeagueEntity.toResponse(callerId: UUID?): LeagueResponse {
         val leagueId = requireNotNull(id)
         val awards = leagueAwardRepository.findByLeagueIdOrderByDisplayOrder(leagueId).map { it.toResponse() }
-        val players = playerRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.toResponse(callerId, organizerUserId, profileRepository) }
-        val franchises = franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.toResponse(callerId, organizerUserId, profileRepository) }
+        val players = playerRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.toResponse(callerId, organizerUserId, profileRepository, screenshotSigner) }
+        val franchises = franchiseRepository.findByLeagueIdAndRemovedAtIsNull(leagueId).map { it.toResponse(callerId, organizerUserId, profileRepository, screenshotSigner) }
         val isFollowing = callerId != null && leagueFollowRepository.existsByLeagueIdAndUserId(leagueId, callerId)
         // Save-time-only warning, never a rejection -- see docs/PHASE4.md's two-stage squad-math
         // check. Both sides must be present, or there's nothing to warn about yet.

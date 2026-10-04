@@ -2,6 +2,7 @@ package com.crichere.backend.franchise
 
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.common.PaymentScreenshotUrlSigner
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.franchise.dto.LeagueFranchiseClaimRequest
@@ -38,6 +39,7 @@ class FranchiseService(
     private val photoUploadService: PhotoUploadService,
     private val leagueAuthorization: LeagueAuthorization,
     private val fcmSender: FcmSender,
+    private val screenshotSigner: PaymentScreenshotUrlSigner,
 ) {
 
     /**
@@ -186,5 +188,5 @@ class FranchiseService(
     }
 
     private fun FranchiseEntity.toResponse(callerId: UUID?, organizerUserId: UUID): LeagueFranchiseResponse =
-        toResponse(callerId, organizerUserId, profileRepository)
+        toResponse(callerId, organizerUserId, profileRepository, screenshotSigner)
 }

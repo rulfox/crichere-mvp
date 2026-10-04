@@ -136,9 +136,12 @@ class PhotoUploadService(
      * is part of the join/claim request body) -- see docs/PHASE3.md's implementation plan,
      * decision 7. Always self-scoped (the caller's own JWT-resolved id), same implicit safety as
      * [createUploadUrl] -- no separate ownership check needed by the caller.
+     *
+     * This prefix is private in the bucket (unlike every other key here): reads go through
+     * [PaymentScreenshotUrlSigner], never the plain object URL.
      */
     fun createPaymentScreenshotUploadUrl(leagueId: UUID, userId: UUID): PhotoUploadUrlResponse =
-        presign("leagues/$leagueId/payments/$userId.jpg")
+        presign(paymentScreenshotKey(leagueId, userId))
 
     private fun presign(key: String): PhotoUploadUrlResponse {
         val bucket = properties.s3.bucket
@@ -229,6 +232,9 @@ class PhotoUploadService(
 
     companion object {
         const val ALGORITHM = "AWS4-HMAC-SHA256"
+
+        /** The one key a payer's screenshot upload can have; shared with [S3PaymentScreenshotUrlSigner]. */
+        fun paymentScreenshotKey(leagueId: UUID, userId: UUID): String = "leagues/$leagueId/payments/$userId.jpg"
 
         /**
          * Upper bound on an uploaded image: generous enough for an unedited phone-camera JPEG

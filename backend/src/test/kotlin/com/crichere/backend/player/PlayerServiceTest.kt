@@ -43,7 +43,7 @@ class PlayerServiceTest {
         },
     )
     private val fcmSender = mockk<FcmSender>(relaxed = true)
-    private val service = PlayerService(playerRepository, leagueRepository, profileRepository, contentRateLimiter, leagueAuthorization, fcmSender)
+    private val service = PlayerService(playerRepository, leagueRepository, profileRepository, contentRateLimiter, leagueAuthorization, fcmSender, com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url })
 
     private val organizerId: UUID = UUID.randomUUID()
     private val playerId: UUID = UUID.randomUUID()
