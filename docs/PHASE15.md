@@ -139,3 +139,15 @@ Verified on the emulator and not verified: see DESIGN-REVIEW Follow-ups, "Live a
 
 Shared: `Snack` / `SnackHost` (I12 snackbar, swipe to dismiss) now also carries League detail's "Watch link copied".
 End Auction (organizer dock) was exercised live for the first time while setting this up.
+
+### 7.3 Smaller screens (C1, D1, E1, F1, G1)
+
+| Item | Built |
+|---|---|
+| C1 ground map | Compact 68 dp bar while the name field has focus and the IME is up; search box, hint and coordinates hide; map top padding drops to the status bar so the pin re-centres. Same field instance in both layouts (focus survives). |
+| D1 My leagues | Name max 2 lines; " · d MMM yyyy" in the device locale; " -- " replaced by " · " on League detail. |
+| E1 viewer | Three-stop fades (.60/.35/0) sized from the bar insets + 24 dp, fade in on the first zoom and stay. |
+| F1 profile | Subtitle unchanged (already always shown). `CrichereTextField(reserveErrorSlot)`; `ProfileSetupViewModel.nameError` after Save with < 2 letters, cleared on typing. |
+| G1 auction time | `CrichereTapField` gained a 40 dp trailing button and an always-present supporting row. Helper with the zone's short name, passed-time warning (non-blocking), "Pick a time later than now." (blocks Save), clear + Undo snackbar, date dialog with past days disabled, time dialog with J11 colours and Back. `AuctionSettingsViewModel` takes an injectable clock. |
+
+Verification and known differences: see DESIGN-REVIEW Follow-ups (ground map, My leagues, H, Profile Setup, Auction settings).

@@ -602,9 +602,9 @@ Open items found while implementing the redesign, not yet scheduled.
   S3 key per owner (`users/{userId}/profile.jpg`, `leagues/{id}/logo.jpg`, ...), so the live image
   is replaced the moment the upload finishes, even if the user then cancels or never taps Save.
   Backend change: upload to a fresh key and only point the record at it on save.
-- [ ] **Profile Setup subtitle kept on filled forms** (screen C). "So organizers know who's joining
-  their league." stays visible after a name is typed. The design hides it in the filled states
-  (C4, C6), but hiding it makes the whole form jump on the first keystroke. Revisit with the design.
+- [x] **Profile Setup subtitle kept on filled forms** (screen C). Resolved by design update #4 (C8-C11):
+  the subtitle stays in every state. The name field now reserves a 16 dp error row and shows "Enter your
+  full name." after Save with fewer than 2 letters (seen on the emulator, edit mode; the photo row didn't move).
 - [ ] **C1 (empty new-user Profile setup) not verified on-device** -- needs a second Firebase test
   number for a fresh account.
 - [ ] **Stale refresh token -> 401 after reinstall** (2026-10-01, 10:08 IST). App start presented an
@@ -620,6 +620,8 @@ Open items found while implementing the redesign, not yet scheduled.
     organizer); CAPACITY_FULL and RATE_LIMIT_EXCEEDED banners; logo-upload failure banner;
     screenshot upload failure (Retry/Remove) and Cancel mid-upload; no-UPI-ID and no-UPI-app
     fallbacks; free league (G4).
+  - H (U4 E1, 2026-10-04): the fades now use the board's three stops and fade in on the first zoom, then stay;
+    compiled only (no S3 locally, so no screenshot to open on the emulator).
   - H: Retry going through the loading spinner (the test URL failed instantly); opening the viewer
     from League Detail with a real proof (the harness opened it directly); pan clamping by touch
     (covered by tests only); nav-bar icons hard to see when zoomed into a white image (2026-10-04: a dark fade now sits behind the
@@ -641,6 +643,11 @@ Open items found while implementing the redesign, not yet scheduled.
   compiled). Known, not fixed: with the keyboard up for the ground name, the sheet covers nearly
   the whole map and the pin is pushed to the top edge (the saved location is unaffected).
   Still open 2026-10-04: any fix changes the sheet while the keyboard is open, so it needs a design call.
+  **Design update #4 (I13):** built -- while the name field has focus and the keyboard is up, the sheet is a
+  68 dp bar (field + Register, disabled while empty) and the search box, hint and coordinates hide. Seen on the
+  emulator, but its keyboard floats (no bottom inset), so the pin position with a real 300 dp keyboard, the
+  240 dp minimum map and iOS (I14) are not verified. Simplification: the bar switches with the keyboard rather
+  than morphing frame by frame with the IME animation.
 
 - [ ] **Auction settings (J) partly unverified** (2026-10-02): a real Save was confirmed working by
   the owner on CPH2487. Still unverified: the J5 failure bar + Retry live, the
@@ -685,6 +692,8 @@ Open items found while implementing the redesign, not yet scheduled.
 
 - [ ] **My leagues (M) unverified states** (2026-10-02): M2 empty and M3 error not seen on device
   (the test account has leagues); a long city name truncated the start date (fixed 2026-10-04: only the place ellipsizes; not seen with a real long city); iOS empty state added but not compiled.
+  U4 M5 (2026-10-04): name up to 2 lines, " · 10 Oct 2026" in the device locale; the " -- " on League detail's
+  format line is now " · ". Not seen with a real long name/place.
 
 - [ ] **My profile (N) unverified** (2026-10-02): Choose new photo was not run live (it would replace
   the owner's real photo; covered by VM tests), N3 no-photo and N5 error not seen on device, iOS
@@ -698,7 +707,13 @@ Open items found while implementing the redesign, not yet scheduled.
   code within 60s; pre-existing via OTP's "Edit"). Firebase gives no callback without a
   force-resend token, and the client has no timeout. See PHASE10.md Open gaps.
 
-- [ ] **Auction settings (J): new optional "Auction date & time" field not on the design board**
+- [ ] **Auction settings (J): "Auction date & time" -- now designed (U4 J9-J12, 2026-10-04).** Verified on the
+  emulator: helper row, date dialog with past days disabled and today outlined, time dialog colours / title /
+  Back keeping the date, the past-time error, clear + "Auction time cleared". Not seen: tapping Undo (the
+  snackbar timed out between scripted taps), the passed-time warning with real data, the J5 save failure, iOS.
+  Known differences: the helper shows "GMT+05:30" on an en_US phone (CLDR has "IST" only for en_IN); M3 draws
+  the hour as "07" in its own type, the board shows "6".
+- [ ] **(superseded) Auction settings (J): new optional "Auction date & time" field not on the design board**
   (2026-10-02, PHASE11.md D3). Built as a tap field (date dialog -> time dialog, phone's zone,
   stored as an instant) with a clear button. Needs a design pass. Not verified on-device (CPH2487
   wasn't connected): picking, clearing, the 12h display, and the instrumented
