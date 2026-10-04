@@ -68,19 +68,23 @@ private val RevokeBorder = Color(0xFFD9B8B2)
 private val RevokeTrack = Color(0xFFEBD6D2)
 private val DialogSurface = Color(0xFFF1F4EE)
 private val DialogBody = Color(0xFF3E4A41)
+private val YouTagBg = Color(0xFFD7EBD2)
+private val YouTagText = Color(0xFF0B2E10)
 
 /** Resolves [ManageRolesViewModel] via Koin, parameterized on [leagueId] -- see `AppRoute.ManageRoles` (ui/navigation). */
 @Composable
 internal fun ManageRolesRoute(
     leagueId: String,
     onBack: () -> Unit,
+    /** The signed-in co-organizer removed themselves (U4 K10): leave, telling the league page which league. */
+    onAccessRevoked: (leagueName: String) -> Unit = { onBack() },
     viewModel: ManageRolesViewModel = koinViewModel(key = "manage-roles:$leagueId") { parametersOf(leagueId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.retry() }
     // A co-organizer who revokes their own access has nothing left to manage here.
-    LaunchedEffect(state.accessRevoked) { if (state.accessRevoked) onBack() }
+    LaunchedEffect(state.accessRevoked) { if (state.accessRevoked) onAccessRevoked(state.league?.name?.trim().orEmpty()) }
 
     ManageRolesScreen(state = state, viewModel = viewModel, onBack = onBack)
 }
@@ -149,7 +153,12 @@ private fun ManageRolesScreen(state: ManageRolesState, viewModel: ManageRolesVie
                 if (league.coOrganizers.isEmpty()) {
                     Text("No co-organizers yet.", style = pText(13.sp, lineHeight = 18.2.sp), color = colors.onSurfaceVariant)
                 } else {
-                    CoOrganizerList(roles = league.coOrganizers, revokingRoleIds = state.revokingRoleIds, onRevoke = { pendingRevoke = it })
+                    CoOrganizerList(
+                        roles = league.coOrganizers,
+                        currentUserId = state.currentUserId,
+                        revokingRoleIds = state.revokingRoleIds,
+                        onRevoke = { pendingRevoke = it },
+                    )
                 }
             }
         }
@@ -169,7 +178,21 @@ private fun ManageRolesScreen(state: ManageRolesState, viewModel: ManageRolesVie
             },
         )
     }
-    pendingRevoke?.let { role ->
+    pendingRevoke?.takeIf { it.userId == state.currentUserId }?.let { role ->
+        // U4 K9: removing yourself gets its own wording and stays open, locked, while it goes through.
+        DestructiveConfirmDialog(
+            title = "Remove your own access?",
+            body = "You'll stop being a co-organizer of ${state.league?.name?.trim() ?: "this league"} right away. You won't be able to edit the league or run the auction. Only an organizer can add you back.",
+            confirmLabel = "Remove me",
+            submittingLabel = "Removing…",
+            submitting = role.id in state.revokingRoleIds,
+            onDismiss = { pendingRevoke = null },
+            onConfirm = { viewModel.revoke(role.id) },
+        )
+    }
+    // A failed self-revoke closes the dialog; the banner above the list says why.
+    LaunchedEffect(state.revokeError) { if (state.revokeError != null && pendingRevoke?.userId == state.currentUserId) pendingRevoke = null }
+    pendingRevoke?.takeIf { it.userId != state.currentUserId }?.let { role ->
         ConfirmDialog(
             title = "Revoke ${role.name ?: "this co-organizer"}?",
             body = "They'll lose co-organizer access to this league right away.",
@@ -238,7 +261,7 @@ private fun FoundCard(name: String, isGranting: Boolean, onGrant: () -> Unit) {
 }
 
 @Composable
-private fun CoOrganizerList(roles: List<LeagueRoleDto>, revokingRoleIds: Set<String>, onRevoke: (LeagueRoleDto) -> Unit) {
+private fun CoOrganizerList(roles: List<LeagueRoleDto>, currentUserId: String?, revokingRoleIds: Set<String>, onRevoke: (LeagueRoleDto) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier
@@ -256,16 +279,27 @@ private fun CoOrganizerList(roles: List<LeagueRoleDto>, revokingRoleIds: Set<Str
                 val name = role.name ?: "Unnamed user"
                 Avatar(name, size = 34.dp, fontSize = 12.sp, background = RowAvatar)
                 Spacer(Modifier.width(12.dp))
-                Text(
-                    name,
-                    style = pText(13.5.sp, FontWeight.SemiBold, 13.5.sp),
-                    color = colors.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                val isMe = role.userId == currentUserId
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        name,
+                        style = pText(13.5.sp, FontWeight.SemiBold, 13.5.sp),
+                        color = colors.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (isMe) {
+                        Spacer(Modifier.width(6.dp))
+                        // U4 K9: the signed-in user's own row.
+                        Box(Modifier.height(18.dp).background(YouTagBg, RoundedCornerShape(9.dp)).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+                            Text("You", style = pText(10.5.sp, FontWeight.SemiBold, 10.5.sp), color = YouTagText)
+                        }
+                    }
+                }
                 Spacer(Modifier.width(12.dp))
-                if (role.id in revokingRoleIds) {
+                // The self-revoke dialog shows its own progress, so the row keeps its button.
+                if (role.id in revokingRoleIds && !isMe) {
                     // K5: spinner + muted label in place of the pill.
                     Row(Modifier.height(36.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(color = CrichereErrorStrong, trackColor = RevokeTrack, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))

@@ -25,7 +25,11 @@ data class LeagueDetailState(
     /** Row ids with an approve/dismiss in flight. */
     val respondingToLeaveRequestIds: Set<String> = emptySet(),
     val errorMessage: String? = null,
+    /** One-off result of Mark completed (design update #4, E12/E13): the screen shows its snackbar, then calls [LeagueDetailViewModel.clearCompletionNotice]. */
+    val completionNotice: CompletionNotice? = null,
 )
+
+enum class CompletionNotice { COMPLETED, FAILED }
 
 /**
  * League Detail's ViewModel: loads the full league (ground, awards, players, franchises
@@ -100,17 +104,15 @@ class LeagueDetailViewModel(
         val league = _state.value.league ?: return
         if (!_state.value.isOrganizer || _state.value.isCompleting) return
 
-        _state.update { it.copy(isCompleting = true, errorMessage = null) }
+        _state.update { it.copy(isCompleting = true, errorMessage = null, completionNotice = null) }
         viewModelScope.launch {
             runCatching { leagueRepository.completeLeague(league.id) }
-                .onSuccess { updated -> _state.update { it.copy(isCompleting = false, league = updated) } }
-                .onFailure { throwable ->
-                    _state.update {
-                        it.copy(isCompleting = false, errorMessage = throwable.message ?: "Couldn't mark this league completed. Please try again.")
-                    }
-                }
+                .onSuccess { updated -> _state.update { it.copy(isCompleting = false, league = updated, completionNotice = CompletionNotice.COMPLETED) } }
+                .onFailure { _state.update { it.copy(isCompleting = false, completionNotice = CompletionNotice.FAILED) } }
         }
     }
+
+    fun clearCompletionNotice() = _state.update { it.copy(completionNotice = null) }
 
     fun toggleFollow() {
         val league = _state.value.league ?: return

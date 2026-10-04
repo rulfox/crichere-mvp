@@ -1,6 +1,24 @@
 package com.crichere.app.ui
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.DialogProperties
+import com.crichere.app.ui.theme.CrichereErrorStrong
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -219,3 +237,82 @@ fun BackTitleBar(title: String, onBack: () -> Unit) {
         )
     }
 }
+
+/** A message for [SnackHost]. A `null` [durationMs] stays until its action or a swipe (U4 E12). */
+class Snack(val message: String, val actionLabel: String? = null, val onAction: (() -> Unit)? = null, val durationMs: Long? = 4_000)
+
+/**
+ * The I12 snackbar at the bottom of a screen: 12 dp in from the sides, 24 dp above the navigation bar,
+ * swipe sideways to dismiss. The caller owns [snack] and its timing.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SnackHost(snack: Snack?, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    var shown by remember { mutableStateOf(snack) }
+    if (snack != null) shown = snack
+    AnimatedVisibility(visible = snack != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 24.dp)) {
+        val current = shown ?: return@AnimatedVisibility
+        key(current) {
+            val dismissState = rememberSwipeToDismissBoxState()
+            LaunchedEffect(dismissState.currentValue) {
+                if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) onDismiss()
+            }
+            SwipeToDismissBox(state = dismissState, backgroundContent = {}) {
+                CrichereSnackbar(current.message, actionLabel = current.actionLabel, onAction = current.onAction)
+            }
+        }
+    }
+}
+
+/**
+ * The N4 / K3 confirmation shell for an irreversible action (U4 E10/E11, K9): the confirm button is in
+ * the destructive red. While [submitting], it shows a spinner and [submittingLabel], Cancel fades to 38%
+ * and stops responding, and the dialog can't be dismissed.
+ */
+@Composable
+fun DestructiveConfirmDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    submittingLabel: String,
+    submitting: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val buttonText = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 14.sp)
+    AlertDialog(
+        onDismissRequest = { if (!submitting) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = !submitting, dismissOnClickOutside = !submitting),
+        modifier = Modifier.padding(horizontal = 23.dp),
+        containerColor = DialogSurface,
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Text(title, style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 22.8.sp), color = CrichereInk)
+        },
+        text = {
+            Text(body, style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.5.sp, lineHeight = 19.575.sp), color = DialogBody)
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !submitting) {
+                if (submitting) {
+                    CircularProgressIndicator(
+                        color = CrichereErrorStrong,
+                        trackColor = CrichereErrorStrong.copy(alpha = 0.25f),
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(if (submitting) submittingLabel else confirmLabel, style = buttonText, color = CrichereErrorStrong)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !submitting, modifier = Modifier.alpha(if (submitting) 0.38f else 1f)) {
+                Text("Cancel", style = buttonText, color = MaterialTheme.colorScheme.primary)
+            }
+        },
+    )
+}
+
+private val DialogSurface = Color(0xFFF1F4EE)
+private val DialogBody = Color(0xFF3E4A41)

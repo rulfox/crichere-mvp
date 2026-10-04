@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -94,6 +95,9 @@ import org.koin.core.parameter.parametersOf
 fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
     val backStack = rememberNavBackStack(AppRoute.Starting)
     val navigator = remember(backStack) { AppNavigator(backStack) }
+    // One-off messages for a league page to show when it is next on screen (U4 K10: a self-revoke on Manage
+    // co-organizers pops back here). Not saved: a message lost to process death is only a confirmation.
+    val leagueNotices = remember { mutableStateMapOf<String, String>() }
     // Keyed on the incoming parameter (not a bare `remember { }`) so a new crichere://leagues/{id}
     // intent arriving via MainActivity.onNewIntent while the app is already running -- which
     // updates this same composable's `pendingDeepLinkLeagueId` argument on recomposition, not a
@@ -197,6 +201,8 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
             entry<AppRoute.LeagueDetail> { route ->
                 LeagueDetailRoute(
                     leagueId = route.leagueId,
+                    notice = leagueNotices[route.leagueId],
+                    onNoticeShown = { leagueNotices.remove(route.leagueId) },
                     onBack = { navigator.back() },
                     onEditLeague = { leagueId -> navigator.navigate(AppRoute.LeagueCreation(editingLeagueId = leagueId)) },
                     onJoinLeague = { leagueId -> navigator.navigate(AppRoute.JoinLeague(leagueId)) },
@@ -229,7 +235,14 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
             }
 
             entry<AppRoute.ManageRoles> { route ->
-                ManageRolesRoute(leagueId = route.leagueId, onBack = { navigator.back() })
+                ManageRolesRoute(
+                    leagueId = route.leagueId,
+                    onBack = { navigator.back() },
+                    onAccessRevoked = { leagueName ->
+                        leagueNotices[route.leagueId] = "You're no longer a co-organizer of $leagueName."
+                        navigator.back()
+                    },
+                )
             }
 
             entry<AppRoute.JoinLeague> { route ->

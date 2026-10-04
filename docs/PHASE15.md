@@ -129,3 +129,13 @@ still pending after a failure resumes after `resetMain()` and runTest reports on
 `backend/e2e/act.mjs` drives single auction actions/bids for checking screens.
 
 Verified on the emulator and not verified: see DESIGN-REVIEW Follow-ups, "Live auction (L)".
+
+### 7.2 League detail and co-organizers (B1, B2)
+
+| Item | Built |
+|---|---|
+| B1 Mark completed | Fourth organizer row opens a destructive confirm (`DestructiveConfirmDialog`, shared): "Completing…" locks it. Failure: dialog closes, indefinite snackbar with Retry (reopens the dialog), swipe to dismiss. Success: "League marked completed" (4 s); the organizer card goes, "Live Auction" becomes "Auction results", rosters lose Remove / Approve leave (View payment screenshot stays). `LeagueDetailViewModel.completionNotice` replaces the old error line for this action. |
+| B2 Self-revoke | "You" tag on the signed-in user's row; their Revoke opens "Remove your own access?" ("Removing…" while it runs). On success the screen pops and the league page shows "You're no longer a co-organizer of {league}." (4 s), via a one-off notice map in `AuthNavHost`; the page reloads as the user's real role. |
+
+Shared: `Snack` / `SnackHost` (I12 snackbar, swipe to dismiss) now also carries League detail's "Watch link copied".
+End Auction (organizer dock) was exercised live for the first time while setting this up.

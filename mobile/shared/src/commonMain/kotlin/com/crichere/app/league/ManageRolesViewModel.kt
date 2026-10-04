@@ -33,6 +33,8 @@ data class ManageRolesState(
     val revokeError: RoleNotice? = null,
     /** The signed-in user just revoked their own access: nothing on this screen is theirs to manage any more, so the screen leaves. */
     val accessRevoked: Boolean = false,
+    /** The signed-in user -- their own row gets a "You" tag and its own confirmation (design update #4, K9). */
+    val currentUserId: String? = null,
 )
 
 /**
@@ -60,8 +62,8 @@ class ManageRolesViewModel(
         loadJob?.cancel()
         _state.update { it.copy(isLoading = true, loadFailed = false) }
         loadJob = viewModelScope.launch {
-            runCatching { leagueRepository.getLeague(leagueId) }
-                .onSuccess { league -> _state.update { it.copy(isLoading = false, league = league) } }
+            runCatching { leagueRepository.getLeague(leagueId) to authRepository?.getCurrentUserId() }
+                .onSuccess { (league, me) -> _state.update { it.copy(isLoading = false, league = league, currentUserId = me) } }
                 .onFailure { _state.update { it.copy(isLoading = false, loadFailed = true) } }
         }
     }

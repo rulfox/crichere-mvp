@@ -151,6 +151,27 @@ class LeagueDetailViewModelTest {
         val state = viewModel.state.value
         assertFalse(state.isCompleting)
         assertEquals(LeagueStatus.COMPLETED, state.league?.status)
+        assertEquals(CompletionNotice.COMPLETED, state.completionNotice)
+
+        viewModel.clearCompletionNotice()
+        assertEquals(null, viewModel.state.value.completionNotice)
+    }
+
+    @Test
+    fun `a failed mark completed leaves the league as it was and reports FAILED for the snackbar`() = viewModelTest {
+        val league = sampleLeague()
+        val viewModel = viewModel(FakeLeagueRepository(leaguesByArea = listOf(league))) // nextCompleted unstubbed: the call fails
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.markCompleted()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertFalse(state.isCompleting)
+        assertEquals(LeagueStatus.ANNOUNCED, state.league?.status)
+        assertEquals(CompletionNotice.FAILED, state.completionNotice)
+        assertEquals(null, state.errorMessage)
     }
 
     @Test

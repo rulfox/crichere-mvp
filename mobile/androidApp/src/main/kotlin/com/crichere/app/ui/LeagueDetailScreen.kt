@@ -69,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.crichere.app.R
 import com.crichere.app.league.LeagueAwardDto
+import com.crichere.app.league.CompletionNotice
 import com.crichere.app.league.LeagueDetailState
 import com.crichere.app.league.LeagueDetailViewModel
 import com.crichere.app.league.LeagueDto
@@ -102,6 +103,9 @@ internal fun LeagueDetailRoute(
     onAuctionSettings: (String) -> Unit,
     onAuctionLive: (String) -> Unit,
     onManageRoles: (String) -> Unit,
+    /** A one-off message to show on arrival (design update #4 K10), cleared through [onNoticeShown]. */
+    notice: String? = null,
+    onNoticeShown: () -> Unit = {},
     viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -117,6 +121,7 @@ internal fun LeagueDetailRoute(
             onRetry = viewModel::retry,
             onEditLeague = { onEditLeague(leagueId) },
             onMarkCompleted = viewModel::markCompleted,
+            onCompletionNoticeShown = viewModel::clearCompletionNotice,
             onAuctionSettings = { onAuctionSettings(leagueId) },
             onAuctionLive = { onAuctionLive(leagueId) },
             onManageRoles = { onManageRoles(leagueId) },
@@ -133,6 +138,8 @@ internal fun LeagueDetailRoute(
             onApproveFranchiseLeave = viewModel::approveFranchiseLeave,
             onDismissFranchiseLeave = viewModel::dismissFranchiseLeave,
         ),
+        notice = notice,
+        onNoticeShown = onNoticeShown,
     )
 }
 
@@ -141,6 +148,7 @@ private class LeagueDetailActions(
     val onRetry: () -> Unit,
     val onEditLeague: () -> Unit,
     val onMarkCompleted: () -> Unit,
+    val onCompletionNoticeShown: () -> Unit,
     val onAuctionSettings: () -> Unit,
     val onAuctionLive: () -> Unit,
     val onManageRoles: () -> Unit,
@@ -170,17 +178,45 @@ private sealed interface LeaveTarget {
  * Approve/Dismiss. Rendered above `MainRoute`'s tab `Scaffold`, so it owns its own insets.
  */
 @Composable
-private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailActions) {
+private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailActions, notice: String?, onNoticeShown: () -> Unit) {
     val context = LocalContext.current
     var leaveTarget by remember { mutableStateOf<LeaveTarget?>(null) }
-    var snackbarTick by remember { mutableIntStateOf(0) }
-    var showCopied by remember { mutableStateOf(false) }
-    LaunchedEffect(snackbarTick) {
-        if (snackbarTick > 0) {
-            showCopied = true
-            delay(3_000)
-            showCopied = false
+    var showCompleteDialog by remember { mutableStateOf(false) }
+    var snack by remember { mutableStateOf<Snack?>(null) }
+    // A snack with a duration clears itself; one without (the failed-completion Retry) waits for its action or a swipe.
+    LaunchedEffect(snack) {
+        val duration = snack?.durationMs ?: return@LaunchedEffect
+        delay(duration)
+        snack = null
+    }
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            snack = Snack(notice, durationMs = 4_000)
+            onNoticeShown()
         }
+    }
+    // U4 E12/E13: the dialog closes either way; success confirms, failure offers Retry (which reopens it).
+    LaunchedEffect(state.completionNotice) {
+        when (state.completionNotice) {
+            CompletionNotice.COMPLETED -> {
+                showCompleteDialog = false
+                snack = Snack("League marked completed", durationMs = 4_000)
+            }
+            CompletionNotice.FAILED -> {
+                showCompleteDialog = false
+                snack = Snack(
+                    "Couldn't complete the league. Check your connection and try again.",
+                    actionLabel = "Retry",
+                    onAction = {
+                        snack = null
+                        showCompleteDialog = true
+                    },
+                    durationMs = null,
+                )
+            }
+            null -> return@LaunchedEffect
+        }
+        actions.onCompletionNoticeShown()
     }
 
     // The https watch link (docs/PHASE13.md): chat apps render it as a preview card from the page's
@@ -201,7 +237,7 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
     val copyWatchLink: (LeagueDto) -> Unit = { league ->
         context.getSystemService(ClipboardManager::class.java)
             .setPrimaryClip(ClipData.newPlainText("Watch link", "$webViewerBaseUrl/leagues/${league.id}"))
-        snackbarTick++
+        snack = Snack("Watch link copied", durationMs = 3_000)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -224,26 +260,24 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
                 onShare = { share(league) },
                 onCopyLink = { copyWatchLink(league) },
                 onRequestLeave = { leaveTarget = it },
+                onMarkCompleted = { showCompleteDialog = true },
             )
         }
 
-        AnimatedVisibility(
-            visible = showCopied,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 13.dp, vertical = 24.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .background(MaterialTheme.colorScheme.onBackground, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text("Watch link copied", style = body(14.sp, FontWeight.Medium), color = MaterialTheme.colorScheme.onPrimary)
-            }
-        }
+        SnackHost(snack, onDismiss = { snack = null }, modifier = Modifier.align(Alignment.BottomCenter))
+    }
+
+    val league = state.league
+    if (showCompleteDialog && league != null) {
+        DestructiveConfirmDialog(
+            title = "Mark ${league.name.trim()} as completed?",
+            body = "This can't be undone. Rosters, auction results and awards stay visible to everyone. Nobody can join, edit the league or run the auction again.",
+            confirmLabel = "Mark completed",
+            submittingLabel = "Completing…",
+            submitting = state.isCompleting,
+            onDismiss = { showCompleteDialog = false },
+            onConfirm = actions.onMarkCompleted,
+        )
     }
 
     leaveTarget?.let { target ->
@@ -277,6 +311,7 @@ private fun LeagueView(
     onShare: () -> Unit,
     onCopyLink: () -> Unit,
     onRequestLeave: (LeaveTarget) -> Unit,
+    onMarkCompleted: () -> Unit,
 ) {
     val me = state.currentUserId
     val organizer = state.isOrganizer
@@ -338,8 +373,11 @@ private fun LeagueView(
                 if (completed) {
                     Text("League completed. Rosters and awards stay visible.", style = body(13.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                // U4 E13: a completed league can't change, so the organizer card goes rather than showing dead rows.
+                if (organizer && !completed) {
+                    OrganizerMenu(actions, onMarkCompleted)
+                }
                 if (organizer) {
-                    OrganizerMenu(league, state, actions)
                     state.errorMessage?.let { Text(it, style = body(12.5.sp, FontWeight.Medium), color = MaterialTheme.colorScheme.error) }
                 } else if (!completed && myPlayer == null && myFranchise == null) {
                     if (playersFull) {
@@ -360,8 +398,13 @@ private fun LeagueView(
                     Pill("Share", R.drawable.ic_share, PillStyle.Outlined, Modifier.weight(1f), onClick = onShare)
                     Pill("Copy watch link", R.drawable.ic_link, PillStyle.Outlined, Modifier.weight(1f), onClick = onCopyLink)
                 }
-                // Public like the rest of the league (docs/PHASE5.md): everyone can watch/bid.
-                Pill("Live Auction", R.drawable.ic_gavel, PillStyle.Auction, onClick = actions.onAuctionLive)
+                // Public like the rest of the league (docs/PHASE5.md): everyone can watch/bid. Once the
+                // league is completed the same screen only shows results (U4 E13).
+                if (completed) {
+                    Pill("Auction results", R.drawable.ic_leaderboard, PillStyle.Auction, onClick = actions.onAuctionLive)
+                } else {
+                    Pill("Live Auction", R.drawable.ic_gavel, PillStyle.Auction, onClick = actions.onAuctionLive)
+                }
             }
         }
         awardsSection(league.awards, horizontal = 19)
@@ -378,6 +421,7 @@ private fun LeagueView(
                                 PlayerRow(
                                     p, league, isMe = false,
                                     organizer = OrganizerRowActions(
+                                        readOnly = completed,
                                         isRemoving = p.id in state.removingIds,
                                         isResponding = p.id in state.respondingToLeaveRequestIds,
                                         onViewScreenshot = actions.onViewScreenshot,
@@ -403,6 +447,7 @@ private fun LeagueView(
                                 FranchiseRow(
                                     f, league, isMe = false,
                                     organizer = OrganizerRowActions(
+                                        readOnly = completed,
                                         isRemoving = f.id in state.removingIds,
                                         isResponding = f.id in state.respondingToLeaveRequestIds,
                                         onViewScreenshot = actions.onViewScreenshot,
@@ -471,7 +516,7 @@ private fun registrationLine(screenshotUrl: String?, fee: Double?, joinedAt: Str
 }
 
 @Composable
-private fun OrganizerMenu(league: LeagueDto, state: LeagueDetailState, actions: LeagueDetailActions) {
+private fun OrganizerMenu(actions: LeagueDetailActions, onMarkCompleted: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -482,14 +527,8 @@ private fun OrganizerMenu(league: LeagueDto, state: LeagueDetailState, actions: 
         MenuRow(R.drawable.ic_edit, "Edit league", onClick = actions.onEditLeague)
         MenuRow(R.drawable.ic_tune, "Auction settings", onClick = actions.onAuctionSettings)
         MenuRow(R.drawable.ic_admin_panel_settings, "Manage co-organizers", onClick = actions.onManageRoles)
-        if (league.status != LeagueStatus.COMPLETED) {
-            MenuRow(
-                R.drawable.ic_task_alt,
-                if (state.isCompleting) "Marking completed…" else "Mark completed",
-                enabled = !state.isCompleting,
-                onClick = actions.onMarkCompleted,
-            )
-        }
+        // Not red: the confirmation dialog carries the warning (U4 E10).
+        MenuRow(R.drawable.ic_task_alt, "Mark completed", onClick = onMarkCompleted)
     }
 }
 
@@ -654,6 +693,8 @@ private fun MenuRow(@DrawableRes icon: Int, text: String, enabled: Boolean = tru
 // ---------------------------------------------------------------- rosters
 
 private class OrganizerRowActions(
+    /** Completed league (U4 E13): only View payment screenshot stays. */
+    val readOnly: Boolean,
     val isRemoving: Boolean,
     val isResponding: Boolean,
     val onViewScreenshot: (String) -> Unit,
@@ -740,6 +781,11 @@ private fun RosterRow(
                     Spacer(Modifier.height(8.dp))
                     Text("Requested to leave", style = body(12.sp, FontWeight.SemiBold), color = colors.error)
                 }
+            } else if (organizer.readOnly) {
+                if (screenshotUrl != null) {
+                    Spacer(Modifier.height(8.dp))
+                    ScreenshotLink(screenshotUrl, organizer.onViewScreenshot)
+                }
             } else {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -749,16 +795,7 @@ private fun RosterRow(
                         SmallPill("Dismiss", filled = false, enabled = !organizer.isResponding, onClick = organizer.onDismissLeave)
                     } else {
                         Box(Modifier.weight(1f)) {
-                            if (screenshotUrl != null) {
-                                Row(
-                                    Modifier.clickable { organizer.onViewScreenshot(screenshotUrl) },
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(painterResource(R.drawable.ic_photo_library), contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("View payment screenshot", style = body(12.sp, FontWeight.SemiBold), color = colors.primary)
-                                }
-                            }
+                            if (screenshotUrl != null) ScreenshotLink(screenshotUrl, organizer.onViewScreenshot)
                         }
                         SmallPill(
                             if (organizer.isRemoving) "Removing…" else "Remove",
@@ -771,6 +808,15 @@ private fun RosterRow(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScreenshotLink(screenshotUrl: String, onViewScreenshot: (String) -> Unit) {
+    Row(Modifier.clickable { onViewScreenshot(screenshotUrl) }, verticalAlignment = Alignment.CenterVertically) {
+        Icon(painterResource(R.drawable.ic_photo_library), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text("View payment screenshot", style = body(12.sp, FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary)
     }
 }
 

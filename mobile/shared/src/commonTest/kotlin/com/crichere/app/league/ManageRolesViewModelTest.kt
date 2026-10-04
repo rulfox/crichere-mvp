@@ -130,6 +130,7 @@ class ManageRolesViewModelTest {
         val viewModel = ManageRolesViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(existing)), roleRepository, StubAuth("u2"))
         viewModel.retry()
         advanceUntilIdle()
+        assertEquals("u2", viewModel.state.value.currentUserId) // their row gets the "You" tag
 
         viewModel.revoke("r1")
         advanceUntilIdle()

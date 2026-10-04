@@ -654,6 +654,15 @@ Open items found while implementing the redesign, not yet scheduled.
   rate-limit message (needs a second registered account; a live grant changes who manages the
   league), iOS ManageRolesView (not compiled). Fixed 2026-10-04 (unit-tested, not run live): a co-organizer who
   revokes their own access now leaves the screen.
+  **2026-10-04, design update #4 (PHASE15.md 7.2):** "You" tag, own-access dialog (K9), pop back with the
+  snackbar (K10) and the member view (K11) verified on the emulator with a second account; grant + dialog also
+  run live there. Not seen: the "Removing…" locked state (too fast locally), a failed self-revoke, iOS.
+
+- [ ] **League detail: Mark completed (U4 E10-E13)** (2026-10-04, PHASE15.md 7.2). Verified on the emulator:
+  confirm dialog, failure snackbar with Retry and swipe-away, success snackbar and the completed organizer view
+  (no organizer card, "Auction results", read-only rosters). Not seen: "Completing…" (too fast locally), Retry
+  reopening the dialog, iOS LeagueDetailView. Open question for design: when the backend refuses because the
+  auction is still running (409), the snackbar still says "Check your connection" -- there is no copy for that case.
 
 - [ ] **Live auction (L) polish + live check** (2026-10-02). Open: the On the block card renders
   ~10dp taller than the board (text box heights; not tracked down); Amount shows "15500" where the
