@@ -121,7 +121,8 @@ Open items found during the move:
     `crichere-media-move-temp` policy from `crichere-claude` afterwards.
 - **Backend health check (2026-10-04):** found when a deploy served ~20 s of 502s: Railway switched
   traffic to the new container before Spring had started (no health check configured). Set
-  `healthcheckPath=/api/v1/reference/states` (public, touches the DB), timeout 180 s.
+  `healthcheckPath=/api/v1/reference/states` (public, touches the DB), timeout 180 s. Verified on the
+  next deploy (`3016530`): 32/32 API requests returned 200 through the switchover, no 502s.
 - **Media bucket in `us-east-1`** (original finding) (`crichere-media-dev`, checked via S3's response headers; the
   `crichere-claude` IAM user may not call GetBucketLocation/ListBuckets). A 100 KB logo takes ~1.5 s
   from India, and objects have no `Cache-Control`. Options: CloudFront in front, or a bucket in
