@@ -32,6 +32,8 @@ final class AuctionSettingsViewModelWrapper: ObservableObject {
     func onScheduledAtChanged(_ value: Date?) {
         viewModel.onScheduledAtChanged(value: value.map { ISO8601DateFormatter().string(from: $0) })
     }
+    /// Puts back an exact earlier value (Undo after a clear), so the saved time is recognised as unchanged.
+    func restoreScheduledAt(_ iso: String) { viewModel.onScheduledAtChanged(value: iso) }
     func submit() { viewModel.submit() }
 }
 
@@ -41,6 +43,10 @@ struct AuctionSettingsView: View {
     let leagueId: String
 
     @StateObject private var wrapper: AuctionSettingsViewModelWrapper
+    @State private var pickingTime = false
+    @State private var draftTime = Date()
+    @State private var clearedSchedule: String?
+    @State private var banner: Notice?
 
     init(leagueId: String) {
         self.leagueId = leagueId
@@ -61,12 +67,43 @@ struct AuctionSettingsView: View {
                         field("Bid increment", wrapper.state.bidIncrement, .bidIncrement) { wrapper.onBidIncrementChanged($0) }
                     }
 
-                    Section("Auction date & time (optional)") {
-                        if let scheduled = scheduledDate {
-                            DatePicker("Bidding opens", selection: Binding(get: { scheduled }, set: { wrapper.onScheduledAtChanged($0) }))
-                            Button("Clear", role: .destructive) { wrapper.onScheduledAtChanged(nil) }
+                    // U4 J9-J12 (iOS: one inline date-and-time picker in a sheet, earliest = now).
+                    Section {
+                        HStack {
+                            Button {
+                                draftTime = max(scheduledDate ?? Date(), Date())
+                                pickingTime = true
+                            } label: {
+                                Text(scheduledDate.map(scheduleText) ?? "Auction date & time (optional)")
+                                    .foregroundColor(scheduledDate == nil ? .secondary : .primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .disabled(wrapper.state.isSaving)
+                            if let iso = wrapper.state.scheduledAt {
+                                Button {
+                                    wrapper.onScheduledAtChanged(nil)
+                                    clearedSchedule = iso
+                                    banner = Notice(message: "Auction time cleared", actionLabel: "Undo")
+                                } label: {
+                                    Image(systemName: "xmark").foregroundColor(.secondary).frame(width: 40, height: 40)
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Clear auction time")
+                                .disabled(wrapper.state.isSaving)
+                            } else {
+                                Image(systemName: "calendar").foregroundColor(.secondary).frame(width: 40, height: 40)
+                            }
+                        }
+                    } header: {
+                        Text("Auction date & time (optional)")
+                    } footer: {
+                        if let error = wrapper.state.scheduledAtError {
+                            Text(error).foregroundColor(Color(red: 0xB3 / 255, green: 0x26 / 255, blue: 0x1E / 255))
+                        } else if wrapper.state.scheduledAtPassed {
+                            Label("This time has passed. Pick a new one or clear it.", systemImage: "clock")
+                                .foregroundColor(Color(red: 0x7A / 255, green: 0x5B / 255, blue: 0x12 / 255))
                         } else {
-                            Button("Set a time") { wrapper.onScheduledAtChanged(Date()) }
+                            Text("Shown in your phone's time zone (\(TimeZone.current.abbreviation() ?? TimeZone.current.identifier)).")
                         }
                     }
 
@@ -100,6 +137,39 @@ struct AuctionSettingsView: View {
         }
         .navigationTitle("Auction Settings")
         .onAppear { wrapper.retry() }
+        .sheet(isPresented: $pickingTime) {
+            NavigationStack {
+                DatePicker("Auction date & time", selection: $draftTime, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                    .datePickerStyle(.graphical)
+                    .padding()
+                    .navigationTitle("Auction date & time")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { pickingTime = false } }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") {
+                                wrapper.onScheduledAtChanged(draftTime)
+                                pickingTime = false
+                            }
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .noticeBanner($banner, onAction: {
+            if let iso = clearedSchedule { wrapper.restoreScheduledAt(iso) }
+            clearedSchedule = nil
+            banner = nil
+        })
+    }
+
+    /// "12 Oct 2026 · 6:30 PM" in the device locale (U4 J9).
+    private func scheduleText(_ date: Date) -> String {
+        let day = DateFormatter()
+        day.setLocalizedDateFormatFromTemplate("d MMM yyyy")
+        let time = DateFormatter()
+        time.timeStyle = .short
+        return "\(day.string(from: date)) · \(time.string(from: date))"
     }
 
     private var scheduledDate: Date? {

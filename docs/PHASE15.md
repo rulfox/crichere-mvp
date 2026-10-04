@@ -162,3 +162,23 @@ Verification and known differences: see DESIGN-REVIEW Follow-ups (ground map, My
 | H4 pending content | Stat strip and "Bids placed tonight 412" removed; About removed from the footer. Privacy / Terms (`#`) and the contact address left for the owner (see DESIGN-REVIEW). |
 
 Tests: 3 new `LiveAuction.test.tsx` cases (56 unit tests, 21 e2e, all passing).
+
+### 7.5 iOS (SwiftUI) port
+
+The update #4 behaviour and copy are carried into the existing SwiftUI screens in their plain `Form`
+style (these screens were never matched to the board pixel by pixel). **Nothing here is compiled**
+(no Xcode on this machine); only the shared Kotlin is checked for iOS
+(`:shared:compileKotlinIosSimulatorArm64` passes).
+
+| Screen | Ported |
+|---|---|
+| AuctionLiveView | Connection pill (Reconnecting / Connection lost + Retry / Back online, "updated Ns ago"), content at 50% and actions disabled while down, nobody-can-bid cards (organizer breakdown + body variants, owner/spectator "Bidding has closed"), bid-area status instead of the amount (leading / squad full / purse short), outbid flash + haptic, over-purse results and bidding line, amount with Indian grouping (number pad, digits only, max 9), End Auction as the main action at a dead end. |
+| LeagueDetailView | Mark completed confirmation (destructive), "Completing…" on the row, success / failure banners (Retry reopens the confirmation), completed view (organizer card gone, "Auction results", read-only rosters), and the self-revoke message on arrival. |
+| ManageRolesView | "You" tag, "Remove your own access?" / "Remove me", "Removing…", pops back with the message (`AppRootView.leagueNotices`). |
+| MyLeaguesView / ProfileSetupView / ScreenshotViewerView | "place · 10 Oct 2026" with 2-line names; subtitle + always-present name-error row; three-stop bar fades after the first zoom. |
+| LeagueCreationView (ground) | iOS keeps its inline 240 pt map, so I14 is applied as: while the name is focused, field + Register share a row and the hint / Cancel hide. |
+| AuctionSettingsView | Tap row with clear (Undo banner), sheet with one inline date-and-time picker starting at now, helper / passed warning / error footer. |
+
+iOS-specific differences: system alerts can't stay open while a request runs, so "Completing…" /
+"Removing…" show on the row instead of a locked dialog (E11). New file `DesignSupport.swift`
+(₹ formatting, `NoticeBanner`).

@@ -85,6 +85,7 @@ struct LeagueCreationView: View {
     @State private var bannerPickerItem: PhotosPickerItem?
     @State private var showStartsOnPicker = false
     @State private var pickedStartsOn = Date()
+    @FocusState private var groundNameFocused: Bool
 
     init(editingLeagueId: String?, onDone: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
         self.editingLeagueId = editingLeagueId
@@ -241,17 +242,30 @@ struct LeagueCreationView: View {
                 Button("Clear") { wrapper.onClearGround() }
             }
         } else if wrapper.state.isRegisteringNewGround {
-            TextField("New ground name", text: Binding(get: { wrapper.state.newGroundName }, set: { wrapper.onNewGroundNameChanged($0) }))
+            // U4 I14: while the name is being typed, the field and Register share one compact row and the
+            // hint and Cancel step aside, so the map (and its pin) stays fully in view above the keyboard.
+            HStack(spacing: 8) {
+                TextField("New ground name", text: Binding(get: { wrapper.state.newGroundName }, set: { wrapper.onNewGroundNameChanged($0) }))
+                    .focused($groundNameFocused)
+                if groundNameFocused {
+                    Button("Register") { wrapper.registerNewGround() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty)
+                }
+            }
             GroundMapPickerView(
                 initialLatitude: wrapper.state.newGroundLatitude,
                 initialLongitude: wrapper.state.newGroundLongitude,
+                showHint: !groundNameFocused,
                 onPositionChanged: { lat, lon in wrapper.onNewGroundPositionChanged(latitude: lat, longitude: lon) }
             )
-            HStack {
-                Button("Cancel") { wrapper.onCancelRegisteringNewGround() }
-                Spacer()
-                Button(wrapper.state.isRegisteringGround ? "Registering..." : "Register ground") { wrapper.registerNewGround() }
-                    .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty)
+            if !groundNameFocused {
+                HStack {
+                    Button("Cancel") { wrapper.onCancelRegisteringNewGround() }
+                    Spacer()
+                    Button(wrapper.state.isRegisteringGround ? "Registering..." : "Register ground") { wrapper.registerNewGround() }
+                        .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty)
+                }
             }
             if let error = wrapper.state.errorMessage {
                 Text(error).foregroundColor(.red)

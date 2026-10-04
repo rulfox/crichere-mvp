@@ -71,11 +71,25 @@ struct ProfileSetupView: View {
                 ProgressView()
             } else {
                 Form {
-                    Section("Name") {
+                    Section {
                         TextField("Full name", text: Binding(
                             get: { wrapper.state.name },
                             set: { wrapper.onNameChanged($0) }
                         ))
+                    } header: {
+                        // U4 F1: the subtitle stays in every state (it explains why we ask; hiding it made the form jump).
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("So organizers know who's joining their league.")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .textCase(nil)
+                            Text("Name")
+                        }
+                    } footer: {
+                        // U4 C11: the row is always there (empty when valid), so the error doesn't push the form down.
+                        Text(wrapper.state.nameError ?? " ")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(red: 0xB3 / 255, green: 0x26 / 255, blue: 0x1E / 255))
                     }
 
                     Section("Photo") {

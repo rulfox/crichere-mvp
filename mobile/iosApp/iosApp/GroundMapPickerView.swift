@@ -16,12 +16,17 @@ import MapKit
 struct GroundMapPickerView: View {
     let initialLatitude: Double?
     let initialLongitude: Double?
+    /// U4 I14: hidden while the ground name is being typed (it adds nothing then).
+    var showHint: Bool = true
     let onPositionChanged: (_ latitude: Double, _ longitude: Double) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Move the map to put the pin on the ground")
-                .font(.caption)
+            if showHint {
+                Text("Move the map to put the pin on the ground")
+                    .font(.caption)
+                    .transition(.opacity)
+            }
             ZStack {
                 MapKitPinPicker(
                     initialLatitude: initialLatitude,
@@ -37,6 +42,7 @@ struct GroundMapPickerView: View {
             }
             .frame(height: 240)
         }
+        .animation(.easeOut(duration: 0.15), value: showHint)
     }
 }
 

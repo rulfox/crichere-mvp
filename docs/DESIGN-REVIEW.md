@@ -688,7 +688,7 @@ Open items found while implementing the redesign, not yet scheduled.
   checked on the Pixel_9_Pro AVD against the local backend. Not seen live: the outbid label + haptic (L13b,
   needs a second franchise bidding on the same player), the purse-can't-cover tile (L14b), the over-purse
   dock line (L11c), the Amount field focused / error / 9-digit states (L18), Retry tapped on the pill, the
-  real deployed backend, CPH2487, iOS (AuctionLiveView not updated for U4).
+  real deployed backend, CPH2487. iOS: ported to SwiftUI 2026-10-04 (PHASE15 7.5) but not compiled or run.
 
 - [ ] **My leagues (M) unverified states** (2026-10-02): M2 empty and M3 error not seen on device
   (the test account has leagues); a long city name truncated the start date (fixed 2026-10-04: only the place ellipsizes; not seen with a real long city); iOS empty state added but not compiled.

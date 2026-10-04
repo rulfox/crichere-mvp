@@ -70,13 +70,31 @@ struct MyLeaguesView: View {
                     Button {
                         onOpenLeague(league.id)
                     } label: {
-                        VStack(alignment: .leading) {
-                            Text(league.name)
-                            Text("\(league.city), \(league.state) -- \(league.startsOn)").font(.caption)
+                        // U4 M5: the name may take 2 lines; only the place truncates, never the date.
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(league.name).lineLimit(2)
+                            HStack(spacing: 0) {
+                                Text("\(league.city), \(league.state)").lineLimit(1).truncationMode(.tail)
+                                Text(" · \(rowDate(league.startsOn))").lineLimit(1).fixedSize()
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
             }
         }
     }
+}
+
+/// "2026-10-10" -> "10 Oct 2026" in the device locale (U4 D1), or the raw string if it isn't an ISO date.
+private func rowDate(_ iso: String) -> String {
+    let parser = DateFormatter()
+    parser.locale = Locale(identifier: "en_US_POSIX")
+    parser.dateFormat = "yyyy-MM-dd"
+    guard let date = parser.date(from: iso) else { return iso }
+    let formatter = DateFormatter()
+    formatter.setLocalizedDateFormatFromTemplate("d MMM yyyy")
+    return formatter.string(from: date)
 }

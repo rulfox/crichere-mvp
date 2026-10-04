@@ -29,6 +29,7 @@ final class LeagueDetailViewModelWrapper: ObservableObject {
 
     func retry() { viewModel.retry() }
     func markCompleted() { viewModel.markCompleted() }
+    func clearCompletionNotice() { viewModel.clearCompletionNotice() }
     func toggleFollow() { viewModel.toggleFollow() }
     func removePlayer(playerId: String) { viewModel.removePlayer(playerId: playerId) }
     func removeFranchise(franchiseId: String) { viewModel.removeFranchise(franchiseId: franchiseId) }
@@ -53,8 +54,13 @@ struct LeagueDetailView: View {
     let onAuctionSettings: (String) -> Void
     let onAuctionLive: (String) -> Void
     let onManageRoles: (String) -> Void
+    /// A one-off message to show on arrival (design update #4 K10), cleared through [onNoticeShown].
+    let notice: String?
+    let onNoticeShown: () -> Void
 
     @StateObject private var wrapper: LeagueDetailViewModelWrapper
+    @State private var showCompleteConfirm = false
+    @State private var banner: Notice?
 
     init(
         leagueId: String,
@@ -64,8 +70,12 @@ struct LeagueDetailView: View {
         onViewScreenshot: @escaping (String) -> Void,
         onAuctionSettings: @escaping (String) -> Void,
         onAuctionLive: @escaping (String) -> Void,
-        onManageRoles: @escaping (String) -> Void
+        onManageRoles: @escaping (String) -> Void,
+        notice: String? = nil,
+        onNoticeShown: @escaping () -> Void = {}
     ) {
+        self.notice = notice
+        self.onNoticeShown = onNoticeShown
         self.leagueId = leagueId
         self.onEditLeague = onEditLeague
         self.onJoinLeague = onJoinLeague
@@ -117,7 +127,8 @@ struct LeagueDetailView: View {
                                     if let url = player.paymentScreenshotUrl {
                                         Button("View payment screenshot") { onViewScreenshot(url) }
                                     }
-                                    if wrapper.state.isOrganizer {
+                                    // U4 E13: a completed league's rosters are read-only.
+                                    if wrapper.state.isOrganizer && league.status != .completed {
                                         if player.leaveRequestedAt != nil {
                                             Text("Requested to leave")
                                             Button("Approve") { wrapper.approvePlayerLeave(playerId: player.id) }
@@ -139,7 +150,7 @@ struct LeagueDetailView: View {
                                     if let url = franchise.paymentScreenshotUrl {
                                         Button("View payment screenshot") { onViewScreenshot(url) }
                                     }
-                                    if wrapper.state.isOrganizer {
+                                    if wrapper.state.isOrganizer && league.status != .completed {
                                         if franchise.leaveRequestedAt != nil {
                                             Text("Requested to leave")
                                             Button("Approve") { wrapper.approveFranchiseLeave(franchiseId: franchise.id) }
@@ -152,15 +163,33 @@ struct LeagueDetailView: View {
                         }
                     }
 
-                    if wrapper.state.isOrganizer {
+                    // U4 E10/E13: Mark completed is the organizer card's 4th row; once the league is completed
+                    // the whole card goes (nothing in it can change any more) and Live auction becomes results.
+                    if wrapper.state.isOrganizer && league.status != .completed {
                         Section {
                             Button("Edit league") { onEditLeague(leagueId) }
-                            if league.status != .completed {
-                                Button("Mark completed") { wrapper.markCompleted() }
-                            }
                             Button("Auction settings") { onAuctionSettings(leagueId) }
-                            Button("Live auction") { onAuctionLive(leagueId) }
                             Button("Manage co-organizers") { onManageRoles(leagueId) }
+                            Button {
+                                showCompleteConfirm = true
+                            } label: {
+                                if wrapper.state.isCompleting {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                        Text("Completing…")
+                                    }
+                                } else {
+                                    Text("Mark completed")
+                                }
+                            }
+                            .disabled(wrapper.state.isCompleting)
+                        }
+                    }
+                    Section {
+                        if league.status == .completed {
+                            Button("Auction results") { onAuctionLive(leagueId) }
+                        } else {
+                            Button("Live auction") { onAuctionLive(leagueId) }
                         }
                     }
 
@@ -177,5 +206,37 @@ struct LeagueDetailView: View {
         }
         .navigationTitle("League")
         .onAppear { wrapper.retry() }
+        .alert(
+            "Mark \(wrapper.state.league?.name.trimmingCharacters(in: .whitespaces) ?? "this league") as completed?",
+            isPresented: $showCompleteConfirm
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button("Mark completed", role: .destructive) { wrapper.markCompleted() }
+        } message: {
+            Text("This can't be undone. Rosters, auction results and awards stay visible to everyone. Nobody can join, edit the league or run the auction again.")
+        }
+        // U4 E12/E13: the result arrives as a one-off notice from the ViewModel.
+        .onChange(of: wrapper.state.completionNotice) { _, notice in
+            guard let notice else { return }
+            switch notice {
+            case .completed:
+                banner = Notice(message: "League marked completed")
+            case .failed:
+                banner = Notice(message: "Couldn't complete the league. Check your connection and try again.", actionLabel: "Retry", durationSeconds: nil)
+            default:
+                break
+            }
+            wrapper.clearCompletionNotice()
+        }
+        .onAppear {
+            if let notice {
+                banner = Notice(message: notice)
+                onNoticeShown()
+            }
+        }
+        .noticeBanner($banner, onAction: {
+            banner = nil
+            showCompleteConfirm = true
+        })
     }
 }

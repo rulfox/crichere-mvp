@@ -173,6 +173,9 @@ struct MainTabView: View {
 
     @State private var selectedTab: MainTab
     @State private var path = NavigationPath()
+    /// One-off messages for a league page to show when it is next on screen (design update #4 K10: a
+    /// co-organizer removing themselves pops back to the league). Mirrors `AuthNavHost.kt`'s `leagueNotices`.
+    @State private var leagueNotices: [String: String] = [:]
 
     init(
         initialTab: MainTab,
@@ -232,7 +235,9 @@ struct MainTabView: View {
                 onViewScreenshot: { path.append(MainDestination.screenshotViewer($0)) },
                 onAuctionSettings: { path.append(MainDestination.auctionSettings($0)) },
                 onAuctionLive: { path.append(MainDestination.auctionLive($0)) },
-                onManageRoles: { path.append(MainDestination.manageRoles($0)) }
+                onManageRoles: { path.append(MainDestination.manageRoles($0)) },
+                notice: leagueNotices[leagueId],
+                onNoticeShown: { leagueNotices[leagueId] = nil }
             )
 
         case .leagueCreation(let editingLeagueId):
@@ -261,7 +266,13 @@ struct MainTabView: View {
             AuctionLiveView(leagueId: leagueId)
 
         case .manageRoles(let leagueId):
-            ManageRolesView(leagueId: leagueId)
+            ManageRolesView(
+                leagueId: leagueId,
+                onAccessRevoked: { leagueName in
+                    leagueNotices[leagueId] = "You're no longer a co-organizer of \(leagueName)."
+                    if !path.isEmpty { path.removeLast() }
+                }
+            )
         }
     }
 }

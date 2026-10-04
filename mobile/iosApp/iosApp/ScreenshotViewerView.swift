@@ -12,10 +12,36 @@ struct ScreenshotViewerView: View {
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
     @State private var attempt = 0
+    /// U4 E1: the bar fades appear on the first zoom and then stay (invisible over the 1x black letterbox).
+    @State private var everZoomed = false
 
     /// Same independent https-only check as Android: a `file://` value must never read local storage.
     private var url: URL? {
         imageUrl.hasPrefix("https://") ? URL(string: imageUrl) : nil
+    }
+
+    /// U4 E1: a dark fade behind the status bar and the home indicator so their light icons stay readable
+    /// on a white receipt -- safe-area inset + 24 pt, stops .60 / .35 / 0 (the mid stop removes the band
+    /// a straight ramp leaves on white). Fades in over 150 ms on the first zoom.
+    private var barFades: some View {
+        GeometryReader { proxy in
+            let stops = [
+                Gradient.Stop(color: .black.opacity(0.6), location: 0),
+                Gradient.Stop(color: .black.opacity(0.35), location: 0.5),
+                Gradient.Stop(color: .black.opacity(0), location: 1),
+            ]
+            VStack(spacing: 0) {
+                LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
+                    .frame(height: proxy.safeAreaInsets.top + 24)
+                Spacer(minLength: 0)
+                LinearGradient(stops: stops, startPoint: .bottom, endPoint: .top)
+                    .frame(height: proxy.safeAreaInsets.bottom + 24)
+            }
+            .ignoresSafeArea()
+        }
+        .allowsHitTesting(false)
+        .opacity(everZoomed ? 1 : 0)
+        .animation(.easeOut(duration: 0.15), value: everZoomed)
     }
 
     var body: some View {
@@ -71,7 +97,10 @@ struct ScreenshotViewerView: View {
                 .padding(EdgeInsets(top: 0, leading: 18, bottom: 28, trailing: 18))
                 .opacity(scale > 1.01 ? 0 : 1)
             }
+            barFades
         }
+        .onChange(of: scale) { _, newScale in if newScale > 1.01 { everZoomed = true } }
+        // .lightContent: white status-bar icons over the dark fades (U4 E1).
         .preferredColorScheme(.dark)
     }
 }
