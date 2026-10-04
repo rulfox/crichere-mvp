@@ -97,7 +97,7 @@ Share card speed (2026-10-03, after the move):
   default for the URL. That is what the public-URL retry fixes.
 
 Open items found during the move:
-- **Media bucket move to Mumbai: in progress (2026-10-03).**
+- **Media bucket move to Mumbai: done (2026-10-03/04).**
   - Old `crichere-media-dev` (us-east-1): 13 objects, 9.7 MB; whole bucket public-read by bucket
     policy (payment screenshots included); BlockPublicAcls on; BucketOwnerEnforced; AES256; CORS only
     `http://localhost:8765` (dev leftover, unused: the app uploads by presigned POST, no browser CORS).
@@ -106,10 +106,22 @@ Open items found during the move:
     `?v=` that changes per upload). Verified per object: content type, size and ETag match the source.
     A first bulk copy reset content types to `binary/octet-stream` (found and fixed by per-object copy).
   - Logo from India: 0.28 s (Mumbai) vs ~1.5 s (Virginia).
-  - Remaining: backend IAM user needs `s3:PutObject` on `crichere-media-prod/*` (owner, IAM console;
-    `crichere-claude` can't read or edit other users), then `AWS_REGION=ap-south-1` /
-    `AWS_S3_BUCKET=crichere-media-prod` on Railway, DB URL rewrite (backup first), test upload, then old
-    bucket kept until the owner approves deleting it.
+  - Backend IAM user got `s3:PutObject` on `crichere-media-prod/*` (owner, IAM console). Railway:
+    `AWS_REGION=ap-south-1`, `AWS_S3_BUCKET=crichere-media-prod`.
+  - Real upload from the phone (2026-10-03 18:03 UTC) landed in the new bucket as `image/jpeg`, and the
+    saved profile URL pointed at the new host.
+  - DB backup (`E:\crichere-backups\crichere-prod-20261003-pre-bucket-move.sql`), then the 5 remaining
+    old-host URLs rewritten in one transaction that refuses to commit if any old-bucket URL is left in
+    any text column (2 league logos, 2 banners, 1 profile photo). All 6 stored image URLs return 200
+    `image/jpeg` from Mumbai.
+  - New uploads now carry `Cache-Control: public, max-age=31536000, immutable`: added as a signed field
+    of the presigned POST, so the existing app sends it unchanged. The SigV4 reference test vector was
+    recomputed independently (Python) for the new policy.
+  - Old bucket `crichere-media-dev` kept until the owner approves deleting it; remove the temporary
+    `crichere-media-move-temp` policy from `crichere-claude` afterwards.
+- **Backend health check (2026-10-04):** found when a deploy served ~20 s of 502s: Railway switched
+  traffic to the new container before Spring had started (no health check configured). Set
+  `healthcheckPath=/api/v1/reference/states` (public, touches the DB), timeout 180 s.
 - **Media bucket in `us-east-1`** (original finding) (`crichere-media-dev`, checked via S3's response headers; the
   `crichere-claude` IAM user may not call GetBucketLocation/ListBuckets). A 100 KB logo takes ~1.5 s
   from India, and objects have no `Cache-Control`. Options: CloudFront in front, or a bucket in

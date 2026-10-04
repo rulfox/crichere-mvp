@@ -169,6 +169,7 @@ class PhotoUploadService(
             add(mapOf("key" to key))
             add(listOf("content-length-range", MIN_PHOTO_BYTES, MAX_PHOTO_BYTES))
             add(listOf("starts-with", "\$Content-Type", "image/"))
+            add(mapOf("Cache-Control" to CACHE_CONTROL))
             add(mapOf("x-amz-algorithm" to ALGORITHM))
             add(mapOf("x-amz-credential" to amzCredential))
             add(mapOf("x-amz-date" to amzDate))
@@ -185,6 +186,7 @@ class PhotoUploadService(
 
         val fields = buildMap {
             put("key", key)
+            put("Cache-Control", CACHE_CONTROL)
             put("x-amz-algorithm", ALGORITHM)
             put("x-amz-credential", amzCredential)
             put("x-amz-date", amzDate)
@@ -237,6 +239,14 @@ class PhotoUploadService(
          */
         const val MAX_PHOTO_BYTES: Long = 10L * 1024 * 1024
         const val MIN_PHOTO_BYTES: Long = 1L
+
+        /**
+         * Stored on every uploaded object (docs/PHASE14.md) so browsers and chat apps keep images for a
+         * year. Safe although keys are reused (`.../profile.jpg`): the app saves each upload's URL with
+         * a fresh `?v=` (PhotoUpload.kt), so a new upload is always a new URL. Signed into the policy
+         * and returned as a field, so the client just sends it back -- no app change needed.
+         */
+        const val CACHE_CONTROL = "public, max-age=31536000, immutable"
 
         /** How long the presigned fields remain usable. Short enough to limit a leaked URL's blast radius. */
         val EXPIRY: Duration = Duration.ofMinutes(5)

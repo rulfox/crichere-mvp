@@ -109,6 +109,15 @@ class PhotoUploadServiceTest {
     }
 
     @Test
+    fun `uploads carry a long cache header, pinned by the policy`() {
+        val result = service().createUploadUrl(userId)
+
+        assertEquals(PhotoUploadService.CACHE_CONTROL, result.fields["Cache-Control"])
+        assertEquals(PhotoUploadService.CACHE_CONTROL, conditionMaps(result).first { it.containsKey("Cache-Control") }["Cache-Control"])
+        assertEquals("public, max-age=31536000, immutable", PhotoUploadService.CACHE_CONTROL)
+    }
+
+    @Test
     fun `the policy pins the exact bucket and key -- no wildcard escape hatch`() {
         val result = service().createUploadUrl(userId)
 
@@ -144,25 +153,28 @@ class PhotoUploadServiceTest {
      * k_service = hmac_sha256(k_region, "s3")
      * k_signing = hmac_sha256(k_service, "aws4_request")
      * hmac.new(k_signing, policy_base64.encode(), hashlib.sha256).hexdigest()
-     * # -> "da6b101c338eeed2afd96f796214c41155a0360089a2fbead386d857e440e2c0"
+     * # -> "8ae9838d8a2cccfc0aa5b8248ec5b898ba4c0661f3e2a5e31a086bde9db8941b"
      * ```
      * with `secret = "fakeSecretAccessKeyFakeSecretAccessKey12"` (this file's [secretAccessKey])
      * and `policy_base64` equal to the exact string this test asserts `createUploadUrl` produced
      * (captured from a real run against this class's fixed clock/userId/bucket/region/credentials,
-     * then independently re-derived by the Python snippet above -- the two agreed).
+     * then independently re-derived by the Python snippet above -- the two agreed). Recomputed
+     * 2026-10-04 when the policy gained its `Cache-Control` condition (docs/PHASE14.md): the new policy
+     * was decoded and checked to equal the previous one plus exactly that condition, and the same
+     * snippet reproduced the previous signature before producing this one.
      */
     @Test
     fun `the signature matches a fixed AWS SigV4 reference vector computed independently`() {
         val result = service().createUploadUrl(userId)
 
         val expectedPolicyBase64 =
-            "eyJleHBpcmF0aW9uIjoiMjAyNi0wOS0wMlQxMDoyMDozMC4wMDBaIiwiY29uZGl0aW9ucyI6W3siYnVja2V0IjoiY3JpY2hlcmUtbWVkaWEtZGV2In0seyJrZXkiOiJ1c2Vycy8xMTExMTExMS0yMjIyLTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUvcHJvZmlsZS5qcGcifSxbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwxLDEwNDg1NzYwXSxbInN0YXJ0cy13aXRoIiwiJENvbnRlbnQtVHlwZSIsImltYWdlLyJdLHsieC1hbXotYWxnb3JpdGhtIjoiQVdTNC1ITUFDLVNIQTI1NiJ9LHsieC1hbXotY3JlZGVudGlhbCI6IkFLSUFGQUtFQUNDRVNTS0VZLzIwMjYwOTAyL2FwLXNvdXRoLTEvczMvYXdzNF9yZXF1ZXN0In0seyJ4LWFtei1kYXRlIjoiMjAyNjA5MDJUMTAxNTMwWiJ9XX0="
+            "eyJleHBpcmF0aW9uIjoiMjAyNi0wOS0wMlQxMDoyMDozMC4wMDBaIiwiY29uZGl0aW9ucyI6W3siYnVja2V0IjoiY3JpY2hlcmUtbWVkaWEtZGV2In0seyJrZXkiOiJ1c2Vycy8xMTExMTExMS0yMjIyLTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUvcHJvZmlsZS5qcGcifSxbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwxLDEwNDg1NzYwXSxbInN0YXJ0cy13aXRoIiwiJENvbnRlbnQtVHlwZSIsImltYWdlLyJdLHsiQ2FjaGUtQ29udHJvbCI6InB1YmxpYywgbWF4LWFnZT0zMTUzNjAwMCwgaW1tdXRhYmxlIn0seyJ4LWFtei1hbGdvcml0aG0iOiJBV1M0LUhNQUMtU0hBMjU2In0seyJ4LWFtei1jcmVkZW50aWFsIjoiQUtJQUZBS0VBQ0NFU1NLRVkvMjAyNjA5MDIvYXAtc291dGgtMS9zMy9hd3M0X3JlcXVlc3QifSx7IngtYW16LWRhdGUiOiIyMDI2MDkwMlQxMDE1MzBaIn1dfQ=="
         // Sanity check that this test's fixture setup hasn't silently drifted from the vector's
         // derivation -- if this fails, the reference vector above is stale and must be
         // recomputed against the new policy string, not patched around.
         assertEquals(expectedPolicyBase64, result.fields.getValue("policy"))
 
-        val expectedSignature = "da6b101c338eeed2afd96f796214c41155a0360089a2fbead386d857e440e2c0"
+        val expectedSignature = "8ae9838d8a2cccfc0aa5b8248ec5b898ba4c0661f3e2a5e31a086bde9db8941b"
         assertEquals(expectedSignature, result.fields["x-amz-signature"])
     }
 
