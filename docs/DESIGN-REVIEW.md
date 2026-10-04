@@ -658,6 +658,10 @@ Open items found while implementing the redesign, not yet scheduled.
   board shows "15,500"; real photos, live bids, recent-bid timing, results reload after a sale,
   and Next Player / Sold / Unsold / Undo / End against the deployed backend not yet checked; iOS
   AuctionLiveView updated but not compiled.
+  **2026-10-04 (PHASE15.md):** against a *local* backend on an emulator the organizer flow is now verified
+  (live bids, Next Player, Sold, Unsold, Undo of a bid and of a sale, exceed-purse toggle, results, auto-complete,
+  Mark completed). Still open: End Auction button, reconnect after a real network drop (unit-tested only),
+  photos, the deployed backend, and Results showing "₹-250 left" once the purse is exceeded.
 
 - [ ] **My leagues (M) unverified states** (2026-10-02): M2 empty and M3 error not seen on device
   (the test account has leagues); a long city name truncates the start date ("Thiruvananthapuram,

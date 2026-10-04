@@ -118,6 +118,10 @@ crichere:
     secret: ${JWT_SECRET:bG9jYWwtZGV2LWp3dC1zZWNyZXQtbm90LWZvci1kZXBsb3ltZW50IQ==}
   phone-crypto:
     secret: ${PHONE_CRYPTO_SECRET:bG9jYWwtZGV2LXBob25lLWNyeXB0by1zZWNyZXQtbm90LXJlYWwhIQ==}
+  otp:
+    # Backend-driven OTP, answered by LocalFakeOtpSender (fixed code 123456, numbers allowlisted
+    # in crichere.otp.local-fake.numbers) -- the mobile app's `-Penv=local` build uses this flow.
+    provider: ${OTP_PROVIDER:msg91}
   web-viewer:
     # Dev fallback so a locally-run web-viewer (`npm run dev`, port 3000) can call this backend
     # without setting WEB_VIEWER_ORIGINS -- an env var always overrides.

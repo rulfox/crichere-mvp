@@ -3,7 +3,9 @@ package com.crichere.app.league
 import com.crichere.app.network.problemCode
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.sse.sse
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -89,7 +91,17 @@ internal class KtorAuctionRepository(private val httpClient: HttpClient) : Aucti
         httpClient.get("/api/v1/leagues/$leagueId/auction/results").body()
 
     override fun streamAuctionState(leagueId: String): Flow<AuctionStateDto> = flow {
-        httpClient.sse("/api/v1/leagues/$leagueId/auction/stream") {
+        httpClient.sse(
+            "/api/v1/leagues/$leagueId/auction/stream",
+            // The client-wide 15s request timeout (HttpClientFactory) would cut a stream that is meant
+            // to stay open for the whole auction; only this request opts out.
+            request = {
+                timeout {
+                    requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                    socketTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                }
+            },
+        ) {
             incoming.collect { event ->
                 event.data?.let { data -> emit(json.decodeFromString(AuctionStateDto.serializer(), data)) }
             }

@@ -174,7 +174,13 @@ val sharedModule: Module = module {
     factory { MyLeaguesViewModel(myLeaguesRepository = get()) }
     factory { (leagueId: String) -> AuctionSettingsViewModel(leagueId = leagueId, leagueRepository = get()) }
     factory { (leagueId: String) ->
-        AuctionViewModel(leagueId = leagueId, leagueRepository = get(), auctionRepository = get(), authRepository = get())
+        AuctionViewModel(
+            leagueId = leagueId,
+            leagueRepository = get(),
+            auctionRepository = get(),
+            authRepository = get(),
+            reconnectDelaysMs = AuctionViewModel.STREAM_RECONNECT_DELAYS_MS,
+        )
     }
     factory { (leagueId: String) -> ManageRolesViewModel(leagueId = leagueId, leagueRepository = get(), roleRepository = get()) }
 }

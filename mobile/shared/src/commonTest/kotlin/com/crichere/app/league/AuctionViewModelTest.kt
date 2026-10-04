@@ -5,9 +5,12 @@ package com.crichere.app.league
 import com.crichere.app.auth.AuthRepository
 import com.crichere.app.auth.AuthResult
 import com.crichere.app.auth.viewModelTest
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -109,6 +112,78 @@ class AuctionViewModelTest {
 
         assertFalse(viewModel.state.value.isLoading)
         assertTrue(viewModel.state.value.loadFailed)
+    }
+
+    @Test
+    fun `a stream that throws after delivering state shows connection lost, reconnects, and recovers`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        var attempts = 0
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = flow {
+                attempts++
+                if (attempts == 1) {
+                    emit(auctionState(AuctionStatus.IN_PROGRESS, currentBidAmount = 100.0))
+                    throw RuntimeException("socket closed")
+                }
+                emit(auctionState(AuctionStatus.IN_PROGRESS, currentBidAmount = 250.0))
+                awaitCancellation()
+            }
+        }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("organizer-1"), listOf(2_000L))
+
+        viewModel.retry()
+        runCurrent()
+        assertTrue(viewModel.state.value.connectionLost)
+        assertEquals(100.0, viewModel.state.value.auction?.currentBidAmount)
+
+        advanceTimeBy(2_001)
+        runCurrent()
+        assertFalse(viewModel.state.value.connectionLost)
+        assertEquals(250.0, viewModel.state.value.auction?.currentBidAmount)
+        assertEquals(2, attempts)
+    }
+
+    @Test
+    fun `a stream that ends cleanly is treated as dropped and reconnected`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        var attempts = 0
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = flow {
+                attempts++
+                emit(auctionState(AuctionStatus.IN_PROGRESS, currentBidAmount = attempts * 100.0))
+                if (attempts >= 2) awaitCancellation()
+            }
+        }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("organizer-1"), listOf(1_000L, 5_000L))
+
+        viewModel.retry()
+        runCurrent()
+        assertTrue(viewModel.state.value.connectionLost)
+
+        advanceTimeBy(1_001)
+        runCurrent()
+        assertFalse(viewModel.state.value.connectionLost)
+        assertEquals(200.0, viewModel.state.value.auction?.currentBidAmount)
+    }
+
+    @Test
+    fun `without reconnect delays a dropped stream is not retried`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        var attempts = 0
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = flow {
+                attempts++
+                emit(auctionState(AuctionStatus.IN_PROGRESS))
+                throw RuntimeException("socket closed")
+            }
+        }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("organizer-1"))
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.connectionLost)
+        assertEquals(1, attempts)
     }
 
     @Test

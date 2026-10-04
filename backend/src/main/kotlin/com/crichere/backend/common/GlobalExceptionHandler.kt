@@ -48,6 +48,7 @@ import com.crichere.backend.reference.MalformedDistrictIdException
 import com.crichere.backend.reference.MalformedStateCodeException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -757,6 +758,17 @@ class GlobalExceptionHandler {
             detail = "No active role matches this id.",
             instance = request.requestURI,
         )
+
+    /**
+     * The client went away while a streamed response (the auction SSE stream) was being written --
+     * every phone that backgrounds the app or loses signal does this, so it is routine, not an error.
+     * Without this the catch-all below logs a 500 and then fails again trying to write a
+     * `ProblemDetail` into a `text/event-stream` response that nobody is reading.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException::class)
+    fun handleClientDisconnected(exception: AsyncRequestNotUsableException, request: HttpServletRequest) {
+        log.debug("Client disconnected from {} {}: {}", request.method, request.requestURI, exception.message)
+    }
 
     /**
      * Anything unanticipated. The stack trace goes to the server log -- where it is useful and

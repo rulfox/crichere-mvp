@@ -42,6 +42,19 @@ require(placeSearchProvider in setOf("geocoder", "places")) {
     "PLACE_SEARCH_PROVIDER must be 'geocoder' or 'places', was '$placeSearchProvider'"
 }
 
+// Named backend environment: `./gradlew :androidApp:installDebug -Penv=local` points the app at a
+// backend on the dev machine (10.0.2.2 is the emulator's alias for the host); the default is prod.
+// A release build must never carry the local URL, so that combination fails the build.
+val backendEnvironments = mapOf(
+    "prod" to "https://api.crichere.com",
+    "local" to "http://10.0.2.2:8080",
+)
+val appEnv: String = (findProperty("env") as String?) ?: "prod"
+require(appEnv in backendEnvironments) { "-Penv must be one of ${backendEnvironments.keys}, was '$appEnv'" }
+require(appEnv == "prod" || gradle.startParameter.taskNames.none { it.contains("release", ignoreCase = true) }) {
+    "-Penv=$appEnv cannot be combined with a release build"
+}
+
 android {
     namespace = "com.crichere.app"
     compileSdk = 37
@@ -55,6 +68,7 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
         buildConfigField("String", "PLACE_SEARCH_PROVIDER", "\"$placeSearchProvider\"")
+        buildConfigField("String", "BACKEND_BASE_URL", "\"${backendEnvironments.getValue(appEnv)}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Runs each @Test in its own instrumentation process -- an app crash or leaked static
         // state in one test can't take the rest of the suite down with it. Real device/emulator

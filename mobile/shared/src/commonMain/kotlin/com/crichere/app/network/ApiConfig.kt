@@ -1,11 +1,19 @@
 package com.crichere.app.network
 
+/** The deployed Railway backend (docs/OVERVIEW.md Deployment Strategy). */
+const val PRODUCTION_BACKEND_BASE_URL: String = "https://api.crichere.com"
+
 /**
- * The backend's base URL -- both debug and release builds, both platforms, point at the deployed
- * Railway backend (docs/OVERVIEW.md Deployment Strategy). No per-platform `expect`/`actual` or
- * debug/release branching needed as a result.
+ * The backend's base URL. Production unless the platform entry point calls [configureBackendBaseUrl]
+ * before the HTTP clients are built -- the Android app does so from `-Penv=local` (docs/PHASE15.md),
+ * pointing a debug build at a backend on the dev machine. iOS never calls it and stays on production.
  */
-internal const val backendBaseUrl: String = "https://api.crichere.com"
+internal var backendBaseUrl: String = PRODUCTION_BACKEND_BASE_URL
+    private set
+
+fun configureBackendBaseUrl(url: String) {
+    backendBaseUrl = url
+}
 
 /**
  * The public web viewer's base URL (docs/PHASE6.md) -- a plain `https://` link pasted into a chat

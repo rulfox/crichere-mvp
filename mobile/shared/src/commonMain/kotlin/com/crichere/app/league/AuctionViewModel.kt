@@ -4,12 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crichere.app.auth.AuthRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 /** Design L1's "Bidding as Satara Titans · ₹42,000 left · 11/12 players". */
 data class BiddingContext(
@@ -81,6 +82,13 @@ class AuctionViewModel(
     private val leagueRepository: LeagueRepository,
     private val auctionRepository: AuctionRepository,
     private val authRepository: AuthRepository,
+    /**
+     * Waits before each reconnect attempt after the live stream ends (the last value repeats). Empty --
+     * the default -- never reconnects: the screen shows [AuctionState.connectionLost] and the user
+     * taps retry. The app passes [STREAM_RECONNECT_DELAYS_MS]; tests that don't care keep the default
+     * so a stream that completes or throws can't loop under `advanceUntilIdle`.
+     */
+    private val reconnectDelaysMs: List<Long> = emptyList(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AuctionState())
@@ -113,12 +121,32 @@ class AuctionViewModel(
     private fun startStream() {
         streamJob?.cancel()
         streamJob = viewModelScope.launch {
-            auctionRepository.streamAuctionState(leagueId)
-                .catch { _state.update { it.copy(isLoading = false, loadFailed = it.auction == null, connectionLost = it.auction != null) } }
-                .collect { newState ->
-                    _state.update { it.copy(isLoading = false, connectionLost = false) }
-                    applyAuctionState(newState)
+            var failures = 0
+            while (true) {
+                var received = false
+                val error = try {
+                    auctionRepository.streamAuctionState(leagueId).collect { newState ->
+                        received = true
+                        _state.update { it.copy(isLoading = false, connectionLost = false) }
+                        applyAuctionState(newState)
+                    }
+                    null
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e
                 }
+                if (received) failures = 0
+                // A stream is meant to run forever, so a clean end is a drop too -- but only once
+                // reconnecting is on; without it a completing stream stays the no-op it always was.
+                if (error != null || reconnectDelaysMs.isNotEmpty()) {
+                    _state.update { it.copy(isLoading = false, loadFailed = it.auction == null, connectionLost = it.auction != null) }
+                }
+                // Nothing on screen yet: the load-failed state's own Retry is the way back.
+                if (reconnectDelaysMs.isEmpty() || _state.value.auction == null) return@launch
+                delay(reconnectDelaysMs[minOf(failures, reconnectDelaysMs.lastIndex)])
+                failures++
+            }
         }
     }
 
@@ -241,6 +269,11 @@ class AuctionViewModel(
     override fun onCleared() {
         loadJob?.cancel()
         streamJob?.cancel()
+    }
+
+    companion object {
+        /** Same backoff as the web viewer's `useAuctionStream` (2/4/8/15s, then 15s). */
+        val STREAM_RECONNECT_DELAYS_MS: List<Long> = listOf(2_000L, 4_000L, 8_000L, 15_000L)
     }
 }
 
