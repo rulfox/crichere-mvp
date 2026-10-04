@@ -44,8 +44,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import java.util.TimeZone
-import java.util.Date
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.SelectableDates
 import android.text.format.DateFormat
@@ -55,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import com.crichere.app.ui.theme.InstrumentSansFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -238,8 +237,9 @@ private fun ScheduledAtField(state: AuctionSettingsState, onChange: (String?) ->
                     Spacer(Modifier.width(4.dp))
                     Text("This time has passed. Pick a new one or clear it.", style = pText(12.sp, FontWeight.Medium, 16.sp), color = PassedWarning)
                 }
+                // U5 J14: no zone name -- "GMT+05:30" means nothing to most organizers.
                 else -> Text(
-                    "Shown in your phone's time zone (${zoneAbbreviation()}).",
+                    "Uses your phone's time zone.",
                     style = pText(12.sp, lineHeight = 16.sp),
                     color = colors.onSurfaceVariant,
                     modifier = Modifier.padding(start = 14.dp),
@@ -296,10 +296,12 @@ private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPic
         shape = RoundedCornerShape(28.dp),
         colors = pickerColors,
         confirmButton = {
-            TextButton(onClick = {
-                val millis = pickerState.selectedDateMillis
-                if (millis != null) onPicked(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()) else onDismiss()
-            }) { Text("Next", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
+            // U5 J13: Next stays disabled (38%) until a day is picked.
+            val millis = pickerState.selectedDateMillis
+            TextButton(
+                onClick = { if (millis != null) onPicked(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()) },
+                enabled = millis != null,
+            ) { Text("Next", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary.copy(alpha = if (millis != null) 1f else 0.38f)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
@@ -314,10 +316,11 @@ private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPic
             },
             headline = {
                 val selected = pickerState.selectedDateMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }
+                // U5 J13: "Pick a date" in ink-muted until a day is tapped (J10's 30/36 either way).
                 Text(
-                    selected?.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())).orEmpty(),
-                    style = pText(30.sp, lineHeight = 30.sp),
-                    color = colors.onBackground,
+                    selected?.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())) ?: "Pick a date",
+                    style = pText(30.sp, lineHeight = 36.sp),
+                    color = if (selected != null) colors.onBackground else colors.onSurfaceVariant,
                     modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 22.dp, bottom = 14.dp),
                 )
             },
@@ -352,6 +355,15 @@ private fun ScheduleTimePicker(date: LocalDate, initial: LocalTime, onBack: () -
             TextButton(onClick = onBack) { Text("Back", style = pText(14.sp, FontWeight.SemiBold), color = colors.primary) }
         },
         text = {
+            // U5 J15: Material 3's own digits ("06" at 57/64) are accepted; only the font family is themed.
+            val type = MaterialTheme.typography
+            MaterialTheme(
+                typography = type.copy(
+                    displayLarge = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Normal, fontSize = 57.sp, lineHeight = 64.sp),
+                    bodyLarge = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
+                    titleMedium = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
+                ),
+            ) {
             TimePicker(
                 state = pickerState,
                 // J11's palette: green for the active part, the board's neutral for the rest, warm amber for AM/PM.
@@ -369,19 +381,10 @@ private fun ScheduleTimePicker(date: LocalDate, initial: LocalTime, onBack: () -
                     periodSelectorUnselectedContentColor = colors.onSurfaceVariant,
                 ),
             )
+            }
         },
     )
 }
-
-/**
- * "IST" for India: java.time's short zone name (what the board shows). `TimeZone.getDisplayName(SHORT)`
- * gives "GMT+05:30" on Android, so it is only the fallback.
- */
-private fun zoneAbbreviation(): String =
-    runCatching { DateTimeFormatter.ofPattern("zzz", Locale.getDefault()).format(java.time.ZonedDateTime.now()) }
-        .getOrNull()
-        ?.takeIf { it.isNotBlank() }
-        ?: TimeZone.getDefault().getDisplayName(TimeZone.getDefault().inDaylightTime(Date()), TimeZone.SHORT)
 
 private val ScheduleDialogSurface = Color(0xFFF1F4EE)
 private val DialogLabel = Color(0xFF3E4A41)

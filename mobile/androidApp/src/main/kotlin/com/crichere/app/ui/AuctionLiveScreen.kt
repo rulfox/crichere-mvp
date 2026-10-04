@@ -10,6 +10,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -18,6 +22,7 @@ import androidx.compose.ui.text.font.FontFamily
 import com.crichere.app.league.ConnectionPhase
 import com.crichere.app.league.DeadEndKind
 import com.crichere.app.league.DockMode
+import com.crichere.app.league.EndAuctionFailure
 import com.crichere.app.league.deadEndKind
 import com.crichere.app.league.overPurseAmount
 import androidx.compose.animation.core.RepeatMode
@@ -227,7 +232,82 @@ private fun LoadedAuction(state: AuctionState, auction: AuctionStateDto, viewMod
                 }
             }
         }
+        // U5 L21: inverse I12 bar 12 dp above the dock. Retry reopens the dialog rather than resending.
+        val endSnack = state.endFailure?.let { failure ->
+            Snack(
+                message = when (failure) {
+                    EndAuctionFailure.NETWORK -> "Couldn't end the auction. Check your connection and try again."
+                    EndAuctionFailure.REFUSED -> "Couldn't end the auction right now. Try again in a moment."
+                },
+                actionLabel = "Retry",
+                onAction = viewModel::requestEnd,
+                durationMs = null,
+            )
+        }
+        SnackHost(endSnack, onDismiss = viewModel::clearEndFailure, inverse = true, placement = SnackPlacement.ABOVE_DOCK)
         Dock(state, auction, viewModel, offline)
+    }
+    if (state.isEndConfirmOpen) {
+        EndAuctionDialog(state, onDismiss = viewModel::dismissEnd, onConfirm = viewModel::confirmEnd)
+    }
+}
+
+/**
+ * U5 L19a/b and L20: the N4/K3 dialog shell in the auction's dark tokens -- scrim .6, surface #13211A with
+ * a hairline, coral confirm. Both End Auction buttons open it; the dead end only shortens the body. While
+ * ending, the confirm shows a spinner and "Ending…", Cancel dims to 38%, and scrim/back do nothing.
+ */
+@Composable
+private fun EndAuctionDialog(state: AuctionState, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    val ending = state.isEnding
+    val body = state.endAuctionBody
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = !ending, dismissOnClickOutside = !ending),
+    ) {
+        (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(0.6f)
+        Column(
+            Modifier
+                .padding(horizontal = 22.dp)
+                .fillMaxWidth()
+                .background(CrichereAuctionSurface, RoundedCornerShape(28.dp))
+                .border(1.dp, Hairline, RoundedCornerShape(28.dp))
+                .padding(25.dp),
+        ) {
+            Text("End the auction?", style = tight(InstrumentSansFamily, 19.sp, FontWeight.SemiBold, 22.8.sp), color = Color.White)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                buildAnnotatedString {
+                    append(body.prefix)
+                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.SemiBold)) { append(body.emphasis) }
+                    append(body.suffix)
+                },
+                style = tight(InstrumentSansFamily, 13.5.sp, FontWeight.Normal, 19.6.sp),
+                color = TextDim,
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Cancel",
+                    style = tight(InstrumentSansFamily, 14.sp, FontWeight.SemiBold, 20.sp),
+                    color = TextSoft,
+                    modifier = Modifier
+                        .alpha(if (ending) 0.38f else 1f)
+                        .clickable(enabled = !ending, onClick = onDismiss),
+                )
+                Spacer(Modifier.width(22.dp))
+                Row(
+                    Modifier.clickable(enabled = !ending, onClick = onConfirm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (ending) {
+                        CircularProgressIndicator(color = Alert, trackColor = Alert.copy(alpha = 0.25f), strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (ending) "Ending…" else "End auction", style = tight(InstrumentSansFamily, 14.sp, FontWeight.SemiBold, 20.sp), color = Alert)
+                }
+            }
+        }
     }
 }
 
@@ -313,7 +393,7 @@ private fun ConnectionPill(phase: ConnectionPhase, onRetry: () -> Unit) {
         Crossfade(targetState = shown, animationSpec = tween(150), label = "connectionPill") { current ->
             val announcement = when (current) {
                 ConnectionPhase.RECONNECTING -> "Reconnecting"
-                ConnectionPhase.LOST -> "Connection lost"
+                ConnectionPhase.LOST -> "Connection lost. Retry"
                 else -> "Back online"
             }
             Row(Modifier.padding(start = 8.dp)) {
@@ -1110,7 +1190,7 @@ private fun OrganizerControls(state: AuctionState, auction: AuctionStateDto, vie
                 Spacer(Modifier.height(14.dp))
                 ExceedPurseRow(auction, viewModel, acting)
                 Spacer(Modifier.height(12.dp))
-                EndAuctionOutlined(enabled = !acting, onClick = viewModel::end)
+                EndAuctionOutlined(enabled = !acting && !state.isEnding, onClick = viewModel::requestEnd)
             }
             // U4 A2: nothing can sell. End Auction becomes the filled main button; Next Player and Undo share
             // one secondary row; the switch is highlighted only when purses (not squads) are the block.
@@ -1153,7 +1233,7 @@ private fun OrganizerControls(state: AuctionState, auction: AuctionStateDto, vie
                         .height(44.dp)
                         .clip(RoundedCornerShape(22.dp))
                         .background(Alert)
-                        .clickable(enabled = !acting, onClick = viewModel::end),
+                        .clickable(enabled = !acting && !state.isEnding, onClick = viewModel::requestEnd),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1169,7 +1249,7 @@ private fun OrganizerControls(state: AuctionState, auction: AuctionStateDto, vie
                 Spacer(Modifier.height(14.dp))
                 ExceedPurseRow(auction, viewModel, acting)
                 Spacer(Modifier.height(12.dp))
-                EndAuctionOutlined(enabled = !acting, onClick = viewModel::end)
+                EndAuctionOutlined(enabled = !acting && !state.isEnding, onClick = viewModel::requestEnd)
             }
         }
     }

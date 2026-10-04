@@ -186,17 +186,27 @@ fun NoticeCard(
 
 private val SnackbarAction = Color(0xFFA8D5A0)
 
+/** U5 L21: the I12 bar inverted for the dark auction screen. */
+private val InverseSnackbar = Color(0xFFF5F6F1)
+
 /**
  * The board's dark bar (I12, J4, J5): message plus an optional green action. Placement (bottom
  * offset, nav-bar padding) is the caller's [modifier] -- each screen sits it above its own bar.
  */
 @Composable
-fun CrichereSnackbar(message: String, modifier: Modifier = Modifier, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+fun CrichereSnackbar(
+    message: String,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    inverse: Boolean = false,
+) {
+    val shadow = Color.Black.copy(alpha = if (inverse) 0.4f else 0.25f)
     Row(
         modifier
             .fillMaxWidth()
-            .shadow(18.dp, RoundedCornerShape(10.dp), ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
-            .background(CrichereInk, RoundedCornerShape(10.dp))
+            .shadow(18.dp, RoundedCornerShape(10.dp), ambientColor = shadow, spotColor = shadow)
+            .background(if (inverse) InverseSnackbar else CrichereInk, RoundedCornerShape(10.dp))
             .heightIn(min = 48.dp)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -204,7 +214,7 @@ fun CrichereSnackbar(message: String, modifier: Modifier = Modifier, actionLabel
         Text(
             message,
             style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 13.5.sp, lineHeight = 18.225.sp),
-            color = Color.White,
+            color = if (inverse) CrichereInk else Color.White,
             modifier = Modifier.weight(1f),
         )
         if (actionLabel != null && onAction != null) {
@@ -212,7 +222,7 @@ fun CrichereSnackbar(message: String, modifier: Modifier = Modifier, actionLabel
             Text(
                 actionLabel,
                 style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, lineHeight = 13.5.sp),
-                color = SnackbarAction,
+                color = if (inverse) MaterialTheme.colorScheme.primary else SnackbarAction,
                 modifier = Modifier.clickable(onClick = onAction),
             )
         }
@@ -241,16 +251,29 @@ fun BackTitleBar(title: String, onBack: () -> Unit) {
 /** A message for [SnackHost]. A `null` [durationMs] stays until its action or a swipe (U4 E12). */
 class Snack(val message: String, val actionLabel: String? = null, val onAction: (() -> Unit)? = null, val durationMs: Long? = 4_000)
 
+/** Where [SnackHost] sits: 24 dp above the navigation bar, or 12 dp above a docked panel it's placed over (U5 L21). */
+enum class SnackPlacement { ABOVE_NAV_BAR, ABOVE_DOCK }
+
 /**
  * The I12 snackbar at the bottom of a screen: 12 dp in from the sides, 24 dp above the navigation bar,
  * swipe sideways to dismiss. The caller owns [snack] and its timing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SnackHost(snack: Snack?, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun SnackHost(
+    snack: Snack?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    inverse: Boolean = false,
+    placement: SnackPlacement = SnackPlacement.ABOVE_NAV_BAR,
+) {
     var shown by remember { mutableStateOf(snack) }
     if (snack != null) shown = snack
-    AnimatedVisibility(visible = snack != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 24.dp)) {
+    val placed = when (placement) {
+        SnackPlacement.ABOVE_NAV_BAR -> modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 24.dp)
+        SnackPlacement.ABOVE_DOCK -> modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+    }
+    AnimatedVisibility(visible = snack != null, enter = fadeIn(), exit = fadeOut(), modifier = placed) {
         val current = shown ?: return@AnimatedVisibility
         key(current) {
             val dismissState = rememberSwipeToDismissBoxState()
@@ -258,7 +281,7 @@ fun SnackHost(snack: Snack?, onDismiss: () -> Unit, modifier: Modifier = Modifie
                 if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) onDismiss()
             }
             SwipeToDismissBox(state = dismissState, backgroundContent = {}) {
-                CrichereSnackbar(current.message, actionLabel = current.actionLabel, onAction = current.onAction)
+                CrichereSnackbar(current.message, actionLabel = current.actionLabel, onAction = current.onAction, inverse = inverse)
             }
         }
     }

@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -214,6 +216,24 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
                     durationMs = null,
                 )
             }
+            // U5 E15: the auction started after this page loaded; the reload turns the row into E14.
+            CompletionNotice.AUCTION_IN_PROGRESS -> {
+                showCompleteDialog = false
+                snack = Snack(
+                    "The auction is running. End it before marking the league completed.",
+                    actionLabel = "Open auction",
+                    onAction = {
+                        snack = null
+                        actions.onAuctionLive()
+                    },
+                    durationMs = null,
+                )
+            }
+            // U5: a refusal that isn't a network problem -- no Retry, retrying won't change it.
+            CompletionNotice.REFUSED -> {
+                showCompleteDialog = false
+                snack = Snack("Couldn't complete the league right now. Try again later.", durationMs = 4_000)
+            }
             null -> return@LaunchedEffect
         }
         actions.onCompletionNoticeShown()
@@ -375,7 +395,7 @@ private fun LeagueView(
                 }
                 // U4 E13: a completed league can't change, so the organizer card goes rather than showing dead rows.
                 if (organizer && !completed) {
-                    OrganizerMenu(actions, onMarkCompleted)
+                    OrganizerMenu(actions, onMarkCompleted, auctionLive = state.isAuctionLive)
                 }
                 if (organizer) {
                     state.errorMessage?.let { Text(it, style = body(12.5.sp, FontWeight.Medium), color = MaterialTheme.colorScheme.error) }
@@ -402,6 +422,9 @@ private fun LeagueView(
                 // league is completed the same screen only shows results (U4 E13).
                 if (completed) {
                     Pill("Auction results", R.drawable.ic_leaderboard, PillStyle.Auction, onClick = actions.onAuctionLive)
+                } else if (state.isAuctionLive) {
+                    // U5 E14: says why Mark completed is unavailable without a second message.
+                    LiveInProgressPill(onClick = actions.onAuctionLive)
                 } else {
                     Pill("Live Auction", R.drawable.ic_gavel, PillStyle.Auction, onClick = actions.onAuctionLive)
                 }
@@ -516,7 +539,7 @@ private fun registrationLine(screenshotUrl: String?, fee: Double?, joinedAt: Str
 }
 
 @Composable
-private fun OrganizerMenu(actions: LeagueDetailActions, onMarkCompleted: () -> Unit) {
+private fun OrganizerMenu(actions: LeagueDetailActions, onMarkCompleted: () -> Unit, auctionLive: Boolean) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -527,8 +550,60 @@ private fun OrganizerMenu(actions: LeagueDetailActions, onMarkCompleted: () -> U
         MenuRow(R.drawable.ic_edit, "Edit league", onClick = actions.onEditLeague)
         MenuRow(R.drawable.ic_tune, "Auction settings", onClick = actions.onAuctionSettings)
         MenuRow(R.drawable.ic_admin_panel_settings, "Manage co-organizers", onClick = actions.onManageRoles)
-        // Not red: the confirmation dialog carries the warning (U4 E10).
-        MenuRow(R.drawable.ic_task_alt, "Mark completed", onClick = onMarkCompleted)
+        // Not red: the confirmation dialog carries the warning (U4 E10). The server refuses it while the
+        // auction runs, so the row says so instead (U5 E14).
+        if (auctionLive) {
+            MarkCompletedUnavailableRow()
+        } else {
+            MenuRow(R.drawable.ic_task_alt, "Mark completed", onClick = onMarkCompleted)
+        }
+    }
+}
+
+/** U5 E14: 56 dp, icon and label at 38%, the reason at full strength; focusable, not clickable. */
+@Composable
+private fun MarkCompletedUnavailableRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .semantics(mergeDescendants = true) {}
+            .focusable()
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_task_alt),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f),
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Mark completed", style = body(13.5.sp, FontWeight.Medium, 18.sp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.38f))
+            Spacer(Modifier.height(2.dp))
+            Text("Available once the auction has ended", style = body(12.sp, lineHeight = 16.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** U5 E14: "Live Auction · in progress" with a 7 dp static gold dot in place of the gavel. */
+@Composable
+private fun LiveInProgressPill(onClick: () -> Unit) {
+    val gold = LocalCrichereExtraColors.current.auctionGold
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFF0E1A11))
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(7.dp).background(gold, CircleShape))
+        Spacer(Modifier.width(8.dp))
+        Text("Live Auction · in progress", style = body(13.5.sp, FontWeight.SemiBold), color = gold, maxLines = 1)
     }
 }
 

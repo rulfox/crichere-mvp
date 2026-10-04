@@ -182,3 +182,45 @@ style (these screens were never matched to the board pixel by pixel). **Nothing 
 iOS-specific differences: system alerts can't stay open while a request runs, so "Completing…" /
 "Removing…" show on the row instead of a locked dialog (E11). New file `DesignSupport.swift`
 (₹ formatting, `NoticeBanner`).
+
+---
+
+## 8. Design update #5 (2026-10-04)
+
+Claude Design answered the update #4 gaps with `Crichere Update 5.dc.html` (project 400a30b2). Values come
+from the rendered file's computed styles (Playwright, served locally with its `support.js` and wordmarks).
+
+Owner decisions (2026-10-04):
+- **L23 "Waiting for next player" dock: dropped.** Owners keep no dock between lots (Android + iOS).
+- **iOS:** U5 deltas + a foundation (Archivo / JetBrains Mono, theme), restyle of the live auction (L22–L26) and
+  league detail (E16–E17) only. Other iOS screens later.
+- **Contact:** `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com`; the Contact link renders only when it is set.
+- **Legal pages:** template with marked placeholder text at /privacy and /terms, `noindex`, not linked from the
+  footer until real text exists.
+- The dialog's {n} is `auction.playersPending`: server `end()` marks every PENDING player UNSOLD, including the
+  one on the block, and `playersPending` counts the same set.
+
+### 8.1 Backend and shared
+
+| Item | Built |
+|---|---|
+| E14 league knows the auction is live | `LeagueResponse.auctionStatus` (mobile `LeagueDto.auctionStatus`, nullable for old servers). `LeagueDetailState.isAuctionLive`. |
+| E15 race | `completeLeague` passes the problem code. `CompletionNotice`: COMPLETED / FAILED (network only) / AUCTION_IN_PROGRESS (reloads the league, so the row turns into E14) / REFUSED (other refusals, no Retry). `markCompleted` does nothing while live. |
+| L19–L21 End Auction confirm | `AuctionViewModel.requestEnd / dismissEnd / confirmEnd / clearEndFailure`, `isEndConfirmOpen`, `isEnding`, `endFailure` (NETWORK / REFUSED; `AUCTION_NOT_IN_PROGRESS` is silent since someone else ended it). `endAuctionBody(pending, deadEnd)` gives the 0 / 1 / many and dead-end copy with the count emphasised. |
+
+Tests: `AuctionFlowIntegrationTest` / `LeagueFlowIntegrationTest` (`auctionStatus`), `LeagueDetailViewModelTest`,
+`AuctionViewModelTest`, `AuctionPresentationTest`.
+
+### 8.2 Android
+
+| Item | Built |
+|---|---|
+| L19a/b, L20 | One dark dialog for both End Auction buttons: scrim .6, `#13211A` + hairline, radius 28, 22 dp inset, title 600 19/22.8, body 13.5/19.6 with the count 600 white, Cancel / coral "End auction". While ending: spinner + "Ending…", Cancel at 38%, scrim and back do nothing. |
+| L21 | Inverse I12 snackbar (`#F5F6F1`, ink text, green action) 12 dp above the dock (`SnackHost(inverse, SnackPlacement.ABOVE_DOCK)`), indefinite, Retry reopens the dialog. |
+| A6 pill | "Connection lost" content description now ends ". Retry". No hit-slop: Compose has none that doesn't change layout. |
+| E14 | Mark completed row disabled (icon and label 38%, "Available once the auction has ended" 12/16), focusable, not clickable; the Live Auction button reads "Live Auction · in progress" with a 7 dp gold dot. |
+| E15 / refusal | "The auction is running. End it before marking the league completed." + Open auction (indefinite); "Couldn't complete the league right now. Try again later." (4 s, no action). |
+| J13 / J14 / J15 | "Pick a date" in ink-muted with Next disabled until a day is picked; helper "Uses your phone's time zone." (zone name removed); time picker digits in Instrument Sans 57/64 (M3 size accepted). |
+| A6 ground map | Full sheet and compact bar cross-fade over 150 ms. |
+
+Verified on the emulator against the local backend; gaps in DESIGN-REVIEW Follow-ups ("Design update #5").

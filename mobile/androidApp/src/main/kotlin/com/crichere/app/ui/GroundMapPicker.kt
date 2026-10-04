@@ -285,7 +285,9 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                     modifier = Modifier.weight(1f).onFocusChanged { nameFocused = it.isFocused },
                 )
-                if (compact) {
+                // U5 A6: the two layouts cross-fade over 150 ms instead of tracking the IME frame by frame.
+                AnimatedVisibility(visible = compact, enter = fadeIn(tween(150)), exit = fadeOut(tween(150))) {
+                Row {
                     Spacer(Modifier.width(8.dp))
                     val canRegister = state.newGroundName.isNotBlank() && !state.isRegisteringGround
                     Box(
@@ -300,8 +302,10 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                         Text("Register", style = pText(13.5.sp, FontWeight.SemiBold), color = if (canRegister) Color.White else CompactRegisterDisabledText)
                     }
                 }
+                }
             }
-            if (!compact) {
+            AnimatedVisibility(visible = !compact, enter = fadeIn(tween(150)), exit = fadeOut(tween(150))) {
+            Column {
             Spacer(Modifier.height(12.dp))
             val lat = state.newGroundLatitude
             val lng = state.newGroundLongitude
@@ -352,6 +356,7 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                     }
                     Text(if (state.isRegisteringGround) "Registering…" else "Register ground", style = pText(13.5.sp, FontWeight.SemiBold), color = Color.White)
                 }
+            }
             }
             }
         }

@@ -712,7 +712,17 @@ Open items found while implementing the redesign, not yet scheduled.
   Back keeping the date, the past-time error, clear + "Auction time cleared". Not seen: tapping Undo (the
   snackbar timed out between scripted taps), the passed-time warning with real data, the J5 save failure, iOS.
   Known differences: the helper shows "GMT+05:30" on an en_US phone (CLDR has "IST" only for en_IN); M3 draws
-  the hour as "07" in its own type, the board shows "6".
+  the hour as "07" in its own type, the board shows "6". Both resolved by U5 J14 / J15 (2026-10-04): the helper is
+  "Uses your phone's time zone." and M3's "07" is accepted (digits now in Instrument Sans).
+
+- [ ] **Design update #5 (PHASE15 8), Android** (2026-10-04). Verified on the Pixel_9_Pro emulator against the
+  local backend: L19a with 1 and 2 players, L19b dead-end copy, L20 "Ending…" (emulator network delay 5 s), L21
+  network snackbar 12 dp above the dock with Retry reopening the dialog, the success path (Ended, no snackbar),
+  E14 row + "Live Auction · in progress", E15 race (league page loaded before the auction started; row turned into
+  E14 after the reload), J13 empty headline + disabled Next, J14 helper, J15 digits. Not seen: L21 REFUSED copy
+  (needs a non-network server refusal), the 0-player body, the E15 snackbar's Open auction being swiped away, the
+  "Couldn't complete the league right now" refusal, the ground map 150 ms cross-fade (not filmed), TalkBack on the
+  disabled row and the pill, CPH2487, the deployed backend.
 - [ ] **(superseded) Auction settings (J): new optional "Auction date & time" field not on the design board**
   (2026-10-02, PHASE11.md D3). Built as a tap field (date dialog -> time dialog, phone's zone,
   stored as an instant) with a clear button. Needs a design pass. Not verified on-device (CPH2487
@@ -748,3 +758,5 @@ Open items found while implementing the redesign, not yet scheduled.
   shows "Couldn't connect" + Try again. Only a real "no session" (no token or 401) goes to Sign in.
   Found on-device: ColorOS briefly blocks network for a just-updated app, and the old code dumped
   signed-in users on Sign in.
+- **U5 L23 "Waiting for next player" dock overruled** (2026-10-04, owner). The board added a dock state for
+  owners between lots; owners keep no dock between lots on Android and iOS, as before.

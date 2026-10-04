@@ -1,29 +1,26 @@
 # Open items
 
-**Last updated:** 2026-10-04 (after design update #4 shipped to Android, web and iOS)
+**Last updated:** 2026-10-04 (design update #5 in progress: backend, shared and Android done)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
-in the update #5 prompt (`crichere-design-update-5-prompt.md`, given to Claude Design).
+were answered by update #5 (PHASE15 8).
 
 ## 1. Decisions needed from the owner
 
 | Item | Why it matters | Where |
 |---|---|---|
-| Is `hello@crichere.app` a real inbox? | H4: hide the landing contact line if not. | web `app/page.tsx` footer |
-| Privacy and Terms text | Pages must exist before launch (store listings); links are `#`. Layout requested in update #5 (B3). | PHASE11, DESIGN-REVIEW web |
+| Privacy and Terms text | Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
-| iOS direction (mirror Android vs native iOS) | iOS screens are unstyled forms. Asked in update #5 (C). | PHASE15 7.5 |
 
-## 2. Design questions (sent in the update #5 prompt)
+## 2. Decided (2026-10-04)
 
-- End Auction has no confirmation and can't be undone (A1).
-- Mark completed while the auction is live shows a "check your connection" message (A2).
-- Date dialog headline with nothing picked; time-zone helper shows "GMT+05:30" outside English (India); M3 time-picker
-  digits (A3–A5).
-- Confirm: whole pill as Retry target, compact ground bar switching on keyboard, iOS progress on the row (A6).
-- Web: "Purse left ₹-250" in standings and completed squads (B1); landing rhythm after the stats strip went (B2);
-  Privacy/Terms template (B3); footer variants (B4).
+- Contact: `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com`; the Contact link shows only when it is set.
+- iOS direction: native iOS (update #5 C). This round: fonts + theme, live auction and league detail restyle; other
+  screens later.
+- Update #5 L23 (owner dock between lots) dropped.
+
+Update #5 remaining: web (W5–W9, legal template, footer) and iOS. Android and shared are done (PHASE15 8).
 
 ## 3. Bugs and engineering risks
 
