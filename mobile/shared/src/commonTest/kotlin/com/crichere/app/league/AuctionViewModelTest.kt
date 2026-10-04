@@ -259,6 +259,85 @@ class AuctionViewModelTest {
     }
 
     @Test
+    fun `end auction asks first, locks while ending, and closes on success with no failure`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
+        val auctionRepository = FakeAuctionRepository().apply { nextState = auctionState(AuctionStatus.COMPLETED) }
+        val viewModel = AuctionViewModel("l1", leagueRepository, auctionRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.requestEnd()
+        assertTrue(viewModel.state.value.isEndConfirmOpen)
+        assertTrue(auctionRepository.actionCalls.isEmpty())
+
+        viewModel.confirmEnd()
+        assertTrue(viewModel.state.value.isEnding)
+        viewModel.dismissEnd() // L20: the dialog can't be dismissed mid-flight
+        assertTrue(viewModel.state.value.isEndConfirmOpen)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(listOf("end"), auctionRepository.actionCalls)
+        assertFalse(state.isEndConfirmOpen)
+        assertFalse(state.isEnding)
+        assertEquals(null, state.endFailure)
+        assertEquals(AuctionStatus.COMPLETED, state.auction?.auctionStatus)
+    }
+
+    @Test
+    fun `cancel closes the end dialog without calling the server`() = viewModelTest {
+        val auctionRepository = FakeAuctionRepository()
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), auctionRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.requestEnd()
+        viewModel.dismissEnd()
+
+        assertFalse(viewModel.state.value.isEndConfirmOpen)
+        assertTrue(auctionRepository.actionCalls.isEmpty())
+    }
+
+    @Test
+    fun `end auction failures - network, refusal, and already ended by someone else`() = viewModelTest {
+        val auctionRepository = FakeAuctionRepository()
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), auctionRepository, StubAuthRepository("organizer-1"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        fun attempt(error: Throwable): EndAuctionFailure? {
+            auctionRepository.actionError = error
+            viewModel.requestEnd()
+            viewModel.confirmEnd()
+            advanceUntilIdle()
+            assertFalse(viewModel.state.value.isEndConfirmOpen)
+            return viewModel.state.value.endFailure
+        }
+
+        assertEquals(EndAuctionFailure.NETWORK, attempt(RuntimeException("timeout")))
+        assertEquals(EndAuctionFailure.REFUSED, attempt(AuctionActionFailedException("403", "NOT_ORGANIZER")))
+        assertEquals(null, attempt(AuctionActionFailedException("409", "AUCTION_NOT_IN_PROGRESS")))
+
+        viewModel.clearEndFailure()
+        assertEquals(null, viewModel.state.value.endFailure)
+    }
+
+    @Test
+    fun `end auction is a no-op for a non-organizer`() = viewModelTest {
+        val auctionRepository = FakeAuctionRepository()
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), auctionRepository, StubAuthRepository("someone-else"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.requestEnd()
+        viewModel.confirmEnd()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isEndConfirmOpen)
+        assertTrue(auctionRepository.actionCalls.isEmpty())
+    }
+
+    @Test
     fun `organizer actions are a no-op for a non-organizer`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague()))
         val auctionRepository = FakeAuctionRepository()

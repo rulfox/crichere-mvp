@@ -301,6 +301,11 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
         authedPatchNoBody(organizerToken, "/api/v1/leagues/$leagueId/complete")
             .andExpect(status().isConflict)
             .andExpect(jsonPath("$.code").value("AUCTION_IN_PROGRESS"))
+
+        // The league page reads this to disable Mark completed while the auction runs (design update #5, E14).
+        mockMvc.perform(get("/api/v1/leagues/$leagueId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionStatus").value("IN_PROGRESS"))
     }
 
     @Test

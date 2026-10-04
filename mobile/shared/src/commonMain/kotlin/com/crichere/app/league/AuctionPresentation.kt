@@ -32,3 +32,25 @@ fun deadEndKind(squadsFull: Int, purseBelowBase: Int): DeadEndKind = when {
     squadsFull == 0 -> DeadEndKind.ALL_PURSE
     else -> DeadEndKind.MIXED
 }
+
+/**
+ * Body of the End Auction confirmation (design update #5, L19a/b), split so the screen can set the
+ * count in 600 white: `prefix + emphasis + suffix`. [pending] counts every player not yet sold or
+ * finally unsold, the one on the block included -- the same set the server marks unsold on end.
+ */
+data class EndAuctionBody(val prefix: String, val emphasis: String, val suffix: String) {
+    val text: String get() = prefix + emphasis + suffix
+}
+
+fun endAuctionBody(pending: Int, deadEnd: Boolean): EndAuctionBody {
+    val players = if (pending == 1) "1 player" else "$pending players"
+    return when {
+        pending <= 0 -> EndAuctionBody("Every player has been auctioned. Squads become final.", "", "")
+        deadEnd -> EndAuctionBody("No franchise can buy the remaining ", players, ", so they'll be marked unsold. Squads become final.")
+        pending == 1 -> EndAuctionBody("", players, " is still in the pool. They'll be marked unsold and squads become final. This can't be undone.")
+        else -> EndAuctionBody("", players, " are still in the pool. They'll all be marked unsold and squads become final. This can't be undone.")
+    }
+}
+
+/** Why End Auction failed (design update #5, L21): a network problem, or a refusal the server gave. */
+enum class EndAuctionFailure { NETWORK, REFUSED }

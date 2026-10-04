@@ -440,6 +440,7 @@ class LeagueService(
             auctionSquadMaxWarning = auctionSquadMaxWarning,
             coOrganizers = coOrganizers,
             auctionScheduledAt = auctionScheduledAt,
+            auctionStatus = auctionStatus,
         )
     }
 

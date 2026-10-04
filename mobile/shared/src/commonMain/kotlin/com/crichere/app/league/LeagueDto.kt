@@ -125,6 +125,8 @@ data class LeagueDto(
     val coOrganizers: List<LeagueRoleDto> = emptyList(),
     /** Optional "bidding opens at" time, ISO-8601 instant (docs/PHASE11.md D3). */
     val auctionScheduledAt: String? = null,
+    /** Null from an older backend; the league page treats that as "not running" (design update #5, E14). */
+    val auctionStatus: AuctionStatus? = null,
 )
 
 /**

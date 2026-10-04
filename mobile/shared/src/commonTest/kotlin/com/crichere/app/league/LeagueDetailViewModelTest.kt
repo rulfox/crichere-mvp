@@ -158,7 +158,7 @@ class LeagueDetailViewModelTest {
     }
 
     @Test
-    fun `a failed mark completed leaves the league as it was and reports FAILED for the snackbar`() = viewModelTest {
+    fun `a network failure on mark completed leaves the league as it was and reports FAILED for the snackbar`() = viewModelTest {
         val league = sampleLeague()
         val viewModel = viewModel(FakeLeagueRepository(leaguesByArea = listOf(league))) // nextCompleted unstubbed: the call fails
         viewModel.retry()
@@ -172,6 +172,59 @@ class LeagueDetailViewModelTest {
         assertEquals(LeagueStatus.ANNOUNCED, state.league?.status)
         assertEquals(CompletionNotice.FAILED, state.completionNotice)
         assertEquals(null, state.errorMessage)
+    }
+
+    @Test
+    fun `the server's auction-in-progress refusal gets its own notice and reloads the league`() = viewModelTest {
+        val league = sampleLeague()
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(league)).apply {
+            completeError = LeagueSaveFailedException("409", code = "AUCTION_IN_PROGRESS")
+        }
+        val viewModel = viewModel(leagueRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        // The auction started on another phone after this page loaded.
+        leagueRepository.leaguesByArea = listOf(league.copy(auctionStatus = AuctionStatus.IN_PROGRESS))
+        viewModel.markCompleted()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(CompletionNotice.AUCTION_IN_PROGRESS, state.completionNotice)
+        assertTrue(state.isAuctionLive)
+    }
+
+    @Test
+    fun `any other server refusal is REFUSED, not a connection failure`() = viewModelTest {
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())).apply {
+            completeError = LeagueSaveFailedException("403", code = "NOT_ORGANIZER")
+        }
+        val viewModel = viewModel(leagueRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.markCompleted()
+        advanceUntilIdle()
+
+        assertEquals(CompletionNotice.REFUSED, viewModel.state.value.completionNotice)
+    }
+
+    @Test
+    fun `mark completed does nothing while the auction is live`() = viewModelTest {
+        val league = sampleLeague().copy(auctionStatus = AuctionStatus.IN_PROGRESS)
+        val leagueRepository = FakeLeagueRepository(leaguesByArea = listOf(league)).apply {
+            nextCompleted = league.copy(status = LeagueStatus.COMPLETED)
+        }
+        val viewModel = viewModel(leagueRepository)
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isAuctionLive)
+        viewModel.markCompleted()
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.state.value.completionNotice)
+        assertEquals(LeagueStatus.ANNOUNCED, viewModel.state.value.league?.status)
     }
 
     @Test

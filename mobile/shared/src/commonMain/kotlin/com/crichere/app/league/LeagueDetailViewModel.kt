@@ -27,9 +27,17 @@ data class LeagueDetailState(
     val errorMessage: String? = null,
     /** One-off result of Mark completed (design update #4, E12/E13): the screen shows its snackbar, then calls [LeagueDetailViewModel.clearCompletionNotice]. */
     val completionNotice: CompletionNotice? = null,
-)
+) {
+    /** Design update #5 E14: Mark completed is shown disabled, with its reason, while the auction runs (the server refuses it then). */
+    val isAuctionLive: Boolean get() = league?.auctionStatus == AuctionStatus.IN_PROGRESS
+}
 
-enum class CompletionNotice { COMPLETED, FAILED }
+/**
+ * Outcome of Mark completed. [FAILED] is a network failure (E12, with Retry); [AUCTION_IN_PROGRESS] is the
+ * server's 409 when the auction started after the page loaded (U5 E15, "Open auction"); [REFUSED] is any other
+ * refusal (no Retry -- retrying won't change it).
+ */
+enum class CompletionNotice { COMPLETED, FAILED, AUCTION_IN_PROGRESS, REFUSED }
 
 /**
  * League Detail's ViewModel: loads the full league (ground, awards, players, franchises
@@ -102,13 +110,22 @@ class LeagueDetailViewModel(
 
     fun markCompleted() {
         val league = _state.value.league ?: return
-        if (!_state.value.isOrganizer || _state.value.isCompleting) return
+        if (!_state.value.isOrganizer || _state.value.isCompleting || _state.value.isAuctionLive) return
 
         _state.update { it.copy(isCompleting = true, errorMessage = null, completionNotice = null) }
         viewModelScope.launch {
             runCatching { leagueRepository.completeLeague(league.id) }
                 .onSuccess { updated -> _state.update { it.copy(isCompleting = false, league = updated, completionNotice = CompletionNotice.COMPLETED) } }
-                .onFailure { _state.update { it.copy(isCompleting = false, completionNotice = CompletionNotice.FAILED) } }
+                .onFailure { throwable ->
+                    val notice = when {
+                        throwable !is LeagueSaveFailedException -> CompletionNotice.FAILED
+                        throwable.code == "AUCTION_IN_PROGRESS" -> CompletionNotice.AUCTION_IN_PROGRESS
+                        else -> CompletionNotice.REFUSED
+                    }
+                    _state.update { it.copy(isCompleting = false, completionNotice = notice) }
+                    // The page was stale: reload so the row turns into E14's disabled state.
+                    if (notice == CompletionNotice.AUCTION_IN_PROGRESS) load()
+                }
         }
     }
 

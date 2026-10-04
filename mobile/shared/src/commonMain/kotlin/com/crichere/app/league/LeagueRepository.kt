@@ -140,7 +140,7 @@ internal class KtorLeagueRepository(
 
     override suspend fun completeLeague(id: String): LeagueDto {
         val response = httpClient.patch("/api/v1/leagues/$id/complete")
-        if (!response.status.isSuccess()) throw LeagueSaveFailedException("League complete failed with status ${response.status}")
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("League complete failed with status ${response.status}", response.problemCode())
         return response.body()
     }
 

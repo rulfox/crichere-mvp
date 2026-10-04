@@ -1,6 +1,7 @@
 package com.crichere.backend.league.dto
 
 import com.crichere.backend.franchise.dto.LeagueFranchiseResponse
+import com.crichere.backend.league.AuctionStatus
 import com.crichere.backend.league.LeagueStatus
 import com.crichere.backend.player.dto.LeaguePlayerResponse
 import java.math.BigDecimal
@@ -51,4 +52,6 @@ data class LeagueResponse(
     val coOrganizers: List<LeagueRoleResponse>,
     /** Optional "bidding opens at" time, set with the auction settings (docs/PHASE11.md D3). */
     val auctionScheduledAt: Instant? = null,
+    /** Lets the league page explain why Mark completed is unavailable while the auction runs (design update #5, E14). */
+    val auctionStatus: AuctionStatus = AuctionStatus.NOT_STARTED,
 )

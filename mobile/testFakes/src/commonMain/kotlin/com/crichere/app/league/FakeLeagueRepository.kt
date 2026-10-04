@@ -20,6 +20,8 @@ class FakeLeagueRepository(
 
     var nextUpdated: LeagueDto? = null
     var nextCompleted: LeagueDto? = null
+    /** Thrown by [completeLeague] when set, ahead of [nextCompleted]. */
+    var completeError: Throwable? = null
 
     var photoUploadInfo: PhotoUploadInfoDto = PhotoUploadInfoDto(
         uploadUrl = "https://crichere-media-dev.s3.ap-south-1.amazonaws.com/",
@@ -81,8 +83,10 @@ class FakeLeagueRepository(
         return nextUpdated ?: nextCreated ?: error("nextUpdated not stubbed")
     }
 
-    override suspend fun completeLeague(id: String): LeagueDto =
-        nextCompleted ?: error("nextCompleted not stubbed")
+    override suspend fun completeLeague(id: String): LeagueDto {
+        completeError?.let { throw it }
+        return nextCompleted ?: error("nextCompleted not stubbed")
+    }
 
     override suspend fun requestLogoUploadUrl(leagueId: String): PhotoUploadInfoDto = photoUploadInfo
 

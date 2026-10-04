@@ -46,7 +46,15 @@ data class AuctionState(
     val bidError: String? = null,
     /** In the organizer controls dock -- a Sold / Next Player / … the server refused. */
     val actionError: String? = null,
+    /** End Auction asks first (design update #5, L19); [isEnding] locks the dialog (L20). */
+    val isEndConfirmOpen: Boolean = false,
+    val isEnding: Boolean = false,
+    /** L21's snackbar; Retry reopens the dialog rather than resending. */
+    val endFailure: EndAuctionFailure? = null,
 ) {
+    /** The dialog's body for the current pool. */
+    val endAuctionBody: EndAuctionBody get() = endAuctionBody(auction?.playersPending ?: 0, isDeadEnd)
+
     /** Current bid + the league's increment, or the base price before the first bid (the server's own rule). */
     val minimumNextBid: Double?
         get() {
@@ -277,7 +285,42 @@ class AuctionViewModel(
     fun sold() = runOrganizerAction { auctionRepository.sold(leagueId) }
     fun unsold() = runOrganizerAction { auctionRepository.unsold(leagueId) }
     fun undo() = runOrganizerAction { auctionRepository.undo(leagueId) }
-    fun end() = runOrganizerAction { auctionRepository.end(leagueId) }
+
+    /** End Auction (both entry points) opens the confirmation instead of acting (design update #5, L19). */
+    fun requestEnd() {
+        if (!_state.value.isOrganizer || _state.value.isActing || _state.value.isEnding) return
+        _state.update { it.copy(isEndConfirmOpen = true, endFailure = null) }
+    }
+
+    /** Cancel, scrim or back -- ignored while ending (L20 locks the dialog). */
+    fun dismissEnd() = _state.update { if (it.isEnding) it else it.copy(isEndConfirmOpen = false) }
+
+    fun clearEndFailure() = _state.update { it.copy(endFailure = null) }
+
+    /**
+     * Confirm: success closes the dialog and the Ended state is the confirmation (no snackbar). A refusal
+     * because the auction is no longer running (a co-organizer ended it) shows nothing -- the stream brings
+     * the Ended state. Anything else closes the dialog and shows L21's snackbar.
+     */
+    fun confirmEnd() {
+        if (!_state.value.isOrganizer || _state.value.isEnding) return
+        _state.update { it.copy(isEnding = true, endFailure = null) }
+        viewModelScope.launch {
+            runCatching { auctionRepository.end(leagueId) }
+                .onSuccess { newState ->
+                    _state.update { it.copy(isEnding = false, isEndConfirmOpen = false) }
+                    applyAuctionState(newState)
+                }
+                .onFailure { throwable ->
+                    val failure = when {
+                        throwable !is AuctionActionFailedException -> EndAuctionFailure.NETWORK
+                        throwable.code == "AUCTION_NOT_IN_PROGRESS" -> null
+                        else -> EndAuctionFailure.REFUSED
+                    }
+                    _state.update { it.copy(isEnding = false, isEndConfirmOpen = false, endFailure = failure) }
+                }
+        }
+    }
     fun toggleExceedPurse(allow: Boolean) = runOrganizerAction { auctionRepository.toggleExceedPurse(leagueId, allow) }
 
     fun placeBid() {

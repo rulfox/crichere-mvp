@@ -326,6 +326,7 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
         mockMvc.perform(get("/api/v1/leagues/$leagueId"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.auctionScheduledAt").value("2026-10-12T13:30:00Z"))
+            .andExpect(jsonPath("$.auctionStatus").value("NOT_STARTED"))
 
         authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", validAuctionSettingsBody())
             .andExpect(status().isOk)
