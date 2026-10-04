@@ -243,3 +243,22 @@ footer with / without contact, legal article), 24 e2e (fixtures now carry an ove
 Known difference: the board's footer draws the green wordmark (26 px) instead of icon + text; B4 says the footer
 values are unchanged, so the icon + text logo stays. To publish the legal pages: replace the placeholder copy,
 drop `robots`, set `LEGAL_PAGES_LINKED = true`.
+
+### 8.4 iOS (SwiftUI): U5 deltas + foundation
+
+Direction (U5 C, owner-approved): native structure (NavigationStack, inset-grouped List, system alert / dialog,
+ProgressView, SF Symbols), Crichere colours, Archivo + JetBrains Mono bundled, SF Pro body. The live auction stays
+the one custom surface. **Nothing here is compiled** (no Xcode); `:shared:compileKotlinIosSimulatorArm64` passes.
+
+| Item | Built |
+|---|---|
+| Foundation | `Fonts/archivo_variable.ttf`, `Fonts/jetbrains_mono_variable.ttf` (copied from androidApp) + `UIAppFonts`. `Theme.swift`: `Brand` / `AuctionPalette` colours, `BrandFont.archivo/mono` (family + weight descriptor, system fallback), `applyCrichereAppearance()` (large title Archivo 800 34, −.02em, on #F5F6F1), app tint #1B5E20. |
+| AuctionLiveView (L22–L26) | Rebuilt as the dark canvas: status chip + L26 pills, the 225 pt block card (88 pt photo slot, ON THE BLOCK, Archivo 22/26, role chip, mono 36/40 bid), L23-style notice cards, the L24 dead-end card + breakdown, dock with 50 pt main / 44 pt secondary capsules, gold system Toggle, L25 bidder dock (context line, Amount field, +step, Place Bid, leading / full / purse tiles). Haptics: light impact on Place Bid, success on Sold for the winner. No dock for owners between players (L23 dropped). |
+| End Auction (L19c, L20, L21) | System alert (Cancel / destructive "End Auction") from both buttons, body from shared `endAuctionBody`. Not re-presented while ending; the dock button shows a ProgressView + "Ending…". Failure: inverse capsule banner 12 pt above the dock with Retry (reopens the alert), VoiceOver announcement, swipe to dismiss. |
+| LeagueDetailView (E16, E17, E14, E15) | Inset-grouped List on #F5F6F1, large title = league name, subline "{city} · {format} · {status}", Live Auction / Auction results capsule as the list header ("Live Auction · in progress" with a gold dot while live), Archivo section headers with counts, organizer rows with SF Symbols, Mark completed disabled with "Available once the auction has ended" while live, progress on the row while completing. Person rows (avatar 36, 17/22 + 15/20); Remove / Approve leave as swipe actions and in a per-row action sheet (with View payment screenshot). Share in the toolbar. Completed: franchises first. Banners for the race ("Open auction") and refusal (no Retry). |
+| AuctionSettingsView (J13, J14) | Helper "Uses your phone's time zone."; a new time opens on now + 1 h rounded down to the hour. |
+
+Known differences: the back button keeps the system label (the board shows the league's short name); E17's
+franchise detail "6 players · ₹4,80,000 spent" and the players' franchise name need auction results the league
+page doesn't load, so rows show the owner / role instead; there's no row detail screen, so the action sheet
+stands in for it.

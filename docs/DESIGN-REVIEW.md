@@ -715,6 +715,12 @@ Open items found while implementing the redesign, not yet scheduled.
   the hour as "07" in its own type, the board shows "6". Both resolved by U5 J14 / J15 (2026-10-04): the helper is
   "Uses your phone's time zone." and M3's "07" is accepted (digits now in Instrument Sans).
 
+- [ ] **Design update #5 iOS (PHASE15 8.4), nothing compiled or run** (2026-10-04): the whole restyle of
+  AuctionLiveView (L22–L26) and LeagueDetailView (E16/E17), the End Auction alert / "Ending…" / failure banner,
+  E14 / E15, the fonts resolving by family + weight from the variable files, the large-title appearance, swipe
+  actions, haptics, VoiceOver of the disabled row and the banner. Expect first-build fixes (SKIE enum / sealed
+  class names, iOS 16 API availability).
+
 - [ ] **Design update #5 (PHASE15 8), Android** (2026-10-04). Verified on the Pixel_9_Pro emulator against the
   local backend: L19a with 1 and 2 players, L19b dead-end copy, L20 "Ending…" (emulator network delay 5 s), L21
   network snackbar 12 dp above the dock with Retry reopening the dialog, the success path (Ended, no snackbar),

@@ -71,7 +71,9 @@ struct AuctionSettingsView: View {
                     Section {
                         HStack {
                             Button {
-                                draftTime = max(scheduledDate ?? Date(), Date())
+                                // U5 J13 on iOS: the inline picker always has a value, so a new time opens on
+                                // now + 1 h rounded to :00.
+                                draftTime = scheduledDate.map { max($0, Date()) } ?? nextWholeHour()
                                 pickingTime = true
                             } label: {
                                 Text(scheduledDate.map(scheduleText) ?? "Auction date & time (optional)")
@@ -103,7 +105,8 @@ struct AuctionSettingsView: View {
                             Label("This time has passed. Pick a new one or clear it.", systemImage: "clock")
                                 .foregroundColor(Color(red: 0x7A / 255, green: 0x5B / 255, blue: 0x12 / 255))
                         } else {
-                            Text("Shown in your phone's time zone (\(TimeZone.current.abbreviation() ?? TimeZone.current.identifier)).")
+                            // U5 J14: no zone name on either platform.
+                            Text("Uses your phone's time zone.")
                         }
                     }
 
@@ -185,4 +188,11 @@ struct AuctionSettingsView: View {
             }
         }
     }
+}
+
+/// Now + 1 h, rounded down to the hour (U5 J13): 14:20 opens on 15:00.
+private func nextWholeHour(from now: Date = Date()) -> Date {
+    let calendar = Calendar.current
+    let inAnHour = now.addingTimeInterval(3600)
+    return calendar.date(from: calendar.dateComponents([.year, .month, .day, .hour], from: inAnHour)) ?? inAnHour
 }

@@ -1,6 +1,6 @@
 # Open items
 
-**Last updated:** 2026-10-04 (design update #5 in progress: backend, shared and Android done)
+**Last updated:** 2026-10-04 (design update #5 built on Android, web and iOS)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
@@ -20,7 +20,7 @@ were answered by update #5 (PHASE15 8).
   screens later.
 - Update #5 L23 (owner dock between lots) dropped.
 
-Update #5 remaining: iOS. Android, shared and web are done (PHASE15 8). Set `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com` on the web deploy.
+Update #5 is built on every platform (PHASE15 8); iOS is unverified until a first Xcode build. Set `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com` on the web deploy.
 
 ## 3. Bugs and engineering risks
 

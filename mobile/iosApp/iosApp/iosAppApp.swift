@@ -24,11 +24,13 @@ struct IosAppApp: App {
         FirebaseApp.configure()
         IosPhoneAuthBridgeHolder.shared.bridge = FirebasePhoneAuthBridgeImpl()
         initKoinIos()
+        applyCrichereAppearance()
     }
 
     var body: some Scene {
         WindowGroup {
             AppRootView(pendingDeepLinkLeagueId: $pendingDeepLinkLeagueId)
+                .tint(Brand.primary)
                 .onOpenURL { url in
                     // crichere://leagues/{id} -- see docs/PHASE3.md. A URL arriving while the app
                     // is already running updates this same @State, which AppRootView re-reads via
