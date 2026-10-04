@@ -26,6 +26,10 @@ test("live league shows the player under the hammer, the bid, the ticker and the
   const standings = page.getByLabel("Franchise standings");
   await expect(standings.getByText("Mannancherry United")).toBeVisible();
   await expect(standings.getByText("LEADING")).toBeVisible();
+  // U5 W5: an over-purse franchise reads "Over purse ₹45,000", never "₹-45,000".
+  await expect(standings.getByText("Over purse by ₹45,000")).toBeAttached();
+  await expect(standings.getByText("Over purse", { exact: true })).toBeVisible();
+  await expect(standings.getByText(/₹-/)).toHaveCount(0);
 });
 
 test("a sold lot shows the SOLD band, then moves on", async ({ page }) => {
@@ -60,6 +64,9 @@ test("completed league shows the summary and final squads, flagging a squad belo
   await expect(page.getByRole("heading", { name: "Rising Stars" })).toBeVisible();
   await expect(page.getByText("Deepak Boche")).toBeVisible();
   await expect(page.getByText("Below squad minimum · 3 of 4")).toBeVisible();
+  // U5 W6: the over-purse squad's tile.
+  await expect(page.getByText("Over purse", { exact: true })).toBeVisible();
+  await expect(page.getByText("₹25,000", { exact: true })).toBeVisible();
 });
 
 test("the wordmark returns to the landing page", async ({ page }) => {

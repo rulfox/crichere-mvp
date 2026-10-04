@@ -673,6 +673,8 @@ function StandingRow({
   const squad = franchise.playersWon.length;
   const remaining = franchise.purseRemaining !== null ? Number(franchise.purseRemaining) : null;
   const pct = remaining !== null && purse ? Math.max(0, Math.min(1, remaining / purse)) : null;
+  // U5 W5: never a negative number -- the label changes and the empty track turns alert.
+  const over = remaining !== null && remaining < 0;
   return (
     <div className={`${styles.standing} ${leading ? styles.standingLead : ""}`}>
       <div className={styles.standingTop}>
@@ -695,12 +697,22 @@ function StandingRow({
       )}
       {remaining !== null && (
         <>
-          <div className={styles.purseLine}>
-            <span className={styles.factLabel}>Purse left</span>
-            <span className={styles.purseValue}>{formatInr(remaining)}</span>
-          </div>
+          {over ? (
+            <div className={`${styles.purseLine} ${styles.purseLineOver}`}>
+              <span aria-hidden="true">Over purse</span>
+              <span className={styles.purseValue} aria-hidden="true">
+                {formatInr(-remaining)}
+              </span>
+              <span className={styles.srOnly}>Over purse by {formatInr(-remaining)}</span>
+            </div>
+          ) : (
+            <div className={styles.purseLine}>
+              <span className={styles.factLabel}>Purse left</span>
+              <span className={styles.purseValue}>{formatInr(remaining)}</span>
+            </div>
+          )}
           {pct !== null && (
-            <div className={styles.purseTrack}>
+            <div className={`${styles.purseTrack} ${over ? styles.purseTrackOver : ""}`} aria-hidden="true">
               <div className={styles.purseFill} style={{ transform: `scaleX(${pct.toFixed(3)})`, background: leading ? "var(--auction-gold)" : "var(--outline)" }} />
             </div>
           )}
@@ -857,12 +869,19 @@ function Completed({ league, auction, results }: { league: League; auction: Auct
                     {formatInr(franchise.purseSpent)}
                   </span>
                 </span>
-                {franchise.purseRemaining !== null && (
-                  <span className={styles.tile}>
-                    <span className={styles.tileLabel}>Purse left</span>
-                    <span className={styles.tileValue}>{formatInr(franchise.purseRemaining)}</span>
-                  </span>
-                )}
+                {franchise.purseRemaining !== null &&
+                  (Number(franchise.purseRemaining) < 0 ? (
+                    // U5 W6: "Over purse" tile in alert; the card border stays (.resultBelow is the squad warning).
+                    <span className={`${styles.tile} ${styles.tileOver}`}>
+                      <span className={styles.tileLabel}>Over purse</span>
+                      <span className={styles.tileValue}>{formatInr(-Number(franchise.purseRemaining))}</span>
+                    </span>
+                  ) : (
+                    <span className={styles.tile}>
+                      <span className={styles.tileLabel}>Purse left</span>
+                      <span className={styles.tileValue}>{formatInr(franchise.purseRemaining)}</span>
+                    </span>
+                  ))}
               </div>
               {franchise.belowSquadMin && (
                 <span className={styles.warning}>

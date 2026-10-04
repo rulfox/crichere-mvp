@@ -4,6 +4,7 @@ import { LandingMotion } from "@/components/landing/LandingMotion";
 import styles from "@/components/landing/Landing.module.css";
 import { Icon } from "@/components/ui/Icon";
 import { Logo } from "@/components/ui/Logo";
+import { SiteFooter } from "@/components/ui/SiteFooter";
 import { StoreBadge } from "@/components/ui/StoreBadge";
 import { fetchLiveNow } from "@/lib/api";
 
@@ -342,20 +343,7 @@ export default async function Landing() {
         </div>
       </section>
 
-      <footer className={styles.footer}>
-        <div className={`${styles.section} ${styles.footerTop}`}>
-          <div className={styles.footerBrand}>
-            <Logo size={30} fontSize={20} />
-            <span className={styles.footerTagline}>Build. Auction. Compete. Made for local cricket across India.</span>
-          </div>
-          <nav aria-label="Footer" className={styles.footerNav}>
-            <a href="mailto:hello@crichere.app">Contact</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-          </nav>
-        </div>
-        <div className={`${styles.section} ${styles.copyright}`}>© 2026 Crichere</div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

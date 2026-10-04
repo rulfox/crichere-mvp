@@ -736,9 +736,13 @@ Open items found while implementing the redesign, not yet scheduled.
     until the Play URL exists (QR generation needs a dependency -- ask first).
   - Landing stats strip and the hero's "Bids placed tonight 412" card: removed (design update #4 H4 --
     no invented numbers on a public page; bring the strip back once there are real ones).
-  - Footer: About dropped (H4). Privacy / Terms still point at `#` -- they must ship as real pages before
-    launch (store listings need them). Contact uses `hello@crichere.app`, still unverified: H4 says hide the
-    line if there's no real address.
+  - Footer: About dropped (H4). U5 B4 (2026-10-04): Contact comes from `NEXT_PUBLIC_CONTACT_EMAIL`
+    (`hello@crichere.com`, hidden when unset); no `#` links. Privacy / Terms are built as a placeholder template
+    (`/privacy`, `/terms`, noindex) but not linked until the owner supplies the text -- they must be real before
+    launch (store listings need them).
+  - U5 W5–W9 not verified: Safari / iOS (sticky TOC, `<details>` marker, container queries), a real
+    over-purse auction on the real backend, the landing gap with the reveal animation finished at 1280,
+    `NEXT_PUBLIC_CONTACT_EMAIL` set on the deployed site.
   - Auction top bar at 360px: fixed (H1) -- white wordmark 22/24px, "Live" / "Offline" / "Get app" below
     480px. Checked in Chromium at 360 and 768 against the mock backend.
   - Not verified against the real backend + phone: a full live auction driven from the app (bids,

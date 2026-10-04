@@ -325,4 +325,47 @@ describe("LiveAuction", () => {
     expect(screen.getByText("AR")).toBeInTheDocument();
     expect(screen.getByText("Below squad minimum · 1 of 4")).toBeInTheDocument();
   });
+
+  it("live standings over purse: 'Over purse' with the amount, never a negative number (U5 W5)", async () => {
+    resultsResponse = {
+      auctionStatus: "IN_PROGRESS",
+      franchises: [
+        { franchiseId: "f1", franchiseName: "Spartanz", playersWon: [], purseSpent: "0", purseRemaining: "0", belowSquadMin: true },
+        { franchiseId: "f2", franchiseName: "Victory CC", playersWon: [], purseSpent: "525000", purseRemaining: "-25000", belowSquadMin: true },
+      ],
+    };
+    render(<LiveAuction league={league} />);
+    source().emit("auction-state", openLot);
+
+    const table = await screen.findByLabelText("Franchise standings");
+    await waitFor(() => expect(within(table).getByText("Over purse by ₹25,000")).toBeInTheDocument());
+    expect(within(table).getByText("Over purse")).toBeInTheDocument();
+    // ₹0 left stays the normal line.
+    expect(within(table).getByText("₹0")).toBeInTheDocument();
+    expect(within(table).queryByText(/-/)).not.toBeInTheDocument();
+    // The leading franchise keeps its tag: gold owns the bid, alert owns the money.
+    expect(within(table).getByText("LEADING")).toBeInTheDocument();
+  });
+
+  it("completed over purse: the Purse left tile becomes Over purse (U5 W6)", async () => {
+    resultsResponse = {
+      auctionStatus: "COMPLETED",
+      franchises: [
+        {
+          franchiseId: "f1",
+          franchiseName: "Spartanz",
+          playersWon: [{ playerId: "p1", playerName: "Aswin Sudarsanan", soldPrice: "525000", playingRole: "ALL_ROUNDER" }],
+          purseSpent: "525000",
+          purseRemaining: "-25000",
+          belowSquadMin: false,
+        },
+      ],
+    };
+    render(<LiveAuction league={league} />);
+    source().emit("auction-state", { ...idle, auctionStatus: "COMPLETED", playersSold: 1 });
+
+    expect(await screen.findByText("Over purse")).toBeInTheDocument();
+    expect(screen.getByText("₹25,000")).toBeInTheDocument();
+    expect(screen.queryByText("Purse left")).not.toBeInTheDocument();
+  });
 });

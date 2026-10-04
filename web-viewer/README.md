@@ -24,6 +24,7 @@ backend's `local` profile already allows CORS from `http://localhost:3000` by de
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080` | Backend base URL |
 | `NEXT_PUBLIC_PLAY_STORE_URL` | unset | Google Play listing. Unset -> "Coming soon" badge, no QR card, no mobile "Open in app" banner |
 | `NEXT_PUBLIC_APP_STORE_URL` | unset | App Store listing. Unset -> "Coming soon" badge |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | unset | Footer Contact link (`mailto:`). Unset -> no Contact link. Production: `hello@crichere.com` |
 
 The landing page's "Watch live" links come from the backend's `GET /api/v1/auctions/live-now` and
 are hidden while no auction is running.

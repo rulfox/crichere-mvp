@@ -1,0 +1,67 @@
+/* Design update #5 B4 (values unchanged from the landing footer). Needs an inline-size container
+   ancestor for the cqi paddings -- the landing root and the legal layout both are one. */
+
+.section {
+  box-sizing: content-box;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.footer {
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-variant);
+}
+
+.footerTop {
+  padding: 40px clamp(20px, 4cqi, 40px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.footerBrand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+}
+
+.footerTagline {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--ink-muted);
+}
+
+.footerNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+/* 44 px tall hit target without moving the layout. */
+.footerNav a {
+  padding: 12px 0;
+  margin: -12px 0;
+  color: var(--ink);
+}
+
+.footerNav a:hover {
+  color: var(--primary);
+}
+
+.footerNav a.current {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.copyright {
+  padding: 0 clamp(20px, 4cqi, 40px) 32px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-muted);
+}

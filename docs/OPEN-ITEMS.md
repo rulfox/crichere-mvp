@@ -20,7 +20,7 @@ were answered by update #5 (PHASE15 8).
   screens later.
 - Update #5 L23 (owner dock between lots) dropped.
 
-Update #5 remaining: web (W5–W9, legal template, footer) and iOS. Android and shared are done (PHASE15 8).
+Update #5 remaining: iOS. Android, shared and web are done (PHASE15 8). Set `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com` on the web deploy.
 
 ## 3. Bugs and engineering risks
 

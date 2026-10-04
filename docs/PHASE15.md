@@ -224,3 +224,22 @@ Tests: `AuctionFlowIntegrationTest` / `LeagueFlowIntegrationTest` (`auctionStatu
 | A6 ground map | Full sheet and compact bar cross-fade over 150 ms. |
 
 Verified on the emulator against the local backend; gaps in DESIGN-REVIEW Follow-ups ("Design update #5").
+
+### 8.3 Public web viewer (W5–W9)
+
+| Item | Built |
+|---|---|
+| W5 standings over purse | "Over purse ₹x" (label and value `--auction-alert-text`, 600), empty track tinted rgba(255,107,74,.28); screen readers get "Over purse by ₹x". Leading border and tag stay. ₹0 left stays normal. |
+| W6 completed tile | "Over purse" tile: bg rgba(255,107,74,.12), label 600 11/14, value mono 700 15/20, both alert. Card border unchanged. |
+| W7 landing | `.download` padding `clamp(56px, 8cqi, 96px) clamp(20px, 4cqi, 40px)`. `.floatStats` was already gone. |
+| W9 footer | `SiteFooter` (shared by landing and legal pages): Contact only when `NEXT_PUBLIC_CONTACT_EMAIL` is set, links 44 px tall via padding 12/0 + negative margin, no `#` hrefs. Privacy / Terms held back behind `LEGAL_PAGES_LINKED = false` until the real text exists. |
+| W8 legal template | `app/(legal)/layout.tsx` (green wordmark, "Home" / "Back to home"), `/privacy` and `/terms` with placeholder copy, `robots: noindex`, own canonical. `LegalArticle` + `LegalToc`: sticky sidebar from 1024 px, `<details>` below, current section by IntersectionObserver (a clicked entry wins, since near the end of a short page its heading can't reach the top). `expand_more` added to the icon set. |
+
+Measured in Chromium against the mock server: /terms at 1280 and /privacy at 360 match the W8b / W8a dump
+position for position; W5 / W6 computed styles match the spec. Tests: 63 unit (over purse live and completed,
+footer with / without contact, legal article), 24 e2e (fixtures now carry an over-purse franchise; new
+`legal.spec.ts`).
+
+Known difference: the board's footer draws the green wordmark (26 px) instead of icon + text; B4 says the footer
+values are unchanged, so the icon + text logo stays. To publish the legal pages: replace the placeholder copy,
+drop `robots`, set `LEGAL_PAGES_LINKED = true`.

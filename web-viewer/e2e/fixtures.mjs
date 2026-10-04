@@ -173,7 +173,7 @@ const liveStandings = [
   { franchiseId: "franchise-3", franchiseName: "Ashes Komalapuram", playersWon: [won("p-d", "Reni", "40000", "ALL_ROUNDER"), won("p-e", "Arun", "40000", "BATSMAN")], purseSpent: "80000", purseRemaining: "420000", belowSquadMin: true },
   { franchiseId: "franchise-4", franchiseName: "Mannancherry United", playersWon: [won("p-f", "Jithu", "110000", "BOWLER"), won("p-g", "Appu", "100000", "BATSMAN"), won("p-h", "Bharath", "100000", "ALL_ROUNDER")], purseSpent: "310000", purseRemaining: "190000", belowSquadMin: true },
   { franchiseId: "franchise-5", franchiseName: "Rising Stars", playersWon: [won("p-i", "Bony", "60000", "BOWLER")], purseSpent: "60000", purseRemaining: "440000", belowSquadMin: true },
-  { franchiseId: "franchise-6", franchiseName: "UK Kings", playersWon: [won("p-j", "Dileep", "120000", "BATSMAN"), won("p-k", "Jino", "100000", "WICKETKEEPER")], purseSpent: "220000", purseRemaining: "280000", belowSquadMin: true },
+  { franchiseId: "franchise-6", franchiseName: "UK Kings", playersWon: [won("p-j", "Dileep", "120000", "BATSMAN"), won("p-k", "Jino", "425000", "WICKETKEEPER")], purseSpent: "545000", purseRemaining: "-45000", belowSquadMin: true }, // over purse (U5 W5)
 ];
 
 /** After the scripted SOLD: Aswin Sudarsanan joins Victory CC. */
@@ -185,7 +185,7 @@ const soldStandings = liveStandings.map((f) =>
 
 const completedFranchises = [
   { franchiseId: "franchise-1", franchiseName: "Spartanz", playersWon: [won("c1", "Aswin Sudarsanan", "150000", "AR"), won("c2", "Syam", "65000", "BATSMAN"), won("c3", "Sarath", "40000", "BOWLER"), won("c4", "Tony Jose", "35000", "WICKETKEEPER"), won("c5", "Reni", "20000", "BATSMAN")], purseSpent: "310000", purseRemaining: "190000", belowSquadMin: false },
-  { franchiseId: "franchise-2", franchiseName: "Victory CC", playersWon: [won("c6", "Deepak Boche", "120000", "BOWLER"), won("c7", "Akhil Joseph", "55000", "ALL_ROUNDER"), won("c8", "Arun", "45000", "BATSMAN"), won("c9", "Jithu", "25000", "WICKETKEEPER")], purseSpent: "245000", purseRemaining: "255000", belowSquadMin: false },
+  { franchiseId: "franchise-2", franchiseName: "Victory CC", playersWon: [won("c6", "Deepak Boche", "120000", "BOWLER"), won("c7", "Akhil Joseph", "55000", "ALL_ROUNDER"), won("c8", "Arun", "45000", "BATSMAN"), won("c9", "Jithu", "305000", "WICKETKEEPER")], purseSpent: "525000", purseRemaining: "-25000", belowSquadMin: false }, // over purse (U5 W6)
   { franchiseId: "franchise-5", franchiseName: "Rising Stars", playersWon: [won("c10", "Rahul Sharma", "110000", "BATSMAN"), won("c11", "Unni", "30000", "BOWLER"), won("c12", "Suman", "20000", "ALL_ROUNDER")], purseSpent: "160000", purseRemaining: "340000", belowSquadMin: true },
 ].map((f) => ({ ...f, playersWon: f.playersWon.map((p) => ({ ...p, playingRole: ["BATSMAN", "BOWLER", "ALL_ROUNDER", "WICKETKEEPER"].includes(p.playingRole) ? p.playingRole : "ALL_ROUNDER" })) }));
 

@@ -1010,11 +1010,19 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 12px;
+  line-height: 16px;
 }
 
 .purseValue {
   font-family: var(--font-mono), monospace;
   font-size: 13px;
+  line-height: 16px;
+}
+
+/* U5 W5: label and value both alert, 600 (7.4:1 on the surface). */
+.purseLineOver {
+  color: var(--auction-alert-text);
+  font-weight: 600;
 }
 
 .purseTrack {
@@ -1022,6 +1030,24 @@
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  transition: background-color 300ms ease;
+}
+
+/* The fill is already clamped to 0; the tinted empty track reads "nothing left, and then some". */
+.purseTrackOver {
+  background: rgba(255, 107, 74, 0.28);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .purseFill {
@@ -1290,6 +1316,22 @@
   font-family: var(--font-mono), monospace;
   font-size: 15px;
   font-weight: 700;
+}
+
+/* U5 W6: "Over purse" tile -- same tint as .warning, label 600 11/14, value 700 15/20, both alert. */
+.tileOver {
+  background: rgba(255, 107, 74, 0.12);
+  color: var(--auction-alert-text);
+}
+
+.tileOver .tileLabel {
+  color: var(--auction-alert-text);
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.tileOver .tileValue {
+  line-height: 20px;
 }
 
 .warning {
