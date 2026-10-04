@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 /** Design L1's "Bidding as Satara Titans · ₹42,000 left · 11/12 players". */
 data class BiddingContext(
@@ -27,6 +28,10 @@ data class AuctionState(
     val loadFailed: Boolean = false,
     /** The live stream dropped after a successful load -- the last known state stays on screen. */
     val connectionLost: Boolean = false,
+    /** The connection pill (design update #4, A4), driven by timers that start when [connectionLost] turns on. */
+    val connectionPhase: ConnectionPhase = ConnectionPhase.ONLINE,
+    /** When the last stream event arrived (epoch ms, heartbeats included) -- "updated 34s ago" on the Connection lost line. */
+    val lastEventAtMillis: Long? = null,
     val league: LeagueDto? = null,
     val isOrganizer: Boolean = false,
     /** The first franchise this signed-in user owns in this league, if any -- who they bid as. A user owning more than one franchise here (see docs/PHASE3.md's "dual roles allowed freely") always bids as the first one; picking among several is a future refinement, not needed for this MVP screen. */
@@ -52,6 +57,33 @@ data class AuctionState(
         }
 
     val bidIncrement: Double? get() = league?.auctionBidIncrement
+
+    /** Live, nobody on the block, and no franchise can open a bid (design update #4, A2). */
+    val isDeadEnd: Boolean
+        get() {
+            val auctionState = auction ?: return false
+            return auctionState.auctionStatus == AuctionStatus.IN_PROGRESS && auctionState.currentPlayerId == null && !auctionState.canAnyoneBid
+        }
+
+    /**
+     * What the signed-in franchise owner's dock shows in place of the Amount field (design update #4, A3).
+     * Between players the purse is checked against the base price, so a dead end shows the owner's own reason.
+     */
+    val dockMode: DockMode
+        get() {
+            val context = biddingContext ?: return DockMode.Bid
+            val auctionState = auction ?: return DockMode.Bid
+            val squadMax = context.squadMax
+            val threshold = minimumNextBid ?: league?.auctionBasePrice
+            val leadingBid = auctionState.currentBidAmount
+            return when {
+                squadMax != null && context.playersWon >= squadMax -> DockMode.SquadFull(context.playersWon, squadMax)
+                leadingBid != null && auctionState.currentLeadingFranchiseId == context.franchiseId -> DockMode.Leading(leadingBid)
+                !auctionState.allowExceedPurse && threshold != null && context.purseLeft != null && context.purseLeft < threshold ->
+                    DockMode.PurseShort(threshold)
+                else -> DockMode.Bid
+            }
+        }
 
     val biddingContext: BiddingContext?
         get() {
@@ -90,6 +122,7 @@ class AuctionViewModel(
      * so a stream that completes or throws can't loop under `advanceUntilIdle`.
      */
     private val reconnectDelaysMs: List<Long> = emptyList(),
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AuctionState())
@@ -97,11 +130,22 @@ class AuctionViewModel(
 
     private var loadJob: Job? = null
     private var streamJob: Job? = null
+    private var connectionJob: Job? = null
+    private var backOnlineJob: Job? = null
 
     fun retry() {
         loadJob?.cancel()
         streamJob?.cancel()
-        _state.update { it.copy(isLoading = it.league == null, loadFailed = false, connectionLost = false) }
+        // Retry on the "Connection lost" pill goes straight back to Reconnecting and restarts the 30 s clock.
+        _state.update {
+            it.copy(
+                isLoading = it.league == null,
+                loadFailed = false,
+                connectionLost = false,
+                connectionPhase = if (it.connectionPhase == ConnectionPhase.LOST) ConnectionPhase.RECONNECTING else it.connectionPhase,
+            )
+        }
+        connectionJob?.cancel()
 
         loadJob = viewModelScope.launch {
             runCatching {
@@ -115,6 +159,7 @@ class AuctionViewModel(
                 startStream()
             }.onFailure {
                 _state.update { it.copy(isLoading = false, loadFailed = it.league == null, connectionLost = it.league != null) }
+                if (_state.value.connectionLost) onConnectionDropped()
             }
         }
     }
@@ -128,7 +173,8 @@ class AuctionViewModel(
                 val error = try {
                     auctionRepository.streamAuctionState(leagueId).collect { newState ->
                         received = true
-                        _state.update { it.copy(isLoading = false, connectionLost = false) }
+                        _state.update { it.copy(isLoading = false, connectionLost = false, lastEventAtMillis = nowMillis()) }
+                        onFeedBack()
                         applyAuctionState(newState)
                     }
                     null
@@ -143,12 +189,42 @@ class AuctionViewModel(
                 // reconnecting is on; without it a completing stream stays the no-op it always was.
                 if (error != null || reconnectDelaysMs.isNotEmpty()) {
                     _state.update { it.copy(isLoading = false, loadFailed = it.auction == null, connectionLost = it.auction != null) }
+                    if (_state.value.connectionLost) onConnectionDropped()
                 }
                 // Nothing on screen yet: the load-failed state's own Retry is the way back.
                 if (reconnectDelaysMs.isEmpty() || _state.value.auction == null) return@launch
                 delay(reconnectDelaysMs[minOf(failures, reconnectDelaysMs.lastIndex)])
                 failures++
             }
+        }
+    }
+
+    /**
+     * The pill's timers for a drop: nothing for the first second (a blip that recovers stays invisible),
+     * then Reconnecting, then Connection lost 30 s after the drop. A drop while the timers already run
+     * (a reconnect attempt failing again) doesn't restart them; a stream event or Retry cancels them.
+     */
+    private fun onConnectionDropped() {
+        backOnlineJob?.cancel()
+        if (connectionJob?.isActive == true) return
+        connectionJob = viewModelScope.launch {
+            delay(CONNECTION_GRACE_MS)
+            _state.update { if (it.connectionPhase == ConnectionPhase.LOST) it else it.copy(connectionPhase = ConnectionPhase.RECONNECTING) }
+            delay(CONNECTION_LOST_AFTER_MS - CONNECTION_GRACE_MS)
+            _state.update { it.copy(connectionPhase = ConnectionPhase.LOST) }
+        }
+    }
+
+    /** "Back online" for 1.5 s -- only when a pill was showing. */
+    private fun onFeedBack() {
+        connectionJob?.cancel()
+        val phase = _state.value.connectionPhase
+        if (phase != ConnectionPhase.RECONNECTING && phase != ConnectionPhase.LOST) return
+        _state.update { it.copy(connectionPhase = ConnectionPhase.BACK_ONLINE) }
+        backOnlineJob?.cancel()
+        backOnlineJob = viewModelScope.launch {
+            delay(BACK_ONLINE_MS)
+            _state.update { if (it.connectionPhase == ConnectionPhase.BACK_ONLINE) it.copy(connectionPhase = ConnectionPhase.ONLINE) else it }
         }
     }
 
@@ -276,9 +352,15 @@ class AuctionViewModel(
     override fun onCleared() {
         loadJob?.cancel()
         streamJob?.cancel()
+        connectionJob?.cancel()
+        backOnlineJob?.cancel()
     }
 
     companion object {
+        const val CONNECTION_GRACE_MS = 1_000L
+        const val CONNECTION_LOST_AFTER_MS = 30_000L
+        const val BACK_ONLINE_MS = 1_500L
+
         /** Same backoff as the web viewer's `useAuctionStream` (2/4/8/15s, then 15s). */
         val STREAM_RECONNECT_DELAYS_MS: List<Long> = listOf(2_000L, 4_000L, 8_000L, 15_000L)
     }

@@ -35,6 +35,12 @@ data class AuctionStateDto(
     val lastResult: AuctionLastResultDto? = null,
     /** `false` while players wait but no franchise can bid (squads full / purses spent) -- the organizer's cue to end the auction or allow exceeding the purse. */
     val canAnyoneBid: Boolean = true,
+    /** Players still waiting to be drawn -- "Left in pool" on the dead-end card. */
+    val playersPending: Int = 0,
+    /** While [canAnyoneBid] is `false`: active franchises, and how many are stopped by a full squad / a purse below the base price. Zero otherwise. */
+    val franchisesTotal: Int = 0,
+    val squadsFull: Int = 0,
+    val purseBelowBase: Int = 0,
 )
 
 /** Mirrors the backend's `AuctionBidTickerResponse`. [placedAt] is an ISO-8601 instant. */

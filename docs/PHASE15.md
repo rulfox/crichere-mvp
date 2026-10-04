@@ -1,6 +1,6 @@
 # Phase 15 — Local end-to-end auction test (emulator + local backend)
 
-**Last updated:** 2026-10-04 (fix pass added, section 6)
+**Last updated:** 2026-10-04 (design update #4, section 7)
 **Status:** done. One full run: organizer on an Android emulator logs in, creates a league, sets auction
 settings, adds a co-organizer, runs a live auction to completion and marks the league completed, against a
 local backend and a fresh local Postgres. It found and fixed a real app bug (SSE cut after 15 s, section 4).
@@ -101,3 +101,31 @@ Follow-ups. Items that need a design decision were skipped on purpose (below).
 - Data-integrity group (uploads live before Save, stale refresh token 401, orphaned S3 uploads) and the design/content group were not part of this pass.
 
 **Not verified:** the amount transformation was seen on the emulator only (one device); iOS untouched (nothing compiles here).
+
+---
+
+## 7. Design update #4 (2026-10-04)
+
+Claude Design answered the skipped items with `Crichere Update 4.dc.html` (project "Crichere KMM Mobile App
+Design"). Values were taken from the rendered file's DOM (computed styles), not from screenshots.
+
+### 7.1 Live auction (A1-A6)
+
+| Item | Built |
+|---|---|
+| A1 over purse | Results card: line 2 "⚠ ₹250 over purse" in coral, coral border, Purse / Spent footer when expanded. Dock: "₹250 over purse" may wrap to 2 lines. `overPurseAmount()` never lets a negative number reach the screen. |
+| A2 nobody can bid | Backend `AuctionStateResponse` gains `franchisesTotal`, `squadsFull`, `purseBelowBase` (counted under the same rules as `placeBid`; zero unless `canAnyoneBid` is false). Organizer card: headline, body variant (all full / all purse / mixed), breakdown rows; End Auction filled coral; switch highlighted gold only when purses block. Owner / spectator: neutral "Bidding has closed"; the owner's dock shows their own reason (tile). Live dot holds still. Replaces the interim hint from section 6. |
+| A3 dock tiles | `AuctionState.dockMode`: squad full > leading > purse can't cover (base price between players). Tile replaces the Amount field at the same 54 dp; buttons inert. Outbid: "Outbid · ₹X" inside the field for 2 s + one haptic tick. |
+| A4 connection | Pill beside the status chip (no layout shift). `AuctionViewModel.connectionPhase`: 1 s grace, Reconnecting, Connection lost + Retry 30 s after the drop, Back online 1.5 s. Content at 50% and actions disabled while down. "updated Ns ago" counts from the last stream event (heartbeats included). |
+| A5 block card | Rebuilt to the stated geometry: explicit line heights, no font padding, fixed 40 dp bid row, name 22/26. Measured 225 dp on the emulator (was ~235). |
+| A6 Amount field | Idle / focused / error / disabled styles; digits only, max 9. |
+
+Decision: the whole "Connection lost" pill is the Retry target (the design asks for 48 dp via padding;
+padding would grow the 26 dp row).
+
+Tests: `AuctionServiceTest` (counts), `AuctionPresentationTest`, `AuctionViewModelTest` (dock mode, dead-end
+owner reason, pill timeline, Retry). `viewModelTest` now prints a failing body's real error: a coroutine
+still pending after a failure resumes after `resetMain()` and runTest reports only that DispatchException.
+`backend/e2e/act.mjs` drives single auction actions/bids for checking screens.
+
+Verified on the emulator and not verified: see DESIGN-REVIEW Follow-ups, "Live auction (L)".

@@ -6,6 +6,7 @@ import com.crichere.app.auth.AuthRepository
 import com.crichere.app.auth.AuthResult
 import com.crichere.app.auth.viewModelTest
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceTimeBy
@@ -142,6 +143,7 @@ class AuctionViewModelTest {
         assertFalse(viewModel.state.value.connectionLost)
         assertEquals(250.0, viewModel.state.value.auction?.currentBidAmount)
         assertEquals(2, attempts)
+        advanceUntilIdle() // let the "Back online" timer run out
     }
 
     @Test
@@ -168,6 +170,7 @@ class AuctionViewModelTest {
         runCurrent()
         assertFalse(viewModel.state.value.connectionLost)
         assertEquals(200.0, viewModel.state.value.auction?.currentBidAmount)
+        advanceUntilIdle() // let the "Back online" timer run out
     }
 
     @Test
@@ -503,6 +506,123 @@ class AuctionViewModelTest {
         advanceUntilIdle()
 
         assertEquals("No bids yet. Mark the player Unsold instead.", viewModel.state.value.actionError)
+    }
+
+    // ---------------------------------------------------------------- design update #4 (A2-A4)
+
+    private fun resultsFor(won: Int, left: Double) = AuctionResultsDto(
+        auctionStatus = AuctionStatus.IN_PROGRESS,
+        franchises = listOf(
+            FranchiseAuctionResultDto(
+                franchiseId = "f1",
+                franchiseName = "Chennai Kings",
+                playersWon = List(won) { PlayerAuctionResultDto(playerId = "p$it", userId = "u$it", soldPrice = 100.0) },
+                purseSpent = 75000.0 - left,
+                purseRemaining = left,
+            ),
+        ),
+    )
+
+    @Test
+    fun `dock mode - squad full beats leading beats purse short, otherwise the bid field`() = viewModelTest {
+        val leadingState = onTheBlock().copy(currentLeadingFranchiseId = "f1", currentLeadingFranchiseName = "Chennai Kings")
+
+        val (full, _) = ownerOnBlock(leadingState) { nextResults = resultsFor(won = 12, left = 100.0) }
+        assertEquals(DockMode.SquadFull(12, 12), full.state.value.dockMode)
+
+        val (leading, _) = ownerOnBlock(leadingState) { nextResults = resultsFor(won = 3, left = 100.0) }
+        assertEquals(DockMode.Leading(15000.0), leading.state.value.dockMode)
+
+        val (short, _) = ownerOnBlock { nextResults = resultsFor(won = 3, left = 15499.0) }
+        assertEquals(DockMode.PurseShort(15500.0), short.state.value.dockMode)
+
+        val (allowed, _) = ownerOnBlock(onTheBlock().copy(allowExceedPurse = true)) { nextResults = resultsFor(won = 3, left = 3000.0) }
+        assertEquals(DockMode.Bid, allowed.state.value.dockMode)
+
+        val (normal, _) = ownerOnBlock { nextResults = resultsFor(won = 3, left = 15500.0) }
+        assertEquals(DockMode.Bid, normal.state.value.dockMode)
+    }
+
+    @Test
+    fun `between players a dead end shows the owner's own reason against the base price`() = viewModelTest {
+        val deadEnd = AuctionStateDto(auctionStatus = AuctionStatus.IN_PROGRESS, canAnyoneBid = false, squadsFull = 0, purseBelowBase = 1, franchisesTotal = 1)
+        val (viewModel, _) = ownerOnBlock(deadEnd) { nextResults = resultsFor(won = 3, left = 900.0) }
+
+        assertTrue(viewModel.state.value.isDeadEnd)
+        assertEquals(DockMode.PurseShort(1000.0), viewModel.state.value.dockMode)
+    }
+
+    @Test
+    fun `connection pill - a blip shows nothing, then reconnecting after 1s, lost at 30s, back online for 1_5s`() = viewModelTest {
+        val live = auctionState(AuctionStatus.IN_PROGRESS, currentBidAmount = 100.0)
+        var attempts = 0
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = flow {
+                attempts++
+                when {
+                    attempts == 1 -> { emit(live); throw RuntimeException("blip") } // t=0
+                    attempts == 2 -> { emit(live); delay(100); throw RuntimeException("down") } // t=500, recovers, drops at 600
+                    testScheduler.currentTime < 32_000 -> throw RuntimeException("still down") // every 500 ms
+                    else -> { emit(live); awaitCancellation() }
+                }
+            }
+        }
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), auctionRepository, StubAuthRepository("organizer-1"), listOf(500L))
+
+        viewModel.retry()
+        runCurrent()
+        assertTrue(viewModel.state.value.connectionLost)
+        assertEquals(ConnectionPhase.ONLINE, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(550) // t=550: the blip recovered at 500 -- nothing was shown
+        runCurrent()
+        assertFalse(viewModel.state.value.connectionLost)
+        assertEquals(ConnectionPhase.ONLINE, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(1_000) // t=1550: down since 600, still inside the grace second
+        runCurrent()
+        assertEquals(ConnectionPhase.ONLINE, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(100) // t=1650
+        runCurrent()
+        assertEquals(ConnectionPhase.RECONNECTING, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(28_900) // t=30550
+        runCurrent()
+        assertEquals(ConnectionPhase.RECONNECTING, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(100) // t=30650: 30 s after the drop
+        runCurrent()
+        assertEquals(ConnectionPhase.LOST, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(1_500) // t=32150: the feed is back
+        runCurrent()
+        assertEquals(ConnectionPhase.BACK_ONLINE, viewModel.state.value.connectionPhase)
+
+        advanceTimeBy(1_501)
+        runCurrent()
+        assertEquals(ConnectionPhase.ONLINE, viewModel.state.value.connectionPhase)
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun `retry on the lost pill goes straight to reconnecting`() = viewModelTest {
+        val auctionRepository = FakeAuctionRepository().apply {
+            stream = flow {
+                emit(auctionState(AuctionStatus.IN_PROGRESS, currentBidAmount = 100.0))
+                throw RuntimeException("down")
+            }
+        }
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(sampleLeague())), auctionRepository, StubAuthRepository("organizer-1"))
+
+        viewModel.retry()
+        advanceTimeBy(31_000)
+        runCurrent()
+        assertEquals(ConnectionPhase.LOST, viewModel.state.value.connectionPhase)
+
+        viewModel.retry()
+        assertEquals(ConnectionPhase.RECONNECTING, viewModel.state.value.connectionPhase)
+        advanceUntilIdle()
     }
 
     @Test

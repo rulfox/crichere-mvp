@@ -412,6 +412,7 @@ class AuctionService(
                 }
         } ?: emptyList()
         val playersPending = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.PENDING).toInt()
+        val blockers = biddingBlockers(playersPending)
         return AuctionStateResponse(
             auctionStatus = auctionStatus,
             currentPlayerId = auctionCurrentPlayerId,
@@ -430,27 +431,47 @@ class AuctionService(
             currentPlayerBowlingStyle = currentProfile?.bowlingStyle,
             currentLotNumber = auctionLotCounter.takeIf { it > 0 },
             playersPending = playersPending,
-            canAnyoneBid = canAnyoneBid(playersPending),
+            canAnyoneBid = blockers.canAnyoneBid,
+            franchisesTotal = blockers.franchisesTotal,
+            squadsFull = blockers.squadsFull,
+            purseBelowBase = blockers.purseBelowBase,
         )
     }
 
     /**
-     * `false` only when the auction is running, players are still waiting, and no active franchise could
-     * place even an opening bid -- every squad is full, or (with exceeding the purse off) every purse is
-     * below the base price. Lets the organizer see why nothing sells instead of looping Next Player /
-     * Unsold. Players already won are read the same way [placeBid] reads them, so the two cannot disagree.
+     * Whether anyone can bid, and why not. `canAnyoneBid` is `false` only when the auction is running,
+     * players are still waiting, and no active franchise could place even an opening bid -- every squad is
+     * full, or (with exceeding the purse off) every purse is below the base price. The counts split the
+     * stopped franchises (squad full first, then purse) so the organizer's dead-end card can say which
+     * switch helps (design update #4, A2). Players already won are read the same way [placeBid] reads
+     * them, so the two cannot disagree. Counts stay zero unless nobody can bid.
      */
-    private fun LeagueEntity.canAnyoneBid(playersPending: Int): Boolean {
-        if (auctionStatus != AuctionStatus.IN_PROGRESS || playersPending == 0) return true
-        val squadMax = auctionSquadMax ?: return true
-        val basePrice = auctionBasePrice ?: return true
-        val purse = auctionPurse ?: return true
-        return franchiseRepository.findByLeagueIdAndRemovedAtIsNull(requireNotNull(id)).any { franchise ->
+    private fun LeagueEntity.biddingBlockers(playersPending: Int): BiddingBlockers {
+        if (auctionStatus != AuctionStatus.IN_PROGRESS || playersPending == 0) return BiddingBlockers()
+        val squadMax = auctionSquadMax ?: return BiddingBlockers()
+        val basePrice = auctionBasePrice ?: return BiddingBlockers()
+        val purse = auctionPurse ?: return BiddingBlockers()
+        val franchises = franchiseRepository.findByLeagueIdAndRemovedAtIsNull(requireNotNull(id))
+        var squadsFull = 0
+        var purseBelowBase = 0
+        for (franchise in franchises) {
             val won = playerRepository.findBySoldToFranchiseId(requireNotNull(franchise.id))
             val spent = won.sumOf { it.soldPrice ?: BigDecimal.ZERO }
-            won.size < squadMax && (auctionAllowExceedPurse || spent + basePrice <= purse)
+            when {
+                won.size >= squadMax -> squadsFull++
+                !auctionAllowExceedPurse && spent + basePrice > purse -> purseBelowBase++
+                else -> return BiddingBlockers()
+            }
         }
+        return BiddingBlockers(canAnyoneBid = false, franchisesTotal = franchises.size, squadsFull = squadsFull, purseBelowBase = purseBelowBase)
     }
+
+    private data class BiddingBlockers(
+        val canAnyoneBid: Boolean = true,
+        val franchisesTotal: Int = 0,
+        val squadsFull: Int = 0,
+        val purseBelowBase: Int = 0,
+    )
 
     /** The player the organizer just sold or sent back unsold -- only while that's still the last action (undo/next player clear it). */
     private fun LeagueEntity.lastResult(): AuctionLastResultResponse? {

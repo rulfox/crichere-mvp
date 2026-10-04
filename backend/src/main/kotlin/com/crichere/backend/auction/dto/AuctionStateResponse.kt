@@ -42,6 +42,10 @@ data class AuctionStateResponse(
     val playersPending: Int = 0,
     /** `false` when the auction is running with players waiting but no franchise can bid (squads full / purses spent) -- the organizer's cue to end the auction or allow exceeding the purse. */
     val canAnyoneBid: Boolean = true,
+    /** While [canAnyoneBid] is `false`: active franchises, and how many are stopped by a full squad / by a purse below the base price (exceeding off). Zero otherwise. */
+    val franchisesTotal: Int = 0,
+    val squadsFull: Int = 0,
+    val purseBelowBase: Int = 0,
 )
 
 /** See [AuctionStateResponse.lastResult]. [franchiseName]/[amount] are `null` when [sold] is false. */

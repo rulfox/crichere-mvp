@@ -366,18 +366,25 @@ class AuctionServiceTest {
     fun `canAnyoneBid is false when players wait but every squad is full`() {
         val state = stateWithPending(1, league(squadMax = 1), listOf(wonFor("100")))
         assertEquals(false, state.canAnyoneBid)
+        assertEquals(1, state.franchisesTotal)
+        assertEquals(1, state.squadsFull)
+        assertEquals(0, state.purseBelowBase)
     }
 
     @Test
     fun `canAnyoneBid is false when every purse is below the base price and exceeding is off`() {
         val state = stateWithPending(1, league(purse = BigDecimal("150")), listOf(wonFor("100")))
         assertEquals(false, state.canAnyoneBid)
+        assertEquals(1, state.franchisesTotal)
+        assertEquals(0, state.squadsFull)
+        assertEquals(1, state.purseBelowBase)
     }
 
     @Test
     fun `canAnyoneBid is true when exceeding the purse is allowed, or room remains, or nobody is waiting`() {
         assertEquals(true, stateWithPending(1, league(purse = BigDecimal("150"), allowExceedPurse = true), listOf(wonFor("100"))).canAnyoneBid)
         assertEquals(true, stateWithPending(1, league(), listOf(wonFor("100"))).canAnyoneBid)
+        assertEquals(0, stateWithPending(1, league(), listOf(wonFor("100"))).franchisesTotal)
         assertEquals(true, stateWithPending(0, league(squadMax = 1), listOf(wonFor("100"))).canAnyoneBid)
     }
 

@@ -23,6 +23,11 @@ fun viewModelTest(testBody: suspend TestScope.() -> Unit): TestResult = runTest 
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
         testBody()
+    } catch (failure: Throwable) {
+        // A ViewModel coroutine still pending when the body fails resumes after resetMain() and runTest
+        // then reports that DispatchException instead -- print the real failure so the report shows it.
+        println("viewModelTest body failed: $failure")
+        throw failure
     } finally {
         Dispatchers.resetMain()
     }
