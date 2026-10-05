@@ -46,16 +46,10 @@
     -->
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Crichere uses your location to show leagues and grounds near you.</string>
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <!--
-            Toolchain-proof-only exception: the local dev backend serves plain
-            http://localhost:8080, not https. NSAllowsLocalNetworking scopes this to
-            localhost/.local/IP-literal hosts only (not a blanket NSAllowsArbitraryLoads), and
-            should be revisited once the app talks to a deployed (TLS) backend in a later task.
-        -->
-        <key>NSAllowsLocalNetworking</key>
-        <true/>
-    </dict>
+    <!--
+        No NSAppTransportSecurity exception: the app only talks to https://api.crichere.com, so
+        default ATS (TLS everywhere) applies. The old NSAllowsLocalNetworking exception for a local
+        http backend was removed (docs/SECURITY-AUDIT.md, mobile).
+    -->
 </dict>
 </plist>

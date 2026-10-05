@@ -27,9 +27,9 @@ Swift file and the final framework link/run -- both need Xcode's Apple SDKs.
    here).
 5. Add a real `GoogleService-Info.plist` to the project (see "Firebase Phone Auth" below -- still
    missing, still external, still not something this environment can produce).
-6. Build and run on an iOS Simulator. The backend must be reachable at `http://localhost:8080`
-   from the simulator (see `ApiConfig.ios.kt` -- the simulator shares the host Mac's network
-   namespace directly, unlike Android's `10.0.2.2` alias).
+6. Build and run on an iOS Simulator. The app talks to the production backend
+   (`https://api.crichere.com`, `ApiConfig.kt`). Plain-http local backends are blocked by App
+   Transport Security; there is no exception in `Info.plist` (docs/SECURITY-AUDIT.md, mobile).
 
 Re-run `xcodegen generate` (step 3) any time `project.yml` or the set of Swift files under
 `iosApp/iosApp/` changes.
