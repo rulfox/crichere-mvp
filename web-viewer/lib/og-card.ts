@@ -4,7 +4,32 @@
  * be unit-tested without rendering an image.
  */
 
-const MONOGRAM_SKIP = new Set(["the", "cricket", "league", "premier", "club", "cc"]);
+/** Where league logos are uploaded (PHASE14). The share card fetches from nowhere else. */
+const DEFAULT_LOGO_ORIGINS = ["https://crichere-media-prod.s3.ap-south-1.amazonaws.com"];
+
+/**
+ * Origins the share card may fetch a logo from: `SHARE_CARD_LOGO_ORIGINS` (comma-separated, for
+ * tests and other environments) or the production media bucket.
+ */
+export function logoOrigins(configured: string | undefined = process.env.SHARE_CARD_LOGO_ORIGINS): string[] {
+  const list = (configured ?? "").split(",").map((origin) => origin.trim()).filter(Boolean);
+  return list.length > 0 ? list : DEFAULT_LOGO_ORIGINS;
+}
+
+/**
+ * The card fetches the logo from this server, inside Railway's private network, and the URL comes
+ * from the organizer. So only an exact allowed origin is fetched: never an internal host, another
+ * scheme, or a look-alike (docs/SECURITY-AUDIT.md, below the bar).
+ */
+export function isFetchableLogoUrl(url: string, origins: string[]): boolean {
+  try {
+    return origins.includes(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
+
+const MONOGRAM_SKIP =new Set(["the", "cricket", "league", "premier", "club", "cc"]);
 
 /** Initials of the first two words, skipping filler words; one letter if only one word is left. */
 export function monogram(name: string): string {

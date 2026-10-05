@@ -23,13 +23,11 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.Crichere"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
         <!--
-            Cleartext (plain HTTP) traffic is required for this toolchain-proof task: the local
-            dev backend serves plain http://10.0.2.2:8080, not https. Task 6+ should revisit this
-            once the app talks to a deployed (TLS) backend. This flag has no bearing on that
-            future change, since it only affects local development builds against the local
-            backend.
+            Plain HTTP only for `-Penv=local` builds, whose backend is http://10.0.2.2:8080
+            (androidApp/build.gradle.kts sets the placeholder). Every other build, release
+            included, refuses cleartext (docs/SECURITY-AUDIT.md, mobile).
         -->
         <activity
             android:name=".MainActivity"

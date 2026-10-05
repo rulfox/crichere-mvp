@@ -105,9 +105,50 @@ an active franchise.
 - **Locally against the backend:** the removed owner's bid is refused with 404 and no bid row is
   stored, and an active franchise still bids normally (200).
 
-## Below the bar
+## Finding 3: the share card could be pointed at internal addresses (Low), fixed
 
-- **Share-card fetch:** `LeagueSaveRequest.logoUrl` and `bannerUrl` have no validation, and the web
-  viewer fetches `logoUrl` from its own server inside Railway's private network. The request is
-  mostly blind, because only image responses are used. Hardening option: require `https://` on our
-  bucket host.
+**Problem:** `LeagueSaveRequest.logoUrl` and `bannerUrl` had no validation, and the web viewer
+fetches `logoUrl` from its own server, inside Railway's private network, and followed redirects. An
+organizer could point the share card at an internal address. The request was mostly blind, because
+only image responses were used.
+
+**Fix:**
+- **Web viewer (done, 2026-10-05):**
+  - The share card only fetches a logo whose exact origin is allowed. That's the production media
+    bucket, or `SHARE_CARD_LOGO_ORIGINS` (comma-separated), which the Playwright e2e sets to its
+    mock server.
+  - Redirects are refused.
+  - Anything else renders the monogram.
+  - **Tests:** 12 new unit cases (internal host, http, look-alike host, userinfo, other port,
+    metadata IP, `file:`). All 74 web unit tests and all 10 share-card e2e tests pass, and the
+    typecheck is clean.
+- **Backend (written, not yet tested):**
+  - `logoUrl`, `bannerUrl` and the profile `photoUrl` must be `https://`, the same rule the payment
+    and franchise-logo fields already had.
+  - Two integration tests were added. They haven't run yet, because Docker Desktop was down, so
+    this change isn't committed.
+
+## Mobile audit (2026-10-05)
+
+**Reviewed and sound:**
+- **Tokens:** Android stores them in DataStore, encrypted with Tink AEAD under an Android Keystore
+  key, and the file is excluded from backup and device transfer. iOS uses the Keychain.
+- **Logging:** Ktor logs at `INFO` (request line and status only; no headers or bodies).
+- **Builds:** a release build can't use the local backend URL, because the build refuses that
+  combination.
+- **Deep links:** they're limited to `crichere://leagues/` and verified App Links on `crichere.com`.
+- **Screenshot viewer:** it only opens `https://` URLs.
+- **Repo:** no keys or signing files are committed.
+
+**Hardening, fixed:**
+- **Cleartext HTTP:** Android allowed it in every build, release included. It's now on only for
+  `-Penv=local` builds, through a manifest placeholder. The merged manifest was checked for both
+  the default and the local build.
+- **Deep-link ids:** a link id was used as-is in an authenticated API path. A link such as
+  `crichere://leagues/..%2Fauth%2F...` decodes to `../auth/...`. The impact was low, because the
+  host is fixed and every GET in the API only reads. Both apps now accept only a UUID. There are 5
+  Android unit tests; the iOS change is unverified until the first Xcode build.
+
+**Left as is:**
+- **iOS local networking:** `NSAllowsLocalNetworking` permits plain HTTP only to local-network
+  hosts. Remove it before the App Store build if local testing on iOS isn't needed.

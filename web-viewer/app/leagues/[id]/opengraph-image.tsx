@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { fetchLeague, fetchLiveNow, type League } from "@/lib/api";
 import { LruCache } from "@/lib/lru-cache";
-import { cardStatus, locationLine, monogram, nameFontSize, type CardStatus } from "@/lib/og-card";
+import { cardStatus, isFetchableLogoUrl, locationLine, logoOrigins, monogram, nameFontSize, type CardStatus } from "@/lib/og-card";
 
 /**
  * Per-league share card (docs/PHASE13.md), a faithful transcription of the Claude Design file
@@ -41,9 +41,10 @@ const renderedCards = new LruCache<ArrayBuffer>(100, 60 * 60 * 1000);
 
 /** The league's logo as a data URI, or `null` (-> monogram) when it's missing, slow, too big or not a raster image. */
 async function loadLogo(url: string | null): Promise<string | null> {
-  if (!url) return null;
+  if (!url || !isFetchableLogoUrl(url, logoOrigins())) return null;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(3000), cache: "no-store" });
+    // No redirects: an allowed origin must not be able to bounce the fetch somewhere else.
+    const response = await fetch(url, { signal: AbortSignal.timeout(3000), cache: "no-store", redirect: "error" });
     const type = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
     if (!response.ok || !LOGO_TYPES.has(type)) return null;
     const bytes = Buffer.from(await response.arrayBuffer());

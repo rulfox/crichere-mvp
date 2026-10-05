@@ -66,6 +66,7 @@ android {
         versionCode = 1
         versionName = "0.1.0-toolchain-proof"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        manifestPlaceholders["usesCleartextTraffic"] = (appEnv == "local").toString()
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
         buildConfigField("String", "PLACE_SEARCH_PROVIDER", "\"$placeSearchProvider\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"${backendEnvironments.getValue(appEnv)}\"")

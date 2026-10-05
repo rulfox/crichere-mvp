@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { cardStatus, formatAuctionDate, locationLine, monogram, nameFontSize } from "./og-card";
+import { cardStatus, formatAuctionDate, isFetchableLogoUrl, locationLine, logoOrigins, monogram, nameFontSize } from "./og-card";
+
+describe("logo fetch allowlist", () => {
+  const bucket = "https://crichere-media-prod.s3.ap-south-1.amazonaws.com";
+  const origins = logoOrigins(undefined);
+
+  it("defaults to the production media bucket", () => {
+    expect(origins).toEqual([bucket]);
+  });
+
+  it("reads a comma-separated override", () => {
+    expect(logoOrigins(" http://localhost:4310 , https://cdn.example ")).toEqual(["http://localhost:4310", "https://cdn.example"]);
+  });
+
+  it("allows a logo in the media bucket", () => {
+    expect(isFetchableLogoUrl(`${bucket}/leagues/abc/logo.jpg?v=1`, origins)).toBe(true);
+  });
+
+  it.each([
+    ["an internal Railway host", "http://backend.railway.internal:8080/api/v1/leagues"],
+    ["the bucket over plain http", "http://crichere-media-prod.s3.ap-south-1.amazonaws.com/leagues/abc/logo.jpg"],
+    ["a look-alike host", "https://crichere-media-prod.s3.ap-south-1.amazonaws.com.evil.test/logo.jpg"],
+    ["userinfo pointing elsewhere", "https://crichere-media-prod.s3.ap-south-1.amazonaws.com@evil.test/logo.jpg"],
+    ["the bucket on another port", "https://crichere-media-prod.s3.ap-south-1.amazonaws.com:8443/logo.jpg"],
+    ["a link-local metadata address", "http://169.254.169.254/latest/meta-data/"],
+    ["a file URL", "file:///etc/passwd"],
+    ["not a URL", "logo.jpg"],
+  ])("refuses %s", (_, url) => {
+    expect(isFetchableLogoUrl(url, origins)).toBe(false);
+  });
+});
 
 describe("monogram", () => {
   it("takes the first letters of the first two words", () => {

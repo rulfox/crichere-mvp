@@ -38,7 +38,10 @@ struct IosAppApp: App {
                     // -- same category of "resume into the league once Main is reached" behavior
                     // AuthNavHost.kt's own doc describes, not a full nav-stack re-entry.
                     guard url.scheme == "crichere", url.host == "leagues" else { return }
-                    pendingDeepLinkLeagueId = url.pathComponents.dropFirst().first
+                    // Only a UUID: the id goes into an authenticated API path, and any app or page
+                    // can open this URL (docs/SECURITY-AUDIT.md, mobile).
+                    guard let id = url.pathComponents.dropFirst().first, UUID(uuidString: id) != nil else { return }
+                    pendingDeepLinkLeagueId = id
                 }
         }
     }

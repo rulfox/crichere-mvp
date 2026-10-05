@@ -27,7 +27,12 @@ export default defineConfig({
       command: "npx next dev",
       port: 3000,
       reuseExistingServer: !process.env.CI,
-      env: { NEXT_PUBLIC_API_BASE_URL: "http://localhost:4310", NEXT_PUBLIC_SITE_URL: "http://localhost:3000" },
+      env: {
+        NEXT_PUBLIC_API_BASE_URL: "http://localhost:4310",
+        NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
+        // The mock server hosts the fixture logos; production fetches only from the media bucket.
+        SHARE_CARD_LOGO_ORIGINS: "http://localhost:4310",
+      },
     },
   ],
 });
