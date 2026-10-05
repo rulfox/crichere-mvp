@@ -170,6 +170,12 @@ only image responses were used.
   host is fixed and every GET in the API only reads. Both apps now accept only a UUID. There are 5
   Android unit tests; the iOS change is unverified until the first Xcode build.
 
-**Left as is:**
-- **iOS local networking:** `NSAllowsLocalNetworking` permits plain HTTP only to local-network
-  hosts. Remove it before the App Store build if local testing on iOS isn't needed.
+**Also fixed (2026-10-05):**
+- **iOS local networking:** the `NSAllowsLocalNetworking` exception, which allowed plain HTTP to
+  local-network hosts, was removed. The iOS app only ever calls `https://api.crichere.com` (there is
+  no iOS base-URL override), so default ATS now applies everywhere. The iOS README no longer points
+  at a local http backend.
+- **Invalid `Info.plist`:** the file was not valid XML before this change, because three comments
+  contained `--`, which strict plist parsers reject. Those were fixed, and the file now parses
+  (Python `plistlib`).
+- Both are unverified until the first Xcode build, like the rest of the Swift code.

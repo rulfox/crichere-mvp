@@ -24,9 +24,9 @@
     </array>
     <!--
         Phase 3 deep link (see docs/PHASE3.md's Decisions Made): crichere://leagues/{id}. Custom
-        URI scheme, same as Android's manifest intent-filter -- no real domain exists yet for a
+        URI scheme, same as Android's manifest intent-filter: no real domain exists yet for a
         Universal Link. Handled by iosAppApp.swift's onOpenURL, a real resume target since Phase 9
-        (see docs/PHASE9.md) -- AppRootView/MainTabView.
+        (see docs/PHASE9.md): AppRootView/MainTabView.
     -->
     <key>CFBundleURLTypes</key>
     <array>
@@ -40,7 +40,7 @@
     <!--
         Phase 9 (docs/PHASE9.md): League Dashboard's "near me" toggle and Profile Setup's "use my
         location" button both need this before CLLocationManager.requestWhenInUseAuthorization()
-        can prompt at all (see LocationPermission.swift) -- required by iOS regardless of
+        can prompt at all (see LocationPermission.swift): required by iOS regardless of
         DeviceLocationProvider.ios.kt's own behavior (it deliberately only reads *existing*
         authorization, never prompts, per that file's doc).
     -->
