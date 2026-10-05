@@ -115,6 +115,19 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `a non-https logo or banner URL is rejected -- the web viewer fetches the logo server-side`() {
+        for (field in listOf("logoUrl", "bannerUrl")) {
+            for (url in listOf("http://backend.railway.internal:8080/api/v1/leagues", "file:///etc/passwd", "ftp://example.com/x.png")) {
+                authedPost(organizerToken, "/api/v1/leagues", validLeagueBody() + (field to url))
+                    .andExpect(status().isBadRequest)
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+            }
+        }
+        authedPost(organizerToken, "/api/v1/leagues", validLeagueBody() + ("logoUrl" to "https://example.com/logo.png"))
+            .andExpect(status().isOk)
+    }
+
+    @Test
     fun `a league's response includes its ground's name, not just the raw id`() {
         val ground = authedPost(
             organizerToken,

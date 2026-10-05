@@ -11,7 +11,7 @@ were answered by update #5 (PHASE15 8).
 | Item | Why it matters | Where |
 |---|---|---|
 | Privacy and Terms text | Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
-| Old bucket `crichere-media-dev` still serves a payment screenshot publicly | Prod bucket fixed 2026-10-05. Delete the old bucket (or that object) — kept only until the owner approves. | SECURITY-AUDIT 1 |
+| Old bucket `crichere-media-dev` still serves a payment screenshot publicly | Prod bucket fixed 2026-10-05. Owner approved deleting it (2026-10-05); `crichere-claude` lacks delete rights, so delete it in the S3 console (empty, then delete). Also remove the temporary `crichere-media-move-temp` IAM policy. | SECURITY-AUDIT 1 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 
 ## 2. Decided (2026-10-04)

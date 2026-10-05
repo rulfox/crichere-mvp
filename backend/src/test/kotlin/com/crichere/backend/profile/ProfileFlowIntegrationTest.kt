@@ -156,6 +156,13 @@ class ProfileFlowIntegrationTest : AbstractWebIntegrationTest {
     // ---------------------------------------------------------------- role/bowling-style validation
 
     @Test
+    fun `a non-https photo URL is rejected`() {
+        authedPut("/api/v1/profiles/me", mapOf("photoUrl" to "http://example.com/me.jpg"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+    }
+
+    @Test
     fun `bowling style supplied for a batsman is rejected with a problem detail`() {
         authedPut(
             "/api/v1/profiles/me",

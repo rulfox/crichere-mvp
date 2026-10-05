@@ -3,6 +3,7 @@ package com.crichere.backend.profile.dto
 import com.crichere.backend.profile.BattingStyle
 import com.crichere.backend.profile.BowlingStyle
 import com.crichere.backend.profile.PlayingRole
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
 /**
@@ -32,6 +33,7 @@ data class ProfileUpdateRequest(
     // A signed S3 object URL is comfortably under this; the ceiling exists only to reject an
     // absurdly oversized value before it is persisted.
     @field:Size(min = 1, max = 2048, message = "photoUrl must be between 1 and 2048 characters")
+    @field:Pattern(regexp = "^https://.*", message = "photoUrl must be an https URL")
     val photoUrl: String? = null,
 
     @field:Size(min = 1, max = 100, message = "state must be between 1 and 100 characters")

@@ -88,6 +88,10 @@ Checked right after applying it:
 
 **Still open:**
 - The old `crichere-media-dev` bucket still serves its copy of the same screenshot publicly (200).
+  - It was checked against the new bucket before deletion: every object is there, and the one
+    profile photo that differs is newer in `-prod`.
+  - Deleting it (and, as a fallback, removing its policy) failed: `crichere-claude` has no
+    `s3:DeleteObject` or `s3:DeleteBucketPolicy` permission. The owner must delete it in the console.
 - The production backend's own signed link hasn't been opened yet. That needs an organizer login on
   a league with a paid join. The local test signed with another IAM user in the same account, which
   the same policy treats identically.
@@ -140,11 +144,10 @@ only image responses were used.
   - **Tests:** 12 new unit cases (internal host, http, look-alike host, userinfo, other port,
     metadata IP, `file:`). All 74 web unit tests and all 10 share-card e2e tests pass, and the
     typecheck is clean.
-- **Backend (written, not yet tested):**
+- **Backend (done, 2026-10-05):**
   - `logoUrl`, `bannerUrl` and the profile `photoUrl` must be `https://`, the same rule the payment
     and franchise-logo fields already had.
-  - Two integration tests were added. They haven't run yet, because Docker Desktop was down, so
-    this change isn't committed.
+  - Two new integration tests cover it. All 506 backend tests pass.
 
 ## Mobile audit (2026-10-05)
 

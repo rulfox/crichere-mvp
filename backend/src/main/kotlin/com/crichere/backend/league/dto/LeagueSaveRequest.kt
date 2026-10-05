@@ -4,6 +4,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
 import java.math.BigDecimal
@@ -27,7 +28,15 @@ data class LeagueSaveRequest(
     @field:Size(max = 4000, message = "description must be at most 4000 characters")
     val description: String? = null,
 
+    // https only, like every other stored image URL: the web viewer fetches logoUrl server-side for
+    // the share card, so an http:// or internal address here would be a request into our own
+    // network (docs/SECURITY-AUDIT.md, below the bar).
+    @field:Size(max = 2048, message = "logoUrl must be at most 2048 characters")
+    @field:Pattern(regexp = "^https://.*", message = "logoUrl must be an https URL")
     val logoUrl: String? = null,
+
+    @field:Size(max = 2048, message = "bannerUrl must be at most 2048 characters")
+    @field:Pattern(regexp = "^https://.*", message = "bannerUrl must be an https URL")
     val bannerUrl: String? = null,
 
     @field:NotBlank(message = "state is required")
