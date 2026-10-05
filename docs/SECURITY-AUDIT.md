@@ -74,7 +74,25 @@ bucket. 10 of 10 checks passed:
 - **The link itself:** it opens the real object (200 `image/jpeg`, 62,933 bytes), and S3 rejects a
   tampered signature with 403.
 
-**Not verified yet:** the signed link once the prefix is private. Locally it was signed with the
+**Bucket policy applied (2026-10-05, by the owner's command):** a `Deny` on `s3:GetObject` for
+`leagues/*/payments/*` unless `aws:PrincipalAccount` is our account. The existing public-read
+statement is unchanged.
+- No IAM change was needed: the backend's signed links come from our own account, and the
+  public-read `Allow` already covers them.
+- The previous policy is backed up in the session scratchpad.
+
+Checked right after applying it:
+- the plain screenshot URL returns 403 to an anonymous caller;
+- a signed URL from our account returns 200 `image/jpeg` (62,933 bytes);
+- a league banner and a profile photo still return 200 anonymously.
+
+**Still open:**
+- The old `crichere-media-dev` bucket still serves its copy of the same screenshot publicly (200).
+- The production backend's own signed link hasn't been opened yet. That needs an organizer login on
+  a league with a paid join. The local test signed with another IAM user in the same account, which
+  the same policy treats identically.
+
+**Previously unverified:** the signed link once the prefix is private. Locally it was signed with the
 `crichere-claude` IAM user while the bucket was still public. Check this in step 3 above.
 
 **Known limits:**

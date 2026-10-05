@@ -11,7 +11,7 @@ were answered by update #5 (PHASE15 8).
 | Item | Why it matters | Where |
 |---|---|---|
 | Privacy and Terms text | Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
-| Make payment screenshots private in S3 | Backend now serves them only as 1-hour signed links; the bucket must stop serving `leagues/*/payments/*` publicly (IAM GetObject first, then bucket policy). Until then they stay downloadable. | SECURITY-AUDIT 1 |
+| Old bucket `crichere-media-dev` still serves a payment screenshot publicly | Prod bucket fixed 2026-10-05. Delete the old bucket (or that object) — kept only until the owner approves. | SECURITY-AUDIT 1 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 
 ## 2. Decided (2026-10-04)
