@@ -1,6 +1,6 @@
 # Open items
 
-**Last updated:** 2026-10-04 (design update #5 built on Android, web and iOS)
+**Last updated:** 2026-10-06 (location data refreshed from LGD)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
@@ -45,6 +45,9 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 - **Older gaps:** share-card live checks, 10-digit phone input on device, MSG91 against the real service, C1 new-user
   profile, G/H/I scenarios on device, auction settings J5 failure live, co-organizer flows on the real backend, My
   leagues empty/error, My profile photo change, Navigation 3 on device. See DESIGN-REVIEW Follow-ups.
+- **Location data (LGD, V20):** backend tests + local DB/API checked only. Not seen in the app: long pickers
+  (UP has 75 districts, Kanniyakumari 56 cities; pickers have no search), GPS auto-fill matching against the new
+  names (geocoder spellings vs LGD), the remapped rows on the Railway DB after deploy.
 
 ## 5. Future scope (not scheduled)
 
@@ -52,3 +55,27 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 - Scripted assertions for the local e2e harness (`backend/e2e`), so it becomes a regression suite.
 - Places API (New) search for the ground map.
 - iOS Universal Links.
+
+## 6. Location data (LGD) — decided 2026-10-06
+
+States, districts and cities come from the Local Government Directory (lgdirectory.gov.in, Govt of India), pulled
+2026-10-06 via its public `lgdws` web services; migration `V20__refresh_locations_from_lgd.sql`, tooling and rerun
+steps in `backend/tools/lgd/`. Owner decisions: source = LGD (national), not Kerala LSG; city = ULB with
+sub-district fill; old rows remapped where the rename is known.
+
+- **States:** our 36 V4 codes and names kept (stored rows hold the name; ours already match LGD). `lgd_code` added.
+- **Districts:** all 784 LGD districts (was ~95). LGD's Odia transliterations replaced by English names (Kataka →
+  Cuttack, Sundaragada → Sundargarh, …); `Ntr` → NTR, `Leh Ladakh` → Leh.
+- **Cities (5,280):** urban local bodies mapped to the district *or one of its sub-districts* (district-level
+  mapping alone misses e.g. Guntur, Vijayawada), names stripped of type suffixes. Districts with no ULB get their
+  sub-districts. Karnataka = ULBs + taluks (LGD maps few Karnataka ULBs: Kolar, Mandya, Udupi had no own town).
+  Delhi = sub-districts (LGD still has the three pre-2022 corporations). A district missing its HQ town gets the
+  same-named sub-district. Manual: Noida, Greater Noida, Amaravati, Vasco da Gama, Bokaro Steel City; Bengaluru's 5
+  GBA corporations → Bengaluru; Hubballi-Dharwad → Hubballi + Dharwad. `cities.source` records ULB / SUBDISTRICT /
+  MANUAL.
+- **Remap:** profiles/leagues/grounds store text, so the V20 UPDATEs move every V4/V5-seeded pair that no longer
+  exists (e.g. Warangal Urban → Hanumakonda, Krishna/Vijayawada → NTR/Vijayawada, Mumbai City → Mumbai). Free text
+  outside the old seed is left as-is.
+- **Known limits:** LGD spellings kept elsewhere (Cuddapah, Port Blair not Sri Vijaya Puram); some sub-district
+  fills are admin names (Arunachal circles). A refresh is a new migration; `REMAP` must be rebuilt then.
+

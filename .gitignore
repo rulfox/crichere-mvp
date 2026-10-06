@@ -42,3 +42,6 @@ GoogleService-Info.plist
 # OS
 .DS_Store
 Thumbs.db
+
+# LGD pull outputs (regenerable, see backend/tools/lgd/README.md)
+backend/tools/lgd/*.json
