@@ -247,7 +247,7 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
         val name = league.name.trim()
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "Join $name on Crichere · ${league.city.trim()} · watch the player auction live\n$link")
+            putExtra(Intent.EXTRA_TEXT, "Join $name on Crichere · ${league.district.trim()} · watch the player auction live\n$link")
             putExtra(Intent.EXTRA_SUBJECT, name)
             putExtra(Intent.EXTRA_TITLE, name)
         }
@@ -693,11 +693,10 @@ private fun CompactHeader(title: String?, onBack: () -> Unit) {
 private fun LeagueFacts(league: LeagueDto) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val style = body(12.5.sp, lineHeight = 16.875.sp)
-    Text(
-        "${league.city}, ${league.district}, ${league.state}" + (league.groundName?.let { " · Ground: $it" } ?: ""),
-        style = style,
-        color = muted,
-    )
+    // E1/E5 (design update #6): the ground on one line, "District, State" under it.
+    Text(league.groundName, style = style, color = muted)
+    Spacer(Modifier.height(4.dp))
+    Text("${league.district}, ${league.state}", style = style, color = muted)
     Spacer(Modifier.height(4.dp))
     Text(
         buildAnnotatedString {

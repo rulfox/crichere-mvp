@@ -56,7 +56,7 @@ class PlayerServiceTest {
         name = "Test League",
         state = "Karnataka",
         district = "Bengaluru Urban",
-        city = "Bengaluru",
+        groundId = UUID.randomUUID(),
         startsOn = LocalDate.of(2026, 10, 12),
         playersRequired = playersRequired,
         playerFee = playerFee,

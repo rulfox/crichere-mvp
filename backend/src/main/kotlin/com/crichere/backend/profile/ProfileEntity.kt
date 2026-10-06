@@ -46,9 +46,6 @@ class ProfileEntity(
     @Column(name = "district")
     var district: String? = null,
 
-    @Column(name = "city")
-    var city: String? = null,
-
     @Enumerated(EnumType.STRING)
     @Column(name = "playing_role")
     var playingRole: PlayingRole? = null,

@@ -5,7 +5,6 @@ package com.crichere.app.league
 import com.crichere.app.auth.viewModelTest
 import com.crichere.app.location.FakeLocationProvider
 import com.crichere.app.location.GeoPoint
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.FakeReferenceRepository
 import com.crichere.app.reference.StateDto
@@ -19,7 +18,7 @@ import kotlin.test.assertTrue
 /**
  * [LeagueDashboardViewModel] coverage: [LeagueDashboardViewModel.refresh]-driven list load
  * (deliberately not auto-loaded from `init` -- see that class's doc on why the route composable
- * calls `refresh()` on every visit instead), State/District/City filter cascade (mirrors
+ * calls `refresh()` on every visit instead), State/District filter cascade (mirrors
  * `ProfileSetupViewModel`'s pattern), and "near me" being mutually exclusive with the area filters
  * (see docs/PHASE2.md's Decisions Made).
  */
@@ -27,15 +26,13 @@ class LeagueDashboardViewModelTest {
 
     private val karnataka = StateDto(code = "KA", name = "Karnataka")
     private val bengaluruUrban = DistrictDto(id = "d-ka-1", name = "Bengaluru Urban")
-    private val bengaluruCity = CityDto(name = "Bengaluru")
 
     private fun sampleLeague(id: String = "l1") = LeagueDto(
         id = id,
         organizerUserId = "u1",
         name = "Weekend League",
         state = "Karnataka",
-        district = "Bengaluru Urban",
-        city = "Bengaluru",
+        district = "Bengaluru Urban", groundId = "g1", groundName = "Test Ground",
         startsOn = "2026-10-12",
         status = LeagueStatus.ANNOUNCED,
     )
@@ -45,7 +42,6 @@ class LeagueDashboardViewModelTest {
         referenceRepository: FakeReferenceRepository = FakeReferenceRepository(
             states = listOf(karnataka),
             districtsByStateCode = mapOf("KA" to listOf(bengaluruUrban)),
-            citiesByDistrictId = mapOf(bengaluruUrban.id to listOf(bengaluruCity)),
         ),
         locationProvider: FakeLocationProvider = FakeLocationProvider(),
     ) = LeagueDashboardViewModel(leagueRepository, referenceRepository, locationProvider)
@@ -60,14 +56,14 @@ class LeagueDashboardViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, viewModel.state.value.leagues.size)
-        assertEquals(listOf(Triple<String?, String?, String?>(null, null, null)), leagueRepository.listByAreaCalls)
+        assertEquals(listOf<Pair<String?, String?>>(null to null), leagueRepository.listByAreaCalls)
         assertFalse(viewModel.state.value.isLoading)
     }
 
     @Test
     fun `a slow older load never overwrites the list for a newer filter`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository().apply {
-            leaguesForArea = { state, _, _ -> if (state == null) listOf(sampleLeague()) else emptyList() }
+            leaguesForArea = { state, _ -> if (state == null) listOf(sampleLeague()) else emptyList() }
             listByAreaDelayMillis = { state -> if (state == null) 5_000 else 0 }
         }
         val viewModel = newViewModel(leagueRepository = leagueRepository)
@@ -112,7 +108,7 @@ class LeagueDashboardViewModelTest {
     }
 
     @Test
-    fun `selecting a district then a city narrows the filter and clears the other's stale selection`() = viewModelTest {
+    fun `selecting a district narrows the filter to state plus district`() = viewModelTest {
         val leagueRepository = FakeLeagueRepository()
         val viewModel = newViewModel(leagueRepository = leagueRepository)
         advanceUntilIdle()
@@ -121,13 +117,8 @@ class LeagueDashboardViewModelTest {
 
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        assertEquals(listOf(bengaluruCity), viewModel.state.value.cities)
 
-        viewModel.onCitySelected(bengaluruCity)
-        advanceUntilIdle()
-
-        val lastCall = leagueRepository.listByAreaCalls.last()
-        assertEquals(Triple("Karnataka", "Bengaluru Urban", "Bengaluru"), lastCall)
+        assertEquals("Karnataka" to "Bengaluru Urban", leagueRepository.listByAreaCalls.last())
     }
 
     @Test

@@ -48,12 +48,19 @@ class RoleFlowIntegrationTest : AbstractWebIntegrationTest {
         return signInWithPhone(phone) to phone
     }
 
+    private fun createGround(token: String): String =
+        authedPost(
+            token,
+            "/api/v1/grounds",
+            mapOf("name" to "Test Ground", "state" to "Karnataka", "district" to "Bengaluru Urban", "latitude" to 12.97, "longitude" to 77.59),
+        ).andExpect(status().isOk).andReturn().body()["id"] as String
+
     private fun createLeague(token: String): String {
         val body = mapOf(
             "name" to "Weekend Box Cricket League",
             "state" to "Karnataka",
             "district" to "Bengaluru Urban",
-            "city" to "Bengaluru",
+            "groundId" to createGround(token).also { lastGroundId = it },
             "startsOn" to "2026-10-12",
         )
         return authedPost(token, "/api/v1/leagues", body).andExpect(status().isOk).andReturn().body()["id"] as String
@@ -95,9 +102,12 @@ class RoleFlowIntegrationTest : AbstractWebIntegrationTest {
         "name" to name,
         "state" to "Karnataka",
         "district" to "Bengaluru Urban",
-        "city" to "Bengaluru",
+        "groundId" to lastGroundId,
         "startsOn" to "2026-10-12",
     )
+
+    /** The ground of the league [createLeague] made last, for [editBody]'s full-replace PUT. */
+    private var lastGroundId: String? = null
 
     @Test
     fun `lookup finds the same account however the number is typed`() {

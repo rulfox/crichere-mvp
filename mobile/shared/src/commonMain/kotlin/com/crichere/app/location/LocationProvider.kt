@@ -14,13 +14,11 @@ data class GeoPoint(
  *   `CLPlacemark.administrativeArea`), matched against the fetched states list's display name.
  * @property subAdministrativeArea The district-level name (Android: `Address.subAdminArea`; iOS:
  *   `CLPlacemark.subAdministrativeArea`), matched against the matched state's fetched districts list.
- * @property locality The city-level name (Android: `Address.locality`; iOS: `CLPlacemark.locality`),
- *   matched against the matched district's fetched cities list.
+ *   District is the finest location tier (no city since design update #6).
  */
 data class GeocodedLocation(
     val administrativeArea: String?,
     val subAdministrativeArea: String?,
-    val locality: String?,
 )
 
 /**
@@ -37,7 +35,7 @@ data class GeocodedLocation(
  *
  * Both methods return `null` on any expected failure (permission denied, no fix available, or no
  * geocoder match) rather than throwing -- per this task's ruling, a failed auto-fill is a no-op,
- * never a blocking error, since the state/city selectors are always hand-editable regardless.
+ * never a blocking error, since the state/district selectors are always hand-editable regardless.
  */
 interface LocationProvider {
     /** A best-effort current fix, or `null` if location permission is denied or no fix is available. */

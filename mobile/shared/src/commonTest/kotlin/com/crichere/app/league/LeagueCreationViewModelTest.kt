@@ -6,7 +6,6 @@ import com.crichere.app.auth.viewModelTest
 import com.crichere.app.ground.FakeGroundRepository
 import com.crichere.app.ground.GroundDto
 import com.crichere.app.location.FakeLocationProvider
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.FakeReferenceRepository
 import com.crichere.app.reference.StateDto
@@ -22,12 +21,11 @@ class LeagueCreationViewModelTest {
 
     private val maharashtra = StateDto(code = "MH", name = "Maharashtra")
     private val kolhapurDistrict = DistrictDto(id = "d1", name = "Kolhapur")
-    private val kolhapurCity = CityDto(name = "Kolhapur")
+    private val shahu = GroundDto("g1", "Shahu Stadium", "Maharashtra", "Kolhapur", 16.7, 74.2)
 
     private fun references() = FakeReferenceRepository(
         states = listOf(maharashtra),
         districtsByStateCode = mapOf("MH" to listOf(kolhapurDistrict)),
-        citiesByDistrictId = mapOf("d1" to listOf(kolhapurCity)),
     )
 
     private fun league(format: String? = "T20") = LeagueDto(
@@ -35,8 +33,7 @@ class LeagueCreationViewModelTest {
         organizerUserId = "u1",
         name = "Kolhapur Premier League",
         state = "Maharashtra",
-        district = "Kolhapur",
-        city = "Kolhapur",
+        district = "Kolhapur", groundId = "g1", groundName = "Test Ground",
         startsOn = "2026-10-12",
         format = format,
         franchiseFee = 5000.0,
@@ -54,7 +51,7 @@ class LeagueCreationViewModelTest {
         onNameChanged("Kolhapur Premier League")
         onStateSelected(maharashtra)
         onDistrictSelected(kolhapurDistrict)
-        onCitySelected(kolhapurCity)
+        onGroundSelected(shahu)
         onStartsOnChanged("2026-10-12")
     }
 
@@ -84,7 +81,7 @@ class LeagueCreationViewModelTest {
 
         assertTrue(leagues.createdRequests.isEmpty())
         val errors = vm.state.value.fieldErrors
-        assertEquals(listOf(LeagueField.State, LeagueField.District, LeagueField.City, LeagueField.StartsOn, LeagueField.UpiId), errors.keys.toList())
+        assertEquals(listOf(LeagueField.State, LeagueField.District, LeagueField.Ground, LeagueField.StartsOn, LeagueField.UpiId), errors.keys.toList())
         assertEquals("Required when a fee is set", errors[LeagueField.UpiId])
         assertEquals(1, vm.state.value.validationAttempt)
 
@@ -170,7 +167,50 @@ class LeagueCreationViewModelTest {
         vm.onNewGroundNameChanged("Rajaram College Ground")
         assertFalse(vm.state.value.newGroundNameError)
         vm.registerNewGround()
-        assertEquals("Set the league's location first.", vm.state.value.groundErrorTitle)
+        assertEquals(LeagueCreationViewModel.GROUND_LOCATION_MISSING_MESSAGE, vm.state.value.groundErrorTitle)
+        assertFalse(vm.state.value.canRegisterGround)
+    }
+
+    @Test
+    fun `State and District are enough to register a ground (design update #6, I16)`() = viewModelTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onStateSelected(maharashtra)
+        advanceUntilIdle()
+        assertFalse(vm.state.value.canRegisterGround)
+        vm.onDistrictSelected(kolhapurDistrict)
+        assertTrue(vm.state.value.canRegisterGround)
+    }
+
+    @Test
+    fun `save without a ground shows the ground error (I15)`() = viewModelTest {
+        val leagues = FakeLeagueRepository()
+        val vm = viewModel(leagues = leagues)
+        advanceUntilIdle()
+        vm.fillRequired()
+        vm.onClearGround()
+
+        vm.save()
+        advanceUntilIdle()
+
+        assertTrue(leagues.createdRequests.isEmpty())
+        assertEquals(mapOf(LeagueField.Ground to "Select a ground or register a new one"), vm.state.value.fieldErrors)
+    }
+
+    @Test
+    fun `edit mode Change keeps the current ground until another is picked (I10)`() = viewModelTest {
+        val vm = viewModel(editingLeagueId = "l1", leagues = FakeLeagueRepository(leaguesByArea = listOf(league())))
+        advanceUntilIdle()
+
+        vm.onChangeGround()
+        assertTrue(vm.state.value.isChangingGround)
+        assertEquals("g1", vm.state.value.groundId)
+        assertFalse(vm.state.value.isDirty)
+
+        vm.onGroundSelected(GroundDto("g2", "Rajaram College Ground", "Maharashtra", "Kolhapur", 16.69, 74.23))
+        assertFalse(vm.state.value.isChangingGround)
+        assertEquals("g2", vm.state.value.groundId)
+        assertTrue(vm.state.value.isDirty)
     }
 
     @Test
@@ -207,7 +247,7 @@ class LeagueCreationViewModelTest {
     fun `selecting a ground marks the form edited`() = viewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
-        vm.onGroundSelected(GroundDto("g1", "Shahu Stadium", "Maharashtra", "Kolhapur", "Kolhapur", 16.7, 74.2))
+        vm.onGroundSelected(GroundDto("g1", "Shahu Stadium", "Maharashtra", "Kolhapur", 16.7, 74.2))
         assertEquals("Shahu Stadium", vm.state.value.groundDisplayName)
         assertTrue(vm.state.value.isDirty)
     }

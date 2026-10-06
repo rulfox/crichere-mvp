@@ -93,7 +93,11 @@ struct AppRootView: View {
 
             case let .profileSetup(isEditMode):
                 NavigationStack {
-                    ProfileSetupView(isEditMode: isEditMode) {
+                    ProfileSetupView(
+                        isEditMode: isEditMode,
+                        // Design update #6: only Edit profile (C1-edit) has a way back; first-time setup (C1) has none.
+                        onBack: isEditMode ? { destination = .main(initialTab: .myProfile) } : nil
+                    ) {
                         destination = .main(initialTab: isEditMode ? .myProfile : .dashboard)
                     }
                 }

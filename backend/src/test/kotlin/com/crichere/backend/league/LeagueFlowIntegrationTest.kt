@@ -56,11 +56,18 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
         return session["accessToken"] as String
     }
 
-    private fun validLeagueBody() = mapOf(
+    private fun createGround(token: String): String =
+        authedPost(
+            token,
+            "/api/v1/grounds",
+            mapOf("name" to "Test Ground", "state" to "Karnataka", "district" to "Bengaluru Urban", "latitude" to 12.97, "longitude" to 77.59),
+        ).andExpect(status().isOk).andReturn().body()["id"] as String
+
+    private fun validLeagueBody(groundId: String = createGround(organizerToken)) = mapOf(
         "name" to "Weekend Box Cricket League",
         "state" to "Karnataka",
         "district" to "Bengaluru Urban",
-        "city" to "Bengaluru",
+        "groundId" to groundId,
         "startsOn" to "2026-10-12",
     )
 
@@ -108,7 +115,7 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
         authedPost(
             organizerToken,
             "/api/v1/leagues",
-            mapOf("name" to "", "state" to "", "district" to "", "city" to "", "startsOn" to null),
+            mapOf("name" to "", "state" to "", "district" to "", "groundId" to null, "startsOn" to null),
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
@@ -132,14 +139,14 @@ class LeagueFlowIntegrationTest : AbstractWebIntegrationTest {
         val ground = authedPost(
             organizerToken,
             "/api/v1/grounds",
-            mapOf("name" to "Chinnaswamy Stadium", "state" to "Karnataka", "district" to "Bengaluru Urban", "city" to "Bengaluru", "latitude" to 12.9788, "longitude" to 77.5996),
+            mapOf("name" to "Chinnaswamy Stadium", "state" to "Karnataka", "district" to "Bengaluru Urban", "latitude" to 12.9788, "longitude" to 77.5996),
         )
             .andExpect(status().isOk)
             .andReturn()
             .body()
         val groundId = ground["id"] as String
 
-        val created = authedPost(organizerToken, "/api/v1/leagues", validLeagueBody() + ("groundId" to groundId))
+        val created = authedPost(organizerToken, "/api/v1/leagues", validLeagueBody(groundId))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.groundId").value(groundId))
             .andExpect(jsonPath("$.groundName").value("Chinnaswamy Stadium"))

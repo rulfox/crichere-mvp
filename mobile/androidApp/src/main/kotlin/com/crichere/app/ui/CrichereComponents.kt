@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.crichere.app.ui.theme.ArchivoFamily
@@ -229,9 +231,9 @@ fun CrichereSnackbar(
     }
 }
 
-/** Back arrow + 16sp title, 52dp under the status bar (boards J, K). */
+/** Back arrow + 16sp title, 52dp under the status bar (boards J, K; C1-edit uses 17sp with a 4dp gap). */
 @Composable
-fun BackTitleBar(title: String, onBack: () -> Unit) {
+fun BackTitleBar(title: String, onBack: () -> Unit, titleSize: TextUnit = 16.sp, titleLineHeight: TextUnit = 19.2.sp, gap: Dp = 6.dp) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(start = 5.dp).height(52.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -239,13 +241,47 @@ fun BackTitleBar(title: String, onBack: () -> Unit) {
         Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(24.dp))
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(gap))
         Text(
             title,
-            style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 19.2.sp),
+            style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = titleSize, lineHeight = titleLineHeight),
             color = MaterialTheme.colorScheme.onBackground,
         )
     }
+}
+
+/**
+ * "Discard changes?" (boards I10, C1-discard): leaving a form with unsaved edits. [body] says what
+ * stays as it was.
+ */
+@Composable
+fun DiscardChangesDialog(body: String, onKeepEditing: () -> Unit, onDiscard: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onKeepEditing,
+        // The board's dialog is 314 wide on a 360 screen -- wider than the platform default.
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.padding(horizontal = 23.dp),
+        containerColor = DialogSurface,
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Text(
+                "Discard changes?",
+                style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 22.8.sp),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        },
+        text = { Text(body, style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.5.sp, lineHeight = 19.575.sp), color = DialogBody) },
+        confirmButton = {
+            TextButton(onClick = onDiscard) {
+                Text("Discard", style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp), color = CrichereErrorStrong)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onKeepEditing) {
+                Text("Keep editing", style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp), color = MaterialTheme.colorScheme.primary)
+            }
+        },
+    )
 }
 
 /** A message for [SnackHost]. A `null` [durationMs] stays until its action or a swipe (U4 E12). */

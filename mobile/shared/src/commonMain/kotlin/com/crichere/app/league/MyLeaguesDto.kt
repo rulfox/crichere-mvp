@@ -8,8 +8,9 @@ data class LeagueSummaryDto(
     val id: String,
     val name: String,
     val logoUrl: String? = null,
-    val city: String,
+    val district: String,
     val state: String,
+    val groundName: String,
     val startsOn: String,
     val status: LeagueStatus,
 )

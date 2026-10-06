@@ -24,13 +24,12 @@ final class LeagueDashboardViewModelWrapper: ObservableObject {
     func refresh() { viewModel.refresh() }
     func onStateSelected(_ stateDto: StateDto) { viewModel.onStateSelected(stateDto: stateDto) }
     func onDistrictSelected(_ districtDto: DistrictDto) { viewModel.onDistrictSelected(districtDto: districtDto) }
-    func onCitySelected(_ cityDto: CityDto) { viewModel.onCitySelected(cityDto: cityDto) }
     func onClearAreaFilters() { viewModel.onClearAreaFilters() }
     func onToggleNearMe() { viewModel.onToggleNearMe() }
 }
 
 /// iOS equivalent of `androidApp/.../ui/LeagueDashboardScreen.kt`: leagues filterable by
-/// State/District/City or "nearest to me" (mutually exclusive, see docs/PHASE2.md's Decisions
+/// State/District or "nearest to me" (mutually exclusive, see docs/PHASE2.md's Decisions
 /// Made), tap a row to open League Detail, "Create a league" button. The app's post-login landing
 /// tab, hosted by `AppRootView`'s `MainTabView`.
 struct LeagueDashboardView: View {
@@ -79,16 +78,6 @@ struct LeagueDashboardView: View {
                         }
                         .disabled(wrapper.state.selectedState == nil)
 
-                        Picker("City", selection: Binding(
-                            get: { wrapper.state.cities.first { $0.name == wrapper.state.selectedCity } },
-                            set: { newValue in if let newValue { wrapper.onCitySelected(newValue) } }
-                        )) {
-                            Text("Any").tag(Optional<CityDto>.none)
-                            ForEach(wrapper.state.cities, id: \.name) { cityDto in
-                                Text(cityDto.name).tag(Optional(cityDto))
-                            }
-                        }
-                        .disabled(wrapper.state.selectedDistrict == nil)
 
                         if wrapper.state.selectedState != nil {
                             Button("Clear filters") { wrapper.onClearAreaFilters() }
@@ -112,7 +101,7 @@ struct LeagueDashboardView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(league.name).font(.headline)
-                                    Text("\(league.city), \(league.district), \(league.state)")
+                                    Text("\(league.groundName) · \(league.district)")
                                         .font(.subheadline).foregroundColor(.secondary)
                                     Text("Starts \(league.startsOn)" + (league.format.map { " -- \($0)" } ?? ""))
                                         .font(.caption).foregroundColor(.secondary)

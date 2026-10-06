@@ -39,8 +39,8 @@ export type League = {
   country: string;
   state: string;
   district: string;
-  city: string;
-  groundName?: string | null;
+  /** Every league has a ground since design update #6 (backend V21). */
+  groundName: string;
   startsOn: string;
   format: string | null;
   franchisesRequired?: number | null;

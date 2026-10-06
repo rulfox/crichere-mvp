@@ -20,7 +20,7 @@ class MyLeaguesRepositoryTest {
     @Test
     fun `getMyLeagues GETs the me leagues endpoint and parses all four lists`() = runTest {
         val body = """
-            {"organizing":[{"id":"l1","name":"Organized","city":"Bengaluru","state":"Karnataka","startsOn":"2026-10-12","status":"ANNOUNCED"}],
+            {"organizing":[{"id":"l1","name":"Organized","district":"Bengaluru Urban","state":"Karnataka","groundName":"Test Ground","startsOn":"2026-10-12","status":"ANNOUNCED"}],
              "playing":[], "franchiseOwner":[], "following":[]}
         """.trimIndent()
         val client = HttpClient(MockEngine) {

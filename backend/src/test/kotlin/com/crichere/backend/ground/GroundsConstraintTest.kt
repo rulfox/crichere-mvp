@@ -38,7 +38,6 @@ class GroundsConstraintTest : AbstractIntegrationTest() {
         name = "Test Ground",
         state = "Tamil Nadu",
         district = "Chennai",
-        city = "Chennai",
         latitude = 13.0827,
         longitude = 80.2707,
         registeredByUserId = registeredBy,
@@ -81,7 +80,7 @@ class GroundsConstraintTest : AbstractIntegrationTest() {
         val user = persistedUser("search")
         groundRepository.saveAndFlush(validGround(user.id!!).apply { name = "MRF Ground, Chennai" })
 
-        val results = groundRepository.searchByPattern(searchPattern = "%mrf%", state = null, district = null, city = null)
+        val results = groundRepository.searchByPattern(searchPattern = "%mrf%", state = null, district = null)
 
         assertTrue(results.any { it.name == "MRF Ground, Chennai" })
     }
@@ -91,7 +90,7 @@ class GroundsConstraintTest : AbstractIntegrationTest() {
         val user = persistedUser("search-empty")
         groundRepository.saveAndFlush(validGround(user.id!!).apply { name = "Match Everything Ground" })
 
-        val results = groundRepository.searchByPattern(searchPattern = "%%", state = null, district = null, city = null)
+        val results = groundRepository.searchByPattern(searchPattern = "%%", state = null, district = null)
 
         assertTrue(results.any { it.name == "Match Everything Ground" })
     }
@@ -105,7 +104,6 @@ class GroundsConstraintTest : AbstractIntegrationTest() {
             searchPattern = "%unique filter test%",
             state = null,
             district = "Some Other District",
-            city = null,
         )
 
         assertTrue(results.isEmpty())

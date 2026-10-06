@@ -197,6 +197,8 @@ fun CrichereTextField(
     readOnly: Boolean = false,
     /** Keep a 16 dp error row under the field even without an error (no jump when one appears). */
     reserveErrorSlot: Boolean = false,
+    /** Disabled look (board I16): grey fill/border/label, no typing. */
+    enabled: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -210,13 +212,18 @@ fun CrichereTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         readOnly = readOnly,
+        enabled = enabled,
         interactionSource = interactionSource,
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
         decorationBox = { inner ->
             FieldFrame(
                 label = label,
                 hasValue = value.isNotEmpty() || isFocused || placeholder != null,
-                mode = if (isFocused) FieldMode.Active else FieldMode.Idle,
+                mode = when {
+                    !enabled -> FieldMode.Disabled
+                    isFocused -> FieldMode.Active
+                    else -> FieldMode.Idle
+                },
                 look = look,
                 error = error,
                 height = if (multiLine) multiLineHeight else look.height,
@@ -225,7 +232,7 @@ fun CrichereTextField(
             ) {
                 if (value.isEmpty() && (!isFocused || placeholder != null)) {
                     // An errored empty mono field shows its label in-box in mono too (board J2).
-                    val inBoxStyle = placeholderStyle(if (multiLine) 13.5.sp else 14.5.sp, disabled = false, subtle = placeholder != null || error != null)
+                    val inBoxStyle = placeholderStyle(if (multiLine) 13.5.sp else 14.5.sp, disabled = !enabled, subtle = placeholder != null || error != null)
                     Text(
                         placeholder ?: label,
                         style = if (mono && error != null && placeholder == null) inBoxStyle.copy(fontFamily = JetBrainsMonoFamily) else inBoxStyle,

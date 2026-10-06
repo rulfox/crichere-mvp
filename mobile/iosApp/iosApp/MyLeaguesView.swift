@@ -74,7 +74,7 @@ struct MyLeaguesView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(league.name).lineLimit(2)
                             HStack(spacing: 0) {
-                                Text("\(league.city), \(league.state)").lineLimit(1).truncationMode(.tail)
+                                Text("\(league.groundName) · \(league.district)").lineLimit(1).truncationMode(.tail)
                                 Text(" · \(rowDate(league.startsOn))").lineLimit(1).fixedSize()
                             }
                             .font(.caption)

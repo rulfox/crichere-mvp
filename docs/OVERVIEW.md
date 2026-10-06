@@ -58,8 +58,8 @@ Every `PHASEn.md` follows this structure, in order:
 
 ## Phase Index
 
-- [Phase 1](PHASE1.md) — OTP login (Firebase Phone Auth, India-only for now) + profile setup (Name, Photo, State, City, cricket attributes). **Status: implemented, merged to master 2026-09-04.**
-- [Phase 2](PHASE2.md) — league dashboard (list/filter by state, city, nearest-GPS) + league creation, discovery-only (no auction mechanics yet — deferred to a later phase). **Status: implemented (backend + Android), iOS deferred.**
+- [Phase 1](PHASE1.md) — OTP login (Firebase Phone Auth, India-only for now) + profile setup (Name, Photo, State, District, cricket attributes; City removed 2026-10-06). **Status: implemented, merged to master 2026-09-04.**
+- [Phase 2](PHASE2.md) — league dashboard (list/filter by state, district, nearest-GPS; City removed and ground required 2026-10-06) + league creation, discovery-only (no auction mechanics yet — deferred to a later phase). **Status: implemented (backend + Android), iOS deferred.**
 - [Phase 3](PHASE3.md) — joining a league as a player, claiming a franchise, UPI-screenshot-proof fee collection (peer-to-peer, no payment gateway), following a league, shareable deep link to League Detail. Still not the live auction. **Status: implemented (backend + Android), iOS screens authored but unwired.**
 - [Phase 4](PHASE4.md) — auction setup: base price, purse, squad min/max, the auction pool (derived from Phase 3's joined players). Pure CRUD, no bidding. **Status: implemented (backend + Android), iOS screen authored but unwired.**
 - [Phase 5](PHASE5.md) — the live auction engine itself: real-time bidding (SSE), undo/override, unsold-retry rounds, post-auction squad/results views. **Status: implemented (backend + Android, tested and manually verified on-device), iOS screen authored but unwired.**

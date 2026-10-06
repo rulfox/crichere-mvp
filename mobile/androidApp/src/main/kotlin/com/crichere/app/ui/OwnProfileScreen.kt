@@ -273,7 +273,6 @@ private fun Profile(state: OwnProfileState, localPhoto: ImageBitmap?, onPhotoTap
             val rows = listOfNotNull(
                 "State" to state.state,
                 "District" to state.district,
-                "City" to state.city,
                 "Playing role" to state.playingRole?.label(),
                 "Batting style" to state.battingStyle?.label(),
                 state.bowlingStyle?.let { "Bowling style" to it.label() },

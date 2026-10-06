@@ -1,7 +1,8 @@
 # LGD location data
 
-Regenerates the State -> District -> City reference data from the Local Government Directory
-(lgdirectory.gov.in). Last run 2026-10-06, output is `V20__refresh_locations_from_lgd.sql`.
+Regenerates the State -> District reference data from the Local Government Directory
+(lgdirectory.gov.in). Last run 2026-10-06, output was `V20__refresh_locations_from_lgd.sql` (which
+also seeded cities; V21 dropped the city tier, so `gen_sql.py` now emits districts only).
 
 ```sh
 cd backend/tools/lgd
@@ -11,5 +12,5 @@ python gen_sql.py ../../src/main/resources/db/migration/V<next>__refresh_locatio
 ```
 
 A later refresh must be a **new** migration (Flyway checksums), and `gen_sql.py`'s `REMAP` list must be
-rebuilt against whatever the previous seed was. City rules and manual overrides are in `build.py`;
-the reasoning is in docs/OPEN-ITEMS.md section 6.
+rebuilt against whatever the previous seed was. Name cleaning is in `build.py`; the reasoning is in
+docs/OPEN-ITEMS.md section 6.

@@ -56,7 +56,6 @@ struct OwnProfileView: View {
                     LabeledContent("Name", value: wrapper.state.name ?? "--")
                     LabeledContent("State", value: wrapper.state.state ?? "--")
                     LabeledContent("District", value: wrapper.state.district ?? "--")
-                    LabeledContent("City", value: wrapper.state.city ?? "--")
                     LabeledContent("Role", value: wrapper.state.playingRole?.name ?? "--")
                     LabeledContent("Batting style", value: wrapper.state.battingStyle?.name ?? "--")
                     if let bowlingStyle = wrapper.state.bowlingStyle {

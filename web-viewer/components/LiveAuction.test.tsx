@@ -12,7 +12,6 @@ const league: League = {
   country: "India",
   state: "Kerala",
   district: "Alappuzha",
-  city: "Pathirappally",
   groundName: "Udhaya Ground",
   startsOn: "2026-10-16",
   format: "T10",
@@ -120,6 +119,8 @@ describe("LiveAuction", () => {
 
     expect(await screen.findByRole("heading", { name: /hasn.t started yet/ })).toBeInTheDocument();
     expect(screen.getByText("NOT STARTED")).toBeInTheDocument();
+    // W10 (design update #6): one location line, "Ground, District, State".
+    expect(screen.getByText("Udhaya Ground, Alappuzha, Kerala")).toBeInTheDocument();
     expect(screen.getByText(/Bidding is scheduled for/)).toBeInTheDocument();
     const facts = screen.getByLabelText("Auction facts");
     expect(within(facts).getByText("₹20,000")).toBeInTheDocument();

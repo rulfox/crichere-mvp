@@ -1,5 +1,7 @@
 package com.crichere.backend.auction
 
+import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.ground.GroundEntity
 import com.crichere.backend.auth.UserEntity
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.AbstractIntegrationTest
@@ -37,6 +39,9 @@ class AuctionConstraintTest : AbstractIntegrationTest() {
     private lateinit var leagueRepository: LeagueRepository
 
     @Autowired
+    private lateinit var groundRepository: GroundRepository
+
+    @Autowired
     private lateinit var playerRepository: PlayerRepository
 
     @Autowired
@@ -51,13 +56,20 @@ class AuctionConstraintTest : AbstractIntegrationTest() {
     private fun persistedUser(hashSuffix: String): UserEntity =
         userRepository.saveAndFlush(UserEntity(phoneLookupHash = "hash-auction-$hashSuffix", phoneEncrypted = "enc"))
 
+    private fun persistedGround(registeredBy: UUID): GroundEntity = groundRepository.saveAndFlush(
+        GroundEntity(
+            name = "Test Ground", state = "Karnataka", district = "Bengaluru Urban",
+            latitude = 12.97, longitude = 77.59, registeredByUserId = registeredBy,
+        ),
+    )
+
     private fun persistedLeague(organizer: UUID) = leagueRepository.saveAndFlush(
         LeagueEntity(
             organizerUserId = organizer,
             name = "Test League",
             state = "Karnataka",
             district = "Bengaluru Urban",
-            city = "Bengaluru",
+            groundId = persistedGround(organizer).id!!,
             startsOn = LocalDate.of(2026, 10, 12),
         ),
     )

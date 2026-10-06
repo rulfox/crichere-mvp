@@ -59,7 +59,7 @@ class FranchiseServiceTest {
         name = "Test League",
         state = "Karnataka",
         district = "Bengaluru Urban",
-        city = "Bengaluru",
+        groundId = UUID.randomUUID(),
         startsOn = LocalDate.of(2026, 10, 12),
         franchisesRequired = franchisesRequired,
         franchiseFee = franchiseFee,

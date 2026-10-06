@@ -22,9 +22,6 @@ data class GroundCreateRequest(
     @field:NotBlank(message = "district is required")
     val district: String,
 
-    @field:NotBlank(message = "city is required")
-    val city: String,
-
     @field:NotNull(message = "latitude is required")
     @field:DecimalMin(value = "-90.0", message = "latitude must be between -90 and 90")
     @field:DecimalMax(value = "90.0", message = "latitude must be between -90 and 90")

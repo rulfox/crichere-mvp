@@ -16,7 +16,7 @@ import java.util.UUID
  *
  * ## The rule
  *
- * Always required: `name`, `photoUrl`, `state`, `district`, `city`, `playingRole`, `battingStyle`.
+ * Always required: `name`, `photoUrl`, `state`, `district`, `playingRole`, `battingStyle`.
  *
  * `bowlingStyle` is required only when the player's role means they actually bowl --
  * [PlayingRole.BOWLER] and [PlayingRole.ALL_ROUNDER]. A pure batsman or a wicketkeeper is
@@ -49,7 +49,6 @@ class ProfileCompletionService(
         if (profile.photoUrl.isNullOrBlank()) return false
         if (profile.state.isNullOrBlank()) return false
         if (profile.district.isNullOrBlank()) return false
-        if (profile.city.isNullOrBlank()) return false
         if (profile.battingStyle == null) return false
 
         val role = profile.playingRole ?: return false

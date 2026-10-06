@@ -1,5 +1,7 @@
 package com.crichere.backend.me
 
+import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.ground.GroundEntity
 import com.crichere.backend.franchise.FranchiseEntity
 import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.league.LeagueEntity
@@ -28,7 +30,19 @@ class MeServiceTest {
     private val franchiseRepository = mockk<FranchiseRepository>()
     private val leagueFollowRepository = mockk<LeagueFollowRepository>()
     private val deviceTokenRepository = mockk<DeviceTokenRepository>()
-    private val service = MeService(leagueRepository, playerRepository, franchiseRepository, leagueFollowRepository, deviceTokenRepository)
+    private val groundRepository = mockk<GroundRepository>()
+    private val service = MeService(leagueRepository, playerRepository, franchiseRepository, leagueFollowRepository, deviceTokenRepository, groundRepository)
+
+    init {
+        every { groundRepository.findAllById(any()) } answers {
+            firstArg<Iterable<UUID>>().map {
+                GroundEntity(
+                    id = it, name = "Ground $it", state = "Karnataka", district = "Bengaluru Urban",
+                    latitude = 12.97, longitude = 77.59, registeredByUserId = UUID.randomUUID(),
+                )
+            }
+        }
+    }
 
     private val callerId: UUID = UUID.randomUUID()
 
@@ -38,7 +52,7 @@ class MeServiceTest {
         name = "League $id",
         state = "Karnataka",
         district = "Bengaluru Urban",
-        city = "Bengaluru",
+        groundId = UUID.randomUUID(),
         startsOn = LocalDate.of(2026, 10, 12),
     )
 
@@ -59,6 +73,8 @@ class MeServiceTest {
         assertEquals(1, result.organizing.size)
         assertEquals(1, result.playing.size)
         assertEquals(organizedLeagueId, result.organizing[0].id)
+        assertEquals("Bengaluru Urban", result.organizing[0].district)
+        assertEquals("Ground ${organizedLeague.groundId}", result.organizing[0].groundName)
         assertEquals(organizedLeagueId, result.playing[0].id)
     }
 

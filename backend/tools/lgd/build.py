@@ -1,4 +1,9 @@
-"""Build cleaned State -> District -> City reference data from the raw LGD pull (lgd2.json)."""
+"""Build cleaned State -> District reference data from the raw LGD pull (lgd2.json).
+
+The per-district city lists it also builds were seeded once by V20 and dropped by V21 (design update
+#6: location is State -> District only). They are kept in final.json for reference; gen_sql.py
+ignores them.
+"""
 import json, re, difflib, collections
 
 raw = json.load(open("lgd2.json", encoding="utf8"))

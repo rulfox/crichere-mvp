@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 /** [MyLeaguesViewModel] coverage: loads the four lists via [MyLeaguesRepository], explicit-retry-on-entry convention. */
 class MyLeaguesViewModelTest {
 
-    private fun summary(id: String) = LeagueSummaryDto(id = id, name = "League $id", city = "Bengaluru", state = "Karnataka", startsOn = "2026-10-12", status = LeagueStatus.ANNOUNCED)
+    private fun summary(id: String) = LeagueSummaryDto(id = id, name = "League $id", district = "Bengaluru", groundName = "Test Ground", state = "Karnataka", startsOn = "2026-10-12", status = LeagueStatus.ANNOUNCED)
 
     @Test
     fun `retry loads all four lists`() = viewModelTest {

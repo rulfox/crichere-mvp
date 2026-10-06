@@ -39,16 +39,16 @@ class GroundRepositoryTest {
     @Test
     fun `search sends every provided filter as a query param`() = runTest {
         val repository = KtorGroundRepository(
-            mockClient(expectedQuery = mapOf("search" to "mrf", "state" to "Tamil Nadu", "district" to "Chennai", "city" to "Chennai")),
+            mockClient(expectedQuery = mapOf("search" to "mrf", "state" to "Tamil Nadu", "district" to "Chennai")),
         )
 
-        repository.search(search = "mrf", state = "Tamil Nadu", district = "Chennai", city = "Chennai")
+        repository.search(search = "mrf", state = "Tamil Nadu", district = "Chennai")
     }
 
     @Test
     fun `search parses a real-shaped backend response`() = runTest {
         val json = """
-            [{"id":"g1","name":"MRF Ground","state":"Tamil Nadu","district":"Chennai","city":"Chennai","latitude":13.0827,"longitude":80.2707}]
+            [{"id":"g1","name":"MRF Ground","state":"Tamil Nadu","district":"Chennai","latitude":13.0827,"longitude":80.2707}]
         """.trimIndent()
         val repository = KtorGroundRepository(mockClient(body = json))
 
@@ -61,11 +61,11 @@ class GroundRepositoryTest {
 
     @Test
     fun `registerGround posts the request and returns the created ground`() = runTest {
-        val json = """{"id":"g1","name":"New Ground","state":"Karnataka","district":"Bengaluru Urban","city":"Bengaluru","latitude":12.9716,"longitude":77.5946}"""
+        val json = """{"id":"g1","name":"New Ground","state":"Karnataka","district":"Bengaluru Urban","latitude":12.9716,"longitude":77.5946}"""
         val repository = KtorGroundRepository(mockClient(body = json))
 
         val result = repository.registerGround(
-            GroundCreateRequestDto(name = "New Ground", state = "Karnataka", district = "Bengaluru Urban", city = "Bengaluru", latitude = 12.9716, longitude = 77.5946),
+            GroundCreateRequestDto(name = "New Ground", state = "Karnataka", district = "Bengaluru Urban", latitude = 12.9716, longitude = 77.5946),
         )
 
         assertEquals("g1", result.id)
@@ -76,7 +76,7 @@ class GroundRepositoryTest {
         val repository = KtorGroundRepository(mockClient(status = HttpStatusCode.BadRequest, body = "{}"))
 
         assertFailsWith<GroundSaveFailedException> {
-            repository.registerGround(GroundCreateRequestDto(name = "x", state = "x", district = "x", city = "x", latitude = 0.0, longitude = 0.0))
+            repository.registerGround(GroundCreateRequestDto(name = "x", state = "x", district = "x", latitude = 0.0, longitude = 0.0))
         }
     }
 

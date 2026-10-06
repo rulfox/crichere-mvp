@@ -41,7 +41,6 @@ class DeviceLocationProviderTest {
         val result = provider.reverseGeocode(GeoPoint(latitude = 12.9716, longitude = 77.5946))
 
         assertEquals("Karnataka", result?.administrativeArea)
-        assertEquals("Bengaluru", result?.locality)
         assertNotEquals(
             callingThreadName,
             ShadowRecordingGeocoder.invokedFromThreadName,

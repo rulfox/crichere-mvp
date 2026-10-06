@@ -25,8 +25,7 @@ class AuctionLiveScreenTest {
         organizerUserId = "organizer-1",
         name = "Riverside Premier League",
         state = "Karnataka",
-        district = "Bengaluru Urban",
-        city = "Bengaluru",
+        district = "Bengaluru Urban", groundId = "g1", groundName = "Test Ground",
         startsOn = "2026-10-04",
         status = LeagueStatus.ANNOUNCED,
     )

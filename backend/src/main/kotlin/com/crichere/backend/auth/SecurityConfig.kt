@@ -38,7 +38,7 @@ import tools.jackson.databind.ObjectMapper
  *    body.
  *  - **Everything under `/api/v1/reference/` is public already.** Those endpoints do not exist yet -- they
  *    arrive with the reference-data feature -- but the rule is wired now so that task does not
- *    have to reopen this file. State/city lists are public data used to render the signup form
+ *    have to reopen this file. State/district lists are public data used to render the signup form
  *    *before* the user has a token, so they cannot require one.
  *  - **The filters are constructed here rather than declared as `@Bean`s.** Spring Boot
  *    auto-registers any `Filter` bean into the main servlet chain; that would run each of

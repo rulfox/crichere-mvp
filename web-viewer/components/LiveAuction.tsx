@@ -150,7 +150,8 @@ function Skeleton() {
 }
 
 function LeagueHeader({ league, view }: { league: League; view: "not-started" | "live" | "completed" }) {
-  const location = [league.city, league.district, league.state].filter(Boolean).join(", ");
+  // W10 (design update #6): "Ground, District, State" -- no city tier any more.
+  const location = [league.groundName, league.district, league.state].filter(Boolean).join(", ");
   return (
     <section className={styles.header}>
       <div className={styles.leagueLogo}>
@@ -187,12 +188,6 @@ function LeagueHeader({ league, view }: { league: League; view: "not-started" | 
             <span className={styles.metaItem}>
               <Icon name="sports_cricket" size={17} className={styles.metaIcon} />
               {league.format}
-            </span>
-          )}
-          {league.groundName && (
-            <span className={styles.metaItem}>
-              <Icon name="stadium" size={17} className={styles.metaIcon} />
-              {league.groundName}
             </span>
           )}
         </div>

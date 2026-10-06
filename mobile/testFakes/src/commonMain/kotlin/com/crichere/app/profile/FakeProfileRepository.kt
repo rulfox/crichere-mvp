@@ -49,7 +49,6 @@ class FakeProfileRepository(
             country = profile.country,
             state = snapshot.state,
             district = snapshot.district,
-            city = snapshot.city,
             playingRole = snapshot.playingRole,
             battingStyle = snapshot.battingStyle,
             bowlingStyle = snapshot.bowlingStyle,

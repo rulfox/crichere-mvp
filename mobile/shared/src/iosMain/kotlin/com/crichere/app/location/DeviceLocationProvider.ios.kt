@@ -78,7 +78,6 @@ class DeviceLocationProvider : LocationProvider {
                         GeocodedLocation(
                             administrativeArea = it.administrativeArea,
                             subAdministrativeArea = it.subAdministrativeArea,
-                            locality = it.locality,
                         )
                     },
                 )

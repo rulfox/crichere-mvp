@@ -60,7 +60,6 @@ import com.crichere.app.R
 import com.crichere.app.league.LeagueDashboardState
 import com.crichere.app.league.LeagueDashboardViewModel
 import com.crichere.app.league.LeagueDto
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.StateDto
 import com.crichere.app.ui.theme.ArchivoFamily
@@ -98,7 +97,6 @@ internal fun LeagueDashboardRoute(
         showLocationOff = locationDenied,
         onStateSelected = viewModel::onStateSelected,
         onDistrictSelected = viewModel::onDistrictSelected,
-        onCitySelected = viewModel::onCitySelected,
         onClearAreaFilters = viewModel::onClearAreaFilters,
         onToggleNearMe = {
             val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
@@ -127,11 +125,10 @@ internal fun LeagueDashboardRoute(
 private enum class AreaLevel(val title: String, val search: String) {
     STATE("Choose state", "Search states"),
     DISTRICT("Choose district", "Search districts"),
-    CITY("Choose city", "Search cities"),
 }
 
 /**
- * League Dashboard (design board screen D): announced leagues, filterable by State/District/City or
+ * League Dashboard (design board screen D): announced leagues, filterable by State/District or
  * "nearest to me" (mutually exclusive -- see `LeagueDashboardViewModel`'s doc). Rendered inside
  * `AuthNavHost`'s `MainRoute` tab `Scaffold`, which owns the bottom navigation.
  */
@@ -141,7 +138,6 @@ private fun LeagueDashboardScreen(
     showLocationOff: Boolean,
     onStateSelected: (StateDto) -> Unit,
     onDistrictSelected: (DistrictDto) -> Unit,
-    onCitySelected: (CityDto) -> Unit,
     onClearAreaFilters: () -> Unit,
     onToggleNearMe: () -> Unit,
     onOpenLocationSettings: () -> Unit,
@@ -152,7 +148,7 @@ private fun LeagueDashboardScreen(
     onOpenProfile: () -> Unit,
 ) {
     var openPicker by remember { mutableStateOf<AreaLevel?>(null) }
-    val hasAreaFilter = !state.isNearMode && (state.selectedState != null || state.selectedDistrict != null || state.selectedCity != null)
+    val hasAreaFilter = !state.isNearMode && (state.selectedState != null || state.selectedDistrict != null)
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -186,7 +182,6 @@ private fun LeagueDashboardScreen(
                 ) {
                     AreaChip("State", state.selectedState, enabled = !areaLocked) { openPicker = AreaLevel.STATE }
                     AreaChip("District", state.selectedDistrict, enabled = !areaLocked && state.selectedState != null) { openPicker = AreaLevel.DISTRICT }
-                    AreaChip("City", state.selectedCity, enabled = !areaLocked && state.selectedDistrict != null) { openPicker = AreaLevel.CITY }
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(modifier = Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -237,10 +232,6 @@ private fun LeagueDashboardScreen(
         AreaLevel.DISTRICT -> AreaPickerSheet(level.title, level.search, state.districts, state.selectedDistrict, DistrictDto::name, dismiss) {
             openPicker = null
             onDistrictSelected(it)
-        }
-        AreaLevel.CITY -> AreaPickerSheet(level.title, level.search, state.cities, state.selectedCity, CityDto::name, dismiss) {
-            openPicker = null
-            onCitySelected(it)
         }
         null -> Unit
     }
@@ -471,7 +462,8 @@ private fun LeagueCard(league: LeagueDto, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "${league.city}, ${league.district}, ${league.state}",
+                // D1 (design update #6): "<ground> · <district>".
+                "${league.groundName} · ${league.district}",
                 style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 12.sp, lineHeight = 14.4.sp),
                 color = colors.onSurfaceVariant,
                 maxLines = 1,

@@ -14,7 +14,7 @@ import java.util.UUID
  * many leagues can reference the same ground via `leagues.ground_id` rather than each
  * re-entering/re-pinning the same physical location (see docs/PHASE2.md's Decisions Made).
  *
- * Not hard-linked to any league's own state/district/city -- a league can (unusually)
+ * Not hard-linked to any league's own state/district -- a league can (unusually)
  * reference a ground whose location text disagrees with its own, and nothing here validates
  * against that; see docs/PHASE2.md.
  *
@@ -45,9 +45,6 @@ class GroundEntity(
 
     @Column(name = "district", nullable = false)
     var district: String,
-
-    @Column(name = "city", nullable = false)
-    var city: String,
 
     @Column(name = "latitude", nullable = false)
     var latitude: Double,

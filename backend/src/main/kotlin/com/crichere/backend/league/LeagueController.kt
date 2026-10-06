@@ -40,7 +40,6 @@ class LeagueController(
     fun list(
         @RequestParam(required = false) state: String?,
         @RequestParam(required = false) district: String?,
-        @RequestParam(required = false) city: String?,
         @RequestParam(required = false) nearLat: Double?,
         @RequestParam(required = false) nearLng: Double?,
         @AuthenticationPrincipal(errorOnInvalidType = false) callerId: UUID?,
@@ -48,7 +47,7 @@ class LeagueController(
         if (nearLat != null && nearLng != null) {
             leagueService.listNearest(nearLat, nearLng, callerId)
         } else {
-            leagueService.listByArea(state, district, city, callerId)
+            leagueService.listByArea(state, district, callerId)
         }
 
     /** `callerId` is `null` for an anonymous caller -- see [LeagueService.getLeague]'s doc. */

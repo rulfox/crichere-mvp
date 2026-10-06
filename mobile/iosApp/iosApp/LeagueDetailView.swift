@@ -113,7 +113,7 @@ struct LeagueDetailView: View {
             if let league = state.league {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     ShareLink(item: URL(string: "\(webViewerBaseUrl)/leagues/\(league.id)")!,
-                              message: Text("Join \(league.name.trimmingCharacters(in: .whitespaces)) on Crichere · \(league.city.trimmingCharacters(in: .whitespaces)) · watch the player auction live")) {
+                              message: Text("Join \(league.name.trimmingCharacters(in: .whitespaces)) on Crichere · \(league.district.trimmingCharacters(in: .whitespaces)) · watch the player auction live")) {
                         Image(systemName: "square.and.arrow.up")
                     }
                     .accessibilityLabel("Share league")
@@ -208,10 +208,10 @@ struct LeagueDetailView: View {
         .environment(\.defaultMinListRowHeight, 44)
     }
 
-    /// "{place} · {format} · {status}" -- status 600, Announced in primary, Completed in ink.
+    /// "{ground} · {district} · {format} · {status}" -- status 600, Announced in primary, Completed in ink.
     private func subline(_ league: LeagueDto) -> some View {
         let completed = league.status == .completed
-        let parts = [league.city.trimmingCharacters(in: .whitespaces), league.format].compactMap { $0 }.filter { !$0.isEmpty }
+        let parts = [league.groundName.trimmingCharacters(in: .whitespaces), league.district.trimmingCharacters(in: .whitespaces), league.format].compactMap { $0 }.filter { !$0.isEmpty }
         return (Text(parts.map { $0 + " · " }.joined())
                 + Text(completed ? "Completed" : "Announced").fontWeight(.semibold).foregroundColor(completed ? Brand.ink : Brand.primary))
             .font(.system(size: 15))

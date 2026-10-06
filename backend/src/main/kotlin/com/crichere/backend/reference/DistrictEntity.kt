@@ -9,11 +9,9 @@ import jakarta.persistence.Table
 import java.util.UUID
 
 /**
- * Maps to the `districts` table (V5__add_districts.sql), seeded with a curated set of real
- * districts covering exactly the cities [CityEntity] already seeds -- not an exhaustive
- * India-wide district dataset, same non-exhaustive posture V4's own doc comment already
- * established for states/cities. [stateCode] is a plain foreign-key column (not a JPA
- * `@ManyToOne`), same reasoning as [CityEntity.stateCode] used to be: everything lives in
+ * Maps to the `districts` table (V5__add_districts.sql), reseeded with all LGD districts by
+ * V20__refresh_locations_from_lgd.sql. District is the finest location tier (no city since
+ * V21). [stateCode] is a plain foreign-key column (not a JPA `@ManyToOne`): everything lives in
  * this one `reference` package, no lazy-load traversal is needed.
  */
 @Entity

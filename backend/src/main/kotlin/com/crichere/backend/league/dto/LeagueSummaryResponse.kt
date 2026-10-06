@@ -9,8 +9,10 @@ data class LeagueSummaryResponse(
     val id: UUID,
     val name: String,
     val logoUrl: String?,
-    val city: String,
+    val district: String,
     val state: String,
+    /** My leagues row reads "<ground> · <district> · <date>" (design update #6, M1). */
+    val groundName: String,
     val startsOn: LocalDate,
     val status: LeagueStatus,
 )

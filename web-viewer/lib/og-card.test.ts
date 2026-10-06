@@ -71,9 +71,9 @@ describe("formatAuctionDate", () => {
 });
 
 describe("locationLine", () => {
-  it("joins city and state, dropping blanks", () => {
-    expect(locationLine("Kochi", "Kerala")).toBe("Kochi, Kerala");
-    expect(locationLine("Kochi", "")).toBe("Kochi");
+  it("joins district and state, dropping blanks", () => {
+    expect(locationLine("Ernakulam", "Kerala")).toBe("Ernakulam, Kerala");
+    expect(locationLine("Ernakulam", "")).toBe("Ernakulam");
   });
 });
 

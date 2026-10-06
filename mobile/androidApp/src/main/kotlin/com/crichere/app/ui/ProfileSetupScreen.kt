@@ -3,6 +3,7 @@ package com.crichere.app.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -77,7 +78,6 @@ import com.crichere.app.profile.PlayingRole
 import com.crichere.app.profile.ProfileField
 import com.crichere.app.profile.ProfileSetupState
 import com.crichere.app.profile.ProfileSetupViewModel
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.StateDto
 import com.crichere.app.ui.theme.ArchivoFamily
@@ -93,18 +93,37 @@ import kotlinx.coroutines.withContext
 
 /**
  * Profile Setup screen (design board screen C): first-time cricket-player onboarding (resumable,
- * per the field order name -> photo -> state -> district -> city -> role -> batting ->
- * bowling-if-applicable) and the "edit" entry point from Own Profile View, both driven by the same
+ * per the field order name -> photo -> state -> district -> role -> batting ->
+ * bowling-if-applicable; no City since design update #6) and the "edit" entry point from Own Profile View, both driven by the same
  * [ProfileSetupViewModel] (see its `isEditMode` constructor parameter). Navigation on completion is
  * handled by the caller (`AuthNavHost`) via [ProfileSetupViewModel.navigationEvents].
  *
  * Photo: Android's Photo Picker (gallery only, no camera entry point) -> circle-crop preview
  * ([PhotoCropSheet], C3) -> the cropped 512px JPEG uploads with visible progress (C4), and a failed
  * upload offers Retry / Choose another (C6).
+ *
+ * [onBack] is non-null only for Edit profile (C1-edit): a back arrow + "Edit profile" bar replaces
+ * the onboarding title, and leaving with unsaved edits asks first (C1-discard). First-time setup
+ * (C1) passes `null`: no back button, Save is the only way forward.
  */
 @Composable
-fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile: () -> Unit) {
+fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile: () -> Unit, onBack: (() -> Unit)? = null) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var confirmDiscard by remember { mutableStateOf(false) }
+    if (onBack != null) {
+        val requestBack = { if (state.isDirty) confirmDiscard = true else onBack() }
+        BackHandler(onBack = requestBack)
+        if (confirmDiscard) {
+            DiscardChangesDialog(
+                body = "Your edits won't be saved. Your profile stays as it was.",
+                onKeepEditing = { confirmDiscard = false },
+                onDiscard = {
+                    confirmDiscard = false
+                    onBack()
+                },
+            )
+        }
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -172,26 +191,38 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             .background(MaterialTheme.colorScheme.background)
             .imePadding(),
     ) {
+        if (onBack != null) {
+            BackTitleBar(
+                title = "Edit profile",
+                onBack = { if (state.isDirty) confirmDiscard = true else onBack() },
+                titleSize = 17.sp,
+                titleLineHeight = 17.sp,
+                gap = 4.dp,
+            )
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .statusBarsPadding()
-                .padding(start = 20.dp, end = 20.dp, top = 21.dp, bottom = 20.dp),
+                .then(if (onBack == null) Modifier.statusBarsPadding() else Modifier)
+                // C1-edit: fields start 12 dp under the bar; the field's 7 dp notch room counts toward it.
+                .padding(start = 20.dp, end = 20.dp, top = if (onBack == null) 21.dp else 5.dp, bottom = 20.dp),
         ) {
-            Text(
-                text = "Set up your profile",
-                style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 26.4.sp),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "So organizers know who's joining their league.",
-                style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.sp, lineHeight = 18.2.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            // Fields carry 7dp of top room for their notched label, so gaps below are design gap - 7.
-            Spacer(Modifier.height(8.dp))
+            if (onBack == null) {
+                Text(
+                    text = "Set up your profile",
+                    style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 26.4.sp),
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "So organizers know who's joining their league.",
+                    style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 13.sp, lineHeight = 18.2.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // Fields carry 7dp of top room for their notched label, so gaps below are design gap - 7.
+                Spacer(Modifier.height(8.dp))
+            }
 
             CrichereTextField(
                 value = state.name,
@@ -236,28 +267,15 @@ fun ProfileSetupScreen(viewModel: ProfileSetupViewModel, onNavigateToOwnProfile:
             )
             Spacer(Modifier.height(7.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CrichereSelectField(
-                    label = "District",
-                    options = state.districts,
-                    selected = state.districts.firstOrNull { it.name == state.district },
-                    optionLabel = DistrictDto::name,
-                    onSelected = viewModel::onDistrictSelected,
-                    enabled = state.state != null,
-                    fontSize = 14.sp,
-                    modifier = Modifier.weight(1f).field(ProfileField.DISTRICT),
-                )
-                CrichereSelectField(
-                    label = "City",
-                    options = state.cities,
-                    selected = state.cities.firstOrNull { it.name == state.city },
-                    optionLabel = CityDto::name,
-                    onSelected = viewModel::onCitySelected,
-                    enabled = state.district != null,
-                    fontSize = 14.sp,
-                    modifier = Modifier.weight(1f).field(ProfileField.CITY),
-                )
-            }
+            CrichereSelectField(
+                label = "District",
+                options = state.districts,
+                selected = state.districts.firstOrNull { it.name == state.district },
+                optionLabel = DistrictDto::name,
+                onSelected = viewModel::onDistrictSelected,
+                enabled = state.state != null,
+                modifier = Modifier.field(ProfileField.DISTRICT),
+            )
             Spacer(Modifier.height(7.dp))
 
             CrichereSelectField(

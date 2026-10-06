@@ -7,6 +7,8 @@ Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infr
 
 ---
 
+> **Superseded 2026-10-06 (design update #6):** location is State -> District only (LGD districts); City was removed everywhere and every league now requires a ground. See [OPEN-ITEMS.md](OPEN-ITEMS.md) section 6 and DESIGN-REVIEW "Design update #6". City mentions below are history.
+
 ## 1. Overview
 
 In plain terms: after logging in and setting up their cricket-player profile (Phase 1), a user lands on a dashboard listing cricket leagues that have been announced nearby or in their area. They can filter by state, by city, or find the ones closest to them using their phone's location. Any logged-in user can also create a new league themselves — give it a name, say where and roughly when it happens, and it shows up on everyone's dashboard.

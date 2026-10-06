@@ -21,7 +21,7 @@ class GroundSaveFailedException(message: String) : Exception(message)
  */
 interface GroundRepository {
     /** `GET /api/v1/grounds` -- every filter optional; a blank/null [search] with no other filters lists every ground. */
-    suspend fun search(search: String? = null, state: String? = null, district: String? = null, city: String? = null): List<GroundDto>
+    suspend fun search(search: String? = null, state: String? = null, district: String? = null): List<GroundDto>
 
     /** `POST /api/v1/grounds`. No ground-edit feature in Phase 2 -- a wrong ground is corrected by registering a new one. */
     suspend fun registerGround(request: GroundCreateRequestDto): GroundDto
@@ -31,12 +31,11 @@ internal class KtorGroundRepository(
     private val httpClient: HttpClient,
 ) : GroundRepository {
 
-    override suspend fun search(search: String?, state: String?, district: String?, city: String?): List<GroundDto> =
+    override suspend fun search(search: String?, state: String?, district: String?): List<GroundDto> =
         httpClient.get("/api/v1/grounds") {
             search?.let { parameter("search", it) }
             state?.let { parameter("state", it) }
             district?.let { parameter("district", it) }
-            city?.let { parameter("city", it) }
         }.body()
 
     override suspend fun registerGround(request: GroundCreateRequestDto): GroundDto {

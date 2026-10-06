@@ -159,9 +159,10 @@ private fun LeagueRow(league: LeagueSummaryDto, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             // U4 M5: only the place may be cut short, never the start date after it.
+            // Design update #6 (owner): "<ground> · <district> · <date>".
             Row {
                 Text(
-                    "${league.city}, ${league.state}",
+                    "${league.groundName} · ${league.district}",
                     style = pText(12.sp, lineHeight = 14.4.sp),
                     color = colors.onSurfaceVariant,
                     maxLines = 1,

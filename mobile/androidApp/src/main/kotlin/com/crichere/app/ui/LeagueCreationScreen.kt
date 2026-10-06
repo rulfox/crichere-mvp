@@ -90,7 +90,6 @@ import com.crichere.app.league.LeagueCreationNavigationEvent
 import com.crichere.app.league.LeagueCreationState
 import com.crichere.app.league.LeagueCreationViewModel
 import com.crichere.app.league.LeagueField
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.StateDto
 import com.crichere.app.ui.theme.ArchivoFamily
@@ -271,8 +270,8 @@ private fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCr
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         )
 
-                        LocationSection(state = state, viewModel = viewModel, errors = errors, headingModifier = Modifier.trackSection(LeagueField.State, LeagueField.District, LeagueField.City))
-                        GroundSection(state = state, viewModel = viewModel)
+                        LocationSection(state = state, viewModel = viewModel, errors = errors, headingModifier = Modifier.trackSection(LeagueField.State, LeagueField.District))
+                        GroundSection(state = state, viewModel = viewModel, error = errors[LeagueField.Ground], headingModifier = Modifier.trackSection(LeagueField.Ground))
 
                         SectionHeading("Schedule & format", modifier = Modifier.trackSection(LeagueField.StartsOn))
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -435,8 +434,8 @@ private fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCr
         })
     }
     if (confirmDiscard) {
-        DiscardDialog(
-            editMode = state.isEditMode,
+        DiscardChangesDialog(
+            body = if (state.isEditMode) "Your edits won't be saved. The league stays as it was." else "This league won't be created.",
             onKeepEditing = { confirmDiscard = false },
             onDiscard = {
                 confirmDiscard = false
@@ -535,7 +534,7 @@ private fun SectionHeading(text: String, top: Dp = 16.dp, modifier: Modifier = M
     Spacer(Modifier.height(5.dp))
 }
 
-/** "How it will look": the 16:9 banner, the logo tile and the name / city · date (design I1/I3). */
+/** "How it will look": the 16:9 banner, the logo tile and the name / ground (or district) · date (design I1/I3). */
 @Composable
 private fun PreviewCard(
     state: LeagueCreationState,
@@ -588,9 +587,10 @@ private fun PreviewCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(3.dp))
-            val parts = listOfNotNull(state.city, state.startsOn?.let { formatDate(it, "d MMM") })
+            // I1/I3: "<ground> · <date>", falling back to the district until a ground is chosen.
+            val parts = listOfNotNull(state.groundDisplayName ?: state.district, state.startsOn?.let { formatDate(it, "d MMM") })
             Text(
-                if (parts.isEmpty()) "City · start date" else parts.joinToString(" · "),
+                if (parts.isEmpty()) "Ground name · start date" else parts.joinToString(" · "),
                 style = pText(11.5.sp, lineHeight = 11.5.sp),
                 color = if (parts.isEmpty()) PreviewPlaceholder else colors.onSurfaceVariant,
             )
@@ -681,7 +681,7 @@ private fun ImageActions(
     }
 }
 
-/** I9: helper line, "Use my location", then State / District / City. */
+/** I9: helper line, "Use my location", then State / District (no City since design update #6). */
 @Composable
 private fun LocationSection(
     state: LeagueCreationState,
@@ -715,26 +715,19 @@ private fun LocationSection(
         look = FieldVariant.Form,
         error = errors[LeagueField.District],
     )
-    Spacer(Modifier.height(5.dp))
-    CrichereSelectField(
-        label = "City",
-        options = state.cities,
-        selected = state.cities.firstOrNull { it.name == state.city },
-        optionLabel = CityDto::name,
-        onSelected = viewModel::onCitySelected,
-        enabled = state.district != null,
-        look = FieldVariant.Form,
-        error = errors[LeagueField.City],
-    )
 }
 
-/** I4: search existing grounds, or the selected one; "Register a new ground" opens the map (I5). */
+/**
+ * I4: search existing grounds, or the selected one; "Register a new ground" opens the map (I5).
+ * Required since design update #6: I15's inline [error] sits under the search field, and edit mode
+ * (I10) offers "Change" instead of "Clear".
+ */
 @Composable
-private fun GroundSection(state: LeagueCreationState, viewModel: LeagueCreationViewModel) {
+private fun GroundSection(state: LeagueCreationState, viewModel: LeagueCreationViewModel, error: String?, headingModifier: Modifier) {
     val colors = MaterialTheme.colorScheme
-    SectionHeading("Ground (optional)")
+    SectionHeading("Ground", modifier = headingModifier)
     val selected = state.groundId
-    if (selected != null) {
+    if (selected != null && !state.isChangingGround) {
         Spacer(Modifier.height(7.dp))
         Row(
             Modifier
@@ -750,7 +743,11 @@ private fun GroundSection(state: LeagueCreationState, viewModel: LeagueCreationV
                 Spacer(Modifier.height(4.dp))
                 Text(state.groundDisplayName ?: "Ground selected", style = pText(14.sp, FontWeight.SemiBold, 16.8.sp), color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text("Clear", style = pText(13.sp, FontWeight.SemiBold, 13.sp), color = colors.primary, modifier = Modifier.clickable(onClick = viewModel::onClearGround))
+            if (state.isEditMode) {
+                Text("Change", style = pText(13.sp, FontWeight.SemiBold, 13.sp), color = colors.primary, modifier = Modifier.clickable(onClick = viewModel::onChangeGround))
+            } else {
+                Text("Clear", style = pText(13.sp, FontWeight.SemiBold, 13.sp), color = colors.primary, modifier = Modifier.clickable(onClick = viewModel::onClearGround))
+            }
         }
         return
     }
@@ -760,6 +757,7 @@ private fun GroundSection(state: LeagueCreationState, viewModel: LeagueCreationV
         label = "Search grounds",
         look = FieldVariant.Form,
         trailingIcon = R.drawable.ic_search,
+        error = error,
     )
     val results = if (state.groundSearchQuery.isBlank()) emptyList() else state.groundSearchResults
     if (results.isNotEmpty()) {
@@ -792,7 +790,7 @@ private fun GroundRow(ground: GroundDto, last: Boolean, onClick: () -> Unit) {
         Row(Modifier.fillMaxWidth().height(49.dp).padding(horizontal = 13.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(painterResource(R.drawable.ic_stadium), contentDescription = null, tint = colors.primary, modifier = Modifier.size(19.dp))
             Spacer(Modifier.width(10.dp))
-            Text("${ground.name} -- ${ground.city}", style = pText(13.5.sp, FontWeight.Medium, 16.2.sp), color = colors.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("${ground.name} -- ${ground.district}", style = pText(13.5.sp, FontWeight.Medium, 16.2.sp), color = colors.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         if (!last) HorizontalDivider(thickness = 1.dp, color = colors.surfaceVariant)
     }
@@ -860,33 +858,6 @@ private fun AwardsSection(awards: List<AwardDraft>, viewModel: LeagueCreationVie
         Spacer(Modifier.width(6.dp))
         Text("Add another award", style = pText(13.5.sp, FontWeight.SemiBold, 13.5.sp), color = colors.primary)
     }
-}
-
-/** I10: leaving with unsaved edits. */
-@Composable
-private fun DiscardDialog(editMode: Boolean, onKeepEditing: () -> Unit, onDiscard: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onKeepEditing,
-        // The board's dialog is 314 wide on a 360 screen -- wider than the platform default.
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.padding(horizontal = 23.dp),
-        containerColor = DialogSurface,
-        shape = RoundedCornerShape(28.dp),
-        title = { Text("Discard changes?", style = pText(19.sp, FontWeight.SemiBold, 22.8.sp), color = MaterialTheme.colorScheme.onBackground) },
-        text = {
-            Text(
-                if (editMode) "Your edits won't be saved. The league stays as it was." else "This league won't be created.",
-                style = pText(13.5.sp, lineHeight = 19.575.sp),
-                color = DialogBody,
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDiscard) { Text("Discard", style = pText(14.sp, FontWeight.SemiBold), color = CrichereErrorStrong) }
-        },
-        dismissButton = {
-            TextButton(onClick = onKeepEditing) { Text("Keep editing", style = pText(14.sp, FontWeight.SemiBold), color = MaterialTheme.colorScheme.primary) }
-        },
-    )
 }
 
 /** I6: Material date picker in the board's colours. */

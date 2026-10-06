@@ -72,7 +72,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     const status = cardStatus(liveNow?.leagueId === league.id, league.auctionScheduledAt);
     // Everything the card shows is in the key, so an edit (new logo, rename, going live) is a
     // miss and re-renders at once; repeat crawler hits skip the logo fetch and the render.
-    const key = JSON.stringify([league.id, league.name, league.city, league.state, league.logoUrl, status]);
+    const key = JSON.stringify([league.id, league.name, league.district, league.state, league.logoUrl, status]);
     const cached = renderedCards.get(key);
     if (cached) return new Response(cached, { headers: { "Content-Type": "image/png", ...CACHE_HEADERS } });
 
@@ -163,7 +163,7 @@ function Card({ league, logo, status, iconSrc, wordmarkSrc }: CardProps) {
                 textOverflow: "ellipsis",
               }}
             >
-              {locationLine(league.city, league.state)}
+              {locationLine(league.district, league.state)}
             </div>
           </div>
         </div>

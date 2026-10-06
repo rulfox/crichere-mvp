@@ -20,12 +20,9 @@ data class LeagueResponse(
     val country: String,
     val state: String,
     val district: String,
-    val city: String,
-    val groundId: UUID?,
-    /** Null whenever [groundId] is null; also null (not an error) if the referenced ground was
-     * somehow deleted after this league linked to it -- Phase 2 has no ground-delete feature, so
-     * that case doesn't arise in practice, but the field shouldn't crash the response if it did. */
-    val groundName: String?,
+    val groundId: UUID,
+    /** Always present: ground_id is NOT NULL and its FK is ON DELETE RESTRICT (V21). */
+    val groundName: String,
     val startsOn: LocalDate,
     val format: String?,
     val franchisesRequired: Int?,

@@ -32,7 +32,7 @@ class LiveNowServiceTest {
         name = "Spartanz Premier League",
         state = "Kerala",
         district = "Alappuzha",
-        city = "Pathirappally",
+        groundId = UUID.randomUUID(),
         startsOn = LocalDate.of(2026, 10, 16),
     )
 

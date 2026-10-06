@@ -7,7 +7,7 @@ import java.util.UUID
 
 /**
  * Spring Data repository for [GroundEntity]. [searchByPattern] backs the Ground-picker's
- * search-or-register flow (`GET /api/v1/grounds`) -- state/district/city are combined via a
+ * search-or-register flow (`GET /api/v1/grounds`) -- state/district are combined via a
  * single `:param IS NULL OR ...` query rather than the Specification API, matching this
  * codebase's general preference for the simplest thing that works at MVP data volume.
  *
@@ -26,7 +26,6 @@ interface GroundRepository : JpaRepository<GroundEntity, UUID> {
         WHERE LOWER(g.name) LIKE :searchPattern
           AND (:state IS NULL OR g.state = :state)
           AND (:district IS NULL OR g.district = :district)
-          AND (:city IS NULL OR g.city = :city)
         ORDER BY g.name
         """,
     )
@@ -34,6 +33,5 @@ interface GroundRepository : JpaRepository<GroundEntity, UUID> {
         @Param("searchPattern") searchPattern: String,
         @Param("state") state: String?,
         @Param("district") district: String?,
-        @Param("city") city: String?,
     ): List<GroundEntity>
 }

@@ -5,6 +5,7 @@ import com.crichere.backend.auth.UserEntity
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.ground.GroundEntity
 import com.crichere.backend.ground.GroundRepository
 import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.profile.ProfileRepository
@@ -21,6 +22,18 @@ import kotlin.test.assertFailsWith
 
 /** Unit-level coverage of [RoleService]. End-to-end HTTP behaviour is covered by `RoleFlowIntegrationTest`. */
 class RoleServiceTest {
+    // LeagueService.toResponse resolves the league's ground name (every league has a ground since V21).
+    private val groundRepository = mockk<GroundRepository>().also { repo ->
+        every { repo.findById(any()) } answers {
+            Optional.of(
+                GroundEntity(
+                    id = firstArg(), name = "Test Ground", state = "Karnataka", district = "Bengaluru Urban",
+                    latitude = 12.97, longitude = 77.59, registeredByUserId = UUID.randomUUID(),
+                ),
+            )
+        }
+    }
+
 
     private val leagueRepository = mockk<LeagueRepository>()
     private val leagueRoleRepository = mockk<LeagueRoleRepository>()
@@ -39,7 +52,7 @@ class RoleServiceTest {
         leagueRepository,
         mockk<LeagueAwardRepository>().also { every { it.findByLeagueIdOrderByDisplayOrder(any()) } returns emptyList() },
         mockk<com.crichere.backend.league.LeagueFollowRepository>().also { every { it.existsByLeagueIdAndUserId(any(), any()) } returns false },
-        mockk<GroundRepository>(),
+        groundRepository,
         mockk<com.crichere.backend.player.PlayerRepository>().also {
             every { it.findByLeagueIdAndRemovedAtIsNull(any()) } returns emptyList()
             every { it.countByLeagueIdAndRemovedAtIsNull(any()) } returns 0L
@@ -65,7 +78,7 @@ class RoleServiceTest {
     private val leagueId = UUID.randomUUID()
     private val league = LeagueEntity(
         id = leagueId, organizerUserId = organizerId, name = "Test League", country = "India",
-        state = "Karnataka", district = "Bengaluru Urban", city = "Bengaluru", startsOn = LocalDate.of(2026, 10, 12),
+        state = "Karnataka", district = "Bengaluru Urban", groundId = UUID.randomUUID(), startsOn = LocalDate.of(2026, 10, 12),
     )
 
     private fun givenLeague() {

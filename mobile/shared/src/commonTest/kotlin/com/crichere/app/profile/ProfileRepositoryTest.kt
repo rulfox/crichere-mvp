@@ -94,7 +94,7 @@ class ProfileRepositoryTest {
             // Every previously-set field must ride along, not just the one the user last touched.
             assertTrue(body.contains("\"name\":\"Rahul Sharma\""))
             assertTrue(body.contains("\"state\":\"Karnataka\""))
-            assertTrue(body.contains("\"city\":\"Bengaluru\""))
+            assertTrue(body.contains("\"district\":\"Bengaluru Urban\""))
             assertTrue(body.contains("\"playingRole\":\"BOWLER\""))
             assertTrue(body.contains("\"bowlingStyle\":\"RIGHT_ARM_FAST\""))
             respond(
@@ -109,7 +109,7 @@ class ProfileRepositoryTest {
             name = "Rahul Sharma",
             photoUrl = "https://bucket.s3.ap-south-1.amazonaws.com/users/u1/profile.jpg",
             state = "Karnataka",
-            city = "Bengaluru",
+            district = "Bengaluru Urban",
             playingRole = PlayingRole.BOWLER,
             battingStyle = BattingStyle.RIGHT_HAND,
             bowlingStyle = BowlingStyle.RIGHT_ARM_FAST,
@@ -230,7 +230,7 @@ class ProfileRepositoryTest {
             "photoUrl": null,
             "country": null,
             "state": null,
-            "city": null,
+            "district": null,
             "playingRole": null,
             "battingStyle": null,
             "bowlingStyle": null,
@@ -245,7 +245,7 @@ class ProfileRepositoryTest {
             "photoUrl": "https://bucket.s3.ap-south-1.amazonaws.com/users/u1/profile.jpg",
             "country": null,
             "state": "Karnataka",
-            "city": "Bengaluru",
+            "district": "Bengaluru Urban",
             "playingRole": "BOWLER",
             "battingStyle": "RIGHT_HAND",
             "bowlingStyle": "RIGHT_ARM_FAST",

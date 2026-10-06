@@ -38,7 +38,7 @@ class OwnProfileViewModelTest {
     fun `loads and displays the profile on init`() = viewModelTest {
         val profile = ProfileDto(
             userId = "u1", name = "Rahul Sharma", photoUrl = "https://x/y.jpg", country = "India",
-            state = "Karnataka", district = "Bengaluru Urban", city = "Bengaluru", playingRole = PlayingRole.ALL_ROUNDER,
+            state = "Karnataka", district = "Bengaluru Urban", playingRole = PlayingRole.ALL_ROUNDER,
             battingStyle = BattingStyle.RIGHT_HAND, bowlingStyle = BowlingStyle.RIGHT_ARM_OFFBREAK,
             profileComplete = true,
         )
@@ -53,7 +53,6 @@ class OwnProfileViewModelTest {
         assertEquals("Rahul Sharma", state.name)
         assertEquals("Karnataka", state.state)
         assertEquals("Bengaluru Urban", state.district)
-        assertEquals("Bengaluru", state.city)
         assertEquals(PlayingRole.ALL_ROUNDER, state.playingRole)
         assertEquals(BowlingStyle.RIGHT_ARM_OFFBREAK, state.bowlingStyle)
         assertEquals(1, profileRepository.getProfileCallCount)
@@ -135,8 +134,7 @@ class OwnProfileViewModelTest {
     // ---------------------------------------------------------------- board N (2026-10-02)
 
     private val complete = ProfileDto(
-        userId = "u1", name = "Aarav Pawar", photoUrl = "https://cdn/old.jpg", state = "Maharashtra", district = "Kolhapur",
-        city = "Kolhapur", playingRole = PlayingRole.ALL_ROUNDER, battingStyle = BattingStyle.RIGHT_HAND, bowlingStyle = BowlingStyle.RIGHT_ARM_OFFBREAK,
+        userId = "u1", name = "Aarav Pawar", photoUrl = "https://cdn/old.jpg", state = "Maharashtra", district = "Kolhapur", playingRole = PlayingRole.ALL_ROUNDER, battingStyle = BattingStyle.RIGHT_HAND, bowlingStyle = BowlingStyle.RIGHT_ARM_OFFBREAK,
     )
 
     @Test

@@ -45,11 +45,9 @@ data class LeagueSaveRequest(
     @field:NotBlank(message = "district is required")
     val district: String,
 
-    @field:NotBlank(message = "city is required")
-    val city: String,
-
-    /** References an existing [com.crichere.backend.ground.GroundEntity] -- `null` means no ground attached yet. */
-    val groundId: UUID? = null,
+    /** References an existing [com.crichere.backend.ground.GroundEntity]; required since V21 (design update #6). */
+    @field:NotNull(message = "groundId is required")
+    val groundId: UUID?,
 
     @field:NotNull(message = "startsOn is required")
     val startsOn: LocalDate?,

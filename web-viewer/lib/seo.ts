@@ -27,7 +27,7 @@ export function truncate(text: string, max: number): string {
 }
 
 /** The organizer's own description when there is one, else a generic line naming the league. */
-export function leagueShareDescription(league: { name: string; city: string; description?: string | null }): string {
+export function leagueShareDescription(league: { name: string; district: string; description?: string | null }): string {
   if (league.description && league.description.trim().length > 0) return truncate(league.description, 160);
-  return `Follow ${league.name.trim()}'s live player auction in ${league.city.trim()} -- no account needed.`;
+  return `Follow ${league.name.trim()}'s live player auction in ${league.district.trim()} -- no account needed.`;
 }

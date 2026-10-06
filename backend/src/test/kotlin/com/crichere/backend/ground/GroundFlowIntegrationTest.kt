@@ -65,7 +65,6 @@ class GroundFlowIntegrationTest : AbstractWebIntegrationTest {
                 "name" to "Chepauk Ground ${UUID.randomUUID()}",
                 "state" to "Tamil Nadu",
                 "district" to "Chennai",
-                "city" to "Chennai",
                 "latitude" to 13.0827,
                 "longitude" to 80.2707,
             ),
@@ -87,7 +86,7 @@ class GroundFlowIntegrationTest : AbstractWebIntegrationTest {
 
     @Test
     fun `an incomplete registration fails bean validation with the standard problem detail shape`() {
-        authedPost("/api/v1/grounds", mapOf("name" to "", "state" to "Tamil Nadu", "district" to "Chennai", "city" to "Chennai"))
+        authedPost("/api/v1/grounds", mapOf("name" to "", "state" to "Tamil Nadu", "district" to "Chennai"))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
     }
@@ -100,7 +99,6 @@ class GroundFlowIntegrationTest : AbstractWebIntegrationTest {
                 "name" to "Somewhere",
                 "state" to "Tamil Nadu",
                 "district" to "Chennai",
-                "city" to "Chennai",
                 "latitude" to 200.0,
                 "longitude" to 80.0,
             ),

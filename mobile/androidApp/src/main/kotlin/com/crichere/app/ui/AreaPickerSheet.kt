@@ -43,7 +43,7 @@ import com.crichere.app.R
 import com.crichere.app.ui.theme.InstrumentSansFamily
 
 /**
- * Design screen D2: bottom sheet listing places (states/districts/cities) with a search box; the
+ * Design screen D2: bottom sheet listing places (states/districts) with a search box; the
  * current selection is highlighted. Picking one closes the sheet via [onSelected].
  */
 @OptIn(ExperimentalMaterial3Api::class)

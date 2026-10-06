@@ -29,8 +29,7 @@ class GroundController(
         @RequestParam(required = false) search: String?,
         @RequestParam(required = false) state: String?,
         @RequestParam(required = false) district: String?,
-        @RequestParam(required = false) city: String?,
-    ): List<GroundResponse> = groundService.search(search, state, district, city)
+    ): List<GroundResponse> = groundService.search(search, state, district)
 
     @PostMapping
     fun create(

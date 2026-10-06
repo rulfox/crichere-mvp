@@ -34,11 +34,18 @@ class LeagueFollowFlowIntegrationTest : AbstractWebIntegrationTest {
         return session["accessToken"] as String
     }
 
+    private fun createGround(token: String): String =
+        authedPost(
+            token,
+            "/api/v1/grounds",
+            mapOf("name" to "Test Ground", "state" to "Karnataka", "district" to "Bengaluru Urban", "latitude" to 12.97, "longitude" to 77.59),
+        ).andExpect(status().isOk).andReturn().body()["id"] as String
+
     private fun createLeague(token: String): String =
         authedPost(
             token,
             "/api/v1/leagues",
-            mapOf("name" to "Weekend Box Cricket League", "state" to "Karnataka", "district" to "Bengaluru Urban", "city" to "Bengaluru", "startsOn" to "2026-10-12"),
+            mapOf("name" to "Weekend Box Cricket League", "state" to "Karnataka", "district" to "Bengaluru Urban", "groundId" to createGround(token), "startsOn" to "2026-10-12"),
         ).andExpect(status().isOk).andReturn().body()["id"] as String
 
     @Test

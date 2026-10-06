@@ -579,6 +579,18 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
+- [ ] **Design update #6 (2026-10-06): no City, ground required, Edit profile back.** Built on backend (V21),
+  shared, Android, web and iOS (Swift never compiled). See "Design update #6" in Decisions below.
+  Verified on the Pixel_9_Pro emulator against the local backend: C1 first-time setup (no back, District full
+  width), C1-edit bar, C1-discard (back arrow and system back; Keep editing / Discard; no prompt when nothing
+  changed), N1 rows, D1 chips + "Ground · District" cards, E1 ground + "District, State", I1 placeholder,
+  I15 errors ("4 fields need attention", "Select a district", Ground error), I16 sheet, I10 "Change" reopening
+  the search, M1 "Ground · District · date". Web: unit tests, e2e (24) incl. share card. **Not verified:**
+  D3-D7 states, I3 district fallback with a real image upload, I15/I16 pixel diff against the board, a full
+  create-league save with a newly registered ground, "Use my location" filling State + District on a device,
+  the long LGD pickers (UP 75 districts) on a small screen, iOS anything. Seen: on I16 the keyboard from the
+  previous field can stay up over the sheet.
+
 - [ ] **Share cards: remaining live checks** (2026-10-03, [PHASE13.md](PHASE13.md) §4). Verified: crawler tags
   + S3 logo card on crichere.com, App Link verified and opening on CPH2487, share-sheet text, real WhatsApp preview card. Not yet
   seen: a Facebook preview, a link tapped inside WhatsApp, a real notification tap, release-key
@@ -762,6 +774,21 @@ Open items found while implementing the redesign, not yet scheduled.
     backend or with the reconnect banner over it.
 
 ## Decisions made during implementation
+
+### Design update #6 (2026-10-06)
+
+- Location is State -> District only (LGD districts, backend V20/V21); City is gone from data, API and UI.
+  Leagues keep their own State/District (owner, option B); every league has a ground (`ground_id NOT NULL`,
+  FK `RESTRICT`); V21 deleted ground-less leagues (owner). "Nearest to me" now covers every active league.
+- My leagues row (M1) is "Ground · District · date" (owner, overriding the board's "-- starts" and U4 M5).
+- League creation Location stays full width in every state (I10/I15 draw State/District side by side, I9 full
+  width; the 2026-10-01 full-width decision stands).
+- Edit mode ground card: "Change" reopens the search while the current ground stays selected until another is
+  picked or registered; create mode keeps "Clear".
+- The register-ground map opens on the league's district (zoom 11) instead of the city.
+- iOS: Edit profile back is a toolbar back button + alert; first-time setup hides the back button.
+- Web share description reads "...auction in <district>"; the live page's separate ground item merged into the
+  W10 location line.
 
 - **App start no longer treats transient failures as signed out** (2026-10-01). A refresh that
   fails with a network error/timeout/5xx is retried 4 times (1s/2s/4s backoff), then the splash

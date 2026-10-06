@@ -116,7 +116,6 @@ class DeviceLocationProvider(private val context: Context) : LocationProvider {
                     GeocodedLocation(
                         administrativeArea = address.adminArea,
                         subAdministrativeArea = address.subAdminArea,
-                        locality = address.locality,
                     )
                 }
             }.getOrNull()

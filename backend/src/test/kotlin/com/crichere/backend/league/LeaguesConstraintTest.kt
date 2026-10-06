@@ -52,19 +52,20 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
                 name = "Test Ground",
                 state = "Karnataka",
                 district = "Bengaluru Urban",
-                city = "Bengaluru",
                 latitude = 12.9716,
                 longitude = 77.5946,
                 registeredByUserId = registeredBy,
             ),
         )
 
-    private fun validLeague(organizer: UUID, groundId: UUID? = null) = LeagueEntity(
+    /** A ground owned by its own fresh user, so [validLeague] works even for a non-existent organizer. */
+    private fun someGroundId(): UUID = persistedGround(persistedUser("ground-owner-${UUID.randomUUID()}").id!!).id!!
+
+    private fun validLeague(organizer: UUID, groundId: UUID = someGroundId()) = LeagueEntity(
         organizerUserId = organizer,
         name = "Test League",
         state = "Karnataka",
         district = "Bengaluru Urban",
-        city = "Bengaluru",
         groundId = groundId,
         startsOn = LocalDate.of(2026, 10, 12),
     )
@@ -116,8 +117,8 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
         val user = persistedUser("null-name")
         assertFailsWith<DataIntegrityViolationException> {
             jdbcTemplate.update(
-                "INSERT INTO leagues (organizer_user_id, name, state, district, city, starts_on) VALUES (?, NULL, ?, ?, ?, ?)",
-                user.id, "Karnataka", "Bengaluru Urban", "Bengaluru", java.sql.Date.valueOf("2026-10-12"),
+                "INSERT INTO leagues (organizer_user_id, name, state, district, ground_id, starts_on) VALUES (?, NULL, ?, ?, ?, ?)",
+                user.id, "Karnataka", "Bengaluru Urban", someGroundId(), java.sql.Date.valueOf("2026-10-12"),
             )
         }
     }
@@ -127,8 +128,19 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
         val user = persistedUser("null-date")
         assertFailsWith<DataIntegrityViolationException> {
             jdbcTemplate.update(
-                "INSERT INTO leagues (organizer_user_id, name, state, district, city, starts_on) VALUES (?, ?, ?, ?, ?, NULL)",
-                user.id, "Test", "Karnataka", "Bengaluru Urban", "Bengaluru",
+                "INSERT INTO leagues (organizer_user_id, name, state, district, ground_id, starts_on) VALUES (?, ?, ?, ?, ?, NULL)",
+                user.id, "Test", "Karnataka", "Bengaluru Urban", someGroundId(),
+            )
+        }
+    }
+
+    @Test
+    fun `a null ground_id is rejected`() {
+        val user = persistedUser("null-ground")
+        assertFailsWith<DataIntegrityViolationException> {
+            jdbcTemplate.update(
+                "INSERT INTO leagues (organizer_user_id, name, state, district, ground_id, starts_on) VALUES (?, ?, ?, ?, NULL, ?)",
+                user.id, "Test", "Karnataka", "Bengaluru Urban", java.sql.Date.valueOf("2026-10-12"),
             )
         }
     }
@@ -154,17 +166,15 @@ class LeaguesConstraintTest : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `deleting an attached ground sets ground_id to null rather than deleting the league`() {
-        val user = persistedUser("ground-set-null")
+    fun `deleting a ground that a league uses is rejected`() {
+        val user = persistedUser("ground-restrict")
         val ground = persistedGround(user.id!!)
-        val league = leagueRepository.saveAndFlush(validLeague(user.id!!, groundId = ground.id))
+        leagueRepository.saveAndFlush(validLeague(user.id!!, groundId = ground.id!!))
 
-        groundRepository.delete(ground)
-        groundRepository.flush()
-        entityManager.clear()
-
-        val reloaded = leagueRepository.findById(league.id!!).orElseThrow()
-        assertNull(reloaded.groundId)
+        assertFailsWith<DataIntegrityViolationException> {
+            groundRepository.delete(ground)
+            groundRepository.flush()
+        }
     }
 
     @Test

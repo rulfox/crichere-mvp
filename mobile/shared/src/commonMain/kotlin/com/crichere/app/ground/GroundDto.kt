@@ -9,7 +9,6 @@ data class GroundDto(
     val name: String,
     val state: String,
     val district: String,
-    val city: String,
     val latitude: Double,
     val longitude: Double,
 )
@@ -20,7 +19,6 @@ data class GroundCreateRequestDto(
     val name: String,
     val state: String,
     val district: String,
-    val city: String,
     val latitude: Double,
     val longitude: Double,
 )

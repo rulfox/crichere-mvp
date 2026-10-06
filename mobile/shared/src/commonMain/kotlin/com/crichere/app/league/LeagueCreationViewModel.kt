@@ -6,7 +6,6 @@ import com.crichere.app.ground.GroundCreateRequestDto
 import com.crichere.app.ground.GroundDto
 import com.crichere.app.ground.GroundRepository
 import com.crichere.app.location.LocationProvider
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.ReferenceRepository
 import com.crichere.app.reference.StateDto
@@ -34,7 +33,7 @@ data class AwardDraft(
 )
 
 /** The required League Creation fields, in form order -- the order the first error is scrolled to. */
-enum class LeagueField { Name, State, District, City, StartsOn, UpiId }
+enum class LeagueField { Name, State, District, Ground, StartsOn, UpiId }
 
 data class LeagueCreationState(
     val isLoading: Boolean = false,
@@ -65,14 +64,14 @@ data class LeagueCreationState(
     // Location
     val state: String? = null,
     val district: String? = null,
-    val city: String? = null,
     val states: List<StateDto> = emptyList(),
     val districts: List<DistrictDto> = emptyList(),
-    val cities: List<CityDto> = emptyList(),
     val isLocating: Boolean = false,
     // Ground
     val groundId: String? = null,
     val groundDisplayName: String? = null,
+    /** Edit mode: "Change" reopened the search while the current ground stays selected (design update #6, I10). */
+    val isChangingGround: Boolean = false,
     val groundSearchQuery: String = "",
     val groundSearchResults: List<GroundDto> = emptyList(),
     val isSearchingGrounds: Boolean = false,
@@ -115,11 +114,15 @@ data class LeagueCreationState(
             if (name.isBlank()) put(LeagueField.Name, "Enter a league name")
             if (state == null) put(LeagueField.State, "Select a state")
             if (district == null) put(LeagueField.District, "Select a district")
-            if (city == null) put(LeagueField.City, "Select a city")
+            if (groundId == null) put(LeagueField.Ground, LeagueCreationViewModel.GROUND_REQUIRED_MESSAGE)
             if (startsOn == null) put(LeagueField.StartsOn, "Pick a start date")
             val feeSet = franchiseFee.isNotBlank() || playerFee.isNotBlank()
             if (feeSet && organizerUpiId.isBlank()) put(LeagueField.UpiId, "Required when a fee is set")
         }
+
+    /** Registering a ground needs the league's own State + District (design update #6, I16). */
+    val canRegisterGround: Boolean
+        get() = state != null && district != null
 
     /** [missingFields], but only once a Save tap has asked for them (design I7/I9). */
     val fieldErrors: Map<LeagueField, String>
@@ -181,7 +184,7 @@ class LeagueCreationViewModel(
         // States load first and loadExistingLeague runs only after -- sequential, not two
         // independent launches -- because loadExistingLeague matches the league's state/district
         // names against _state.value.states synchronously; running them in parallel raced on
-        // which finished first, silently dropping the district/city preselect in edit mode.
+        // which finished first, silently dropping the district preselect in edit mode.
         viewModelScope.launch {
             val states = runCatching { referenceRepository.getStates() }.getOrDefault(emptyList())
             _state.update { it.copy(states = states) }
@@ -229,7 +232,6 @@ class LeagueCreationViewModel(
                         bannerUrl = league.bannerUrl,
                         state = league.state,
                         district = league.district,
-                        city = league.city,
                         groundId = league.groundId,
                         groundDisplayName = league.groundName,
                         startsOn = league.startsOn,
@@ -245,11 +247,7 @@ class LeagueCreationViewModel(
                 }
                 league.state.let { stateName ->
                     val matchedState = _state.value.states.firstOrNull { it.name.equals(stateName, ignoreCase = true) }
-                    if (matchedState != null) {
-                        loadDistricts(matchedState.code)
-                        val matchedDistrict = _state.value.districts.firstOrNull { it.name.equals(league.district, ignoreCase = true) }
-                        if (matchedDistrict != null) loadCities(matchedDistrict.id)
-                    }
+                    if (matchedState != null) loadDistricts(matchedState.code)
                 }
                 baseline = _state.value.snapshot()
             }
@@ -311,16 +309,11 @@ class LeagueCreationViewModel(
     // ---- Location ----
 
     fun onStateSelected(stateDto: StateDto) {
-        edit { it.copy(state = stateDto.name, district = null, districts = emptyList(), city = null, cities = emptyList()) }
+        edit { it.copy(state = stateDto.name, district = null, districts = emptyList()) }
         viewModelScope.launch { loadDistricts(stateDto.code) }
     }
 
-    fun onDistrictSelected(districtDto: DistrictDto) {
-        edit { it.copy(district = districtDto.name, city = null, cities = emptyList()) }
-        viewModelScope.launch { loadCities(districtDto.id) }
-    }
-
-    fun onCitySelected(cityDto: CityDto) = edit { it.copy(city = cityDto.name) }
+    fun onDistrictSelected(districtDto: DistrictDto) = edit { it.copy(district = districtDto.name) }
 
     /** User-initiated -- never auto-triggered (that would fire an unprompted permission dialog). Best-effort, silent no-op on any failure. */
     fun useMyLocation() {
@@ -338,32 +331,16 @@ class LeagueCreationViewModel(
             val districts = runCatching { referenceRepository.getDistrictsForState(matchedState.code) }.getOrDefault(emptyList())
             val matchedDistrict = geocoded.subAdministrativeArea?.let { area -> districts.firstOrNull { it.name.equals(area, ignoreCase = true) } }
             if (matchedDistrict == null) {
-                edit { it.copy(isLocating = false, state = matchedState.name, districts = districts, district = null, city = null, cities = emptyList()) }
+                edit { it.copy(isLocating = false, state = matchedState.name, districts = districts, district = null) }
                 return@launch
             }
-            val cities = runCatching { referenceRepository.getCitiesForDistrict(matchedDistrict.id) }.getOrDefault(emptyList())
-            val matchedCity = geocoded.locality?.let { locality -> cities.firstOrNull { it.name.equals(locality, ignoreCase = true) } }
-            edit {
-                it.copy(
-                    isLocating = false,
-                    state = matchedState.name,
-                    districts = districts,
-                    district = matchedDistrict.name,
-                    city = matchedCity?.name,
-                    cities = cities,
-                )
-            }
+            edit { it.copy(isLocating = false, state = matchedState.name, districts = districts, district = matchedDistrict.name) }
         }
     }
 
     private suspend fun loadDistricts(stateCode: String) {
         val districts = runCatching { referenceRepository.getDistrictsForState(stateCode) }.getOrDefault(emptyList())
         _state.update { it.copy(districts = districts) }
-    }
-
-    private suspend fun loadCities(districtId: String) {
-        val cities = runCatching { referenceRepository.getCitiesForDistrict(districtId) }.getOrDefault(emptyList())
-        _state.update { it.copy(cities = cities) }
     }
 
     // ---- Ground ----
@@ -383,13 +360,18 @@ class LeagueCreationViewModel(
                 groundId = ground.id,
                 groundDisplayName = ground.name,
                 isRegisteringNewGround = false,
+                isChangingGround = false,
                 groundSearchQuery = "",
                 groundSearchResults = emptyList(),
             )
         }
     }
 
+    /** Create mode only: drops the selection. Edit mode never clears a ground (every league has one), see [onChangeGround]. */
     fun onClearGround() = edit { it.copy(groundId = null, groundDisplayName = null) }
+
+    /** Edit mode (I10): search for a replacement; the current ground stays until another is picked or registered. */
+    fun onChangeGround() = _state.update { it.copy(isChangingGround = true) }
 
     fun onStartRegisteringNewGround() = _state.update {
         it.copy(isRegisteringNewGround = true, groundSearchResults = emptyList(), newGroundNameError = false, groundErrorTitle = null, groundErrorMessage = null)
@@ -404,7 +386,6 @@ class LeagueCreationViewModel(
         val current = _state.value
         val state = current.state
         val district = current.district
-        val city = current.city
         val latitude = current.newGroundLatitude
         val longitude = current.newGroundLongitude
         if (current.isRegisteringGround) return
@@ -415,8 +396,8 @@ class LeagueCreationViewModel(
 
         // Each of these can be missing on its own -- surfacing which one beats a silent no-op,
         // which is indistinguishable from the tap simply not registering at all.
-        if (state == null || district == null || city == null) {
-            _state.update { it.copy(groundErrorTitle = "Set the league's location first.", groundErrorMessage = "Choose the State, District and City, then register the ground.") }
+        if (state == null || district == null) {
+            _state.update { it.copy(groundErrorTitle = GROUND_LOCATION_MISSING_MESSAGE, groundErrorMessage = null) }
             return
         }
         if (latitude == null || longitude == null) {
@@ -429,7 +410,7 @@ class LeagueCreationViewModel(
             runCatching {
                 groundRepository.registerGround(
                     GroundCreateRequestDto(
-                        name = current.newGroundName, state = state, district = district, city = city, latitude = latitude, longitude = longitude,
+                        name = current.newGroundName, state = state, district = district, latitude = latitude, longitude = longitude,
                     ),
                 )
             }
@@ -438,6 +419,7 @@ class LeagueCreationViewModel(
                         it.copy(
                             isRegisteringGround = false,
                             isRegisteringNewGround = false,
+                            isChangingGround = false,
                             groundId = ground.id,
                             groundDisplayName = ground.name,
                             newGroundName = "",
@@ -616,8 +598,7 @@ class LeagueCreationViewModel(
         bannerUrl = current.bannerUrl,
         state = requireNotNull(current.state),
         district = requireNotNull(current.district),
-        city = requireNotNull(current.city),
-        groundId = current.groundId,
+        groundId = requireNotNull(current.groundId),
         startsOn = requireNotNull(current.startsOn),
         format = current.format.ifBlank { null },
         franchisesRequired = current.franchisesRequired.toIntOrNull(),
@@ -637,6 +618,9 @@ class LeagueCreationViewModel(
     companion object {
         /** The Format dropdown's fixed choices; anything else is "Other" with free text. */
         val FORMAT_OPTIONS = listOf("T10", "T20", "50 overs", "Test")
+
+        const val GROUND_REQUIRED_MESSAGE = "Select a ground or register a new one"
+        const val GROUND_LOCATION_MISSING_MESSAGE = "Set the league's State and District before registering a ground"
     }
 }
 
@@ -650,7 +634,6 @@ private data class FormSnapshot(
     val hasPendingBanner: Boolean,
     val state: String?,
     val district: String?,
-    val city: String?,
     val groundId: String?,
     val startsOn: String?,
     val format: String,
@@ -664,7 +647,7 @@ private data class FormSnapshot(
 )
 
 private fun LeagueCreationState.snapshot() = FormSnapshot(
-    name, description, logoUrl, bannerUrl, hasPendingLogo, hasPendingBanner, state, district, city, groundId, startsOn,
+    name, description, logoUrl, bannerUrl, hasPendingLogo, hasPendingBanner, state, district, groundId, startsOn,
     format, isFormatOther, franchisesRequired, playersRequired, franchiseFee, playerFee, organizerUpiId, awards,
 )
 

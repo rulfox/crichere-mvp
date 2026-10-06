@@ -181,7 +181,11 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
             }
 
             entry<AppRoute.ProfileSetup> { route ->
-                ProfileSetupRoute(isEditMode = route.isEditMode) {
+                ProfileSetupRoute(
+                    isEditMode = route.isEditMode,
+                    // Design update #6: only Edit profile (C1-edit) has a back arrow; first-time setup (C1) has none.
+                    onBack = if (route.isEditMode) ({ navigator.back() }) else null,
+                ) {
                     // An edit (pushed above Main from My Profile) pops back there; first-time setup
                     // completion has nothing below it, so it starts the main area fresh.
                     if (route.isEditMode) navigator.back() else navigator.replaceAll(AppRoute.Main)
@@ -372,13 +376,13 @@ private fun OtpVerifyRoute(
 }
 
 @Composable
-private fun ProfileSetupRoute(isEditMode: Boolean, onNavigateToOwnProfile: () -> Unit) {
+private fun ProfileSetupRoute(isEditMode: Boolean, onBack: (() -> Unit)?, onNavigateToOwnProfile: () -> Unit) {
     val viewModel: ProfileSetupViewModel = koinViewModel(
         key = "profile-setup:$isEditMode",
         parameters = { parametersOf(isEditMode) },
     )
     LaunchedEffect(Unit) { viewModel.retry() }
-    ProfileSetupScreen(viewModel, onNavigateToOwnProfile)
+    ProfileSetupScreen(viewModel, onNavigateToOwnProfile, onBack)
 }
 
 /**

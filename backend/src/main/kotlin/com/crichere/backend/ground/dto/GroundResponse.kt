@@ -8,7 +8,6 @@ data class GroundResponse(
     val name: String,
     val state: String,
     val district: String,
-    val city: String,
     val latitude: Double,
     val longitude: Double,
 )

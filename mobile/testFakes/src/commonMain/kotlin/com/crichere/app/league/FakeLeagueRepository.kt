@@ -9,7 +9,7 @@ class FakeLeagueRepository(
     var leaguesNearest: List<LeagueDto> = emptyList(),
 ) : LeagueRepository {
 
-    val listByAreaCalls = mutableListOf<Triple<String?, String?, String?>>()
+    val listByAreaCalls = mutableListOf<Pair<String?, String?>>()
     val listNearestCalls = mutableListOf<Pair<Double, Double>>()
     var listByAreaError: Throwable? = null
     var listNearestError: Throwable? = null
@@ -46,14 +46,14 @@ class FakeLeagueRepository(
     val updateAuctionSettingsRequests = mutableListOf<AuctionSettingsSaveRequestDto>()
 
     /** Optional per-filter answer/latency, for tests about overlapping requests; defaults to [leaguesByArea], no delay. */
-    var leaguesForArea: ((state: String?, district: String?, city: String?) -> List<LeagueDto>)? = null
+    var leaguesForArea: ((state: String?, district: String?) -> List<LeagueDto>)? = null
     var listByAreaDelayMillis: (state: String?) -> Long = { 0 }
 
-    override suspend fun listByArea(state: String?, district: String?, city: String?): List<LeagueDto> {
-        listByAreaCalls += Triple(state, district, city)
+    override suspend fun listByArea(state: String?, district: String?): List<LeagueDto> {
+        listByAreaCalls += state to district
         listByAreaDelayMillis(state).takeIf { it > 0 }?.let { delay(it) }
         listByAreaError?.let { throw it }
-        return leaguesForArea?.invoke(state, district, city) ?: leaguesByArea
+        return leaguesForArea?.invoke(state, district) ?: leaguesByArea
     }
 
     override suspend fun listNearest(latitude: Double, longitude: Double): List<LeagueDto> {

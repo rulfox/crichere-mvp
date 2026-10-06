@@ -9,16 +9,16 @@ import java.util.UUID
 
 /**
  * Spring Data repository for [LeagueEntity]. Two distinct list queries, per docs/PHASE2.md's
- * Decisions Made -- `near` is mutually exclusive with the state/district/city area filters in
+ * Decisions Made -- `near` is mutually exclusive with the state/district area filters in
  * the UI, so they're modeled as two separate repository methods rather than one query trying to
  * express both:
  *
- * - [findByAreaFilters]: state/district/city, each optional, combined via a single
+ * - [findByAreaFilters]: state/district, each optional, combined via a single
  *   `:param IS NULL OR ...` query rather than the Specification API, matching [GroundRepository
  *   com.crichere.backend.ground.GroundRepository]'s equivalent.
  * - [findNearest]: Haversine distance against the attached ground's lat/long, native SQL (no
- *   portable JPQL trig functions) -- only leagues with a `ground_id` participate (see
- *   docs/PHASE2.md's Decisions Made on why there's no city/district-centroid fallback).
+ *   portable JPQL trig functions) -- every league has a ground since V21, so every
+ *   active league participates.
  */
 interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
 
@@ -28,21 +28,19 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
         WHERE l.completedAt IS NULL
           AND (:state IS NULL OR l.state = :state)
           AND (:district IS NULL OR l.district = :district)
-          AND (:city IS NULL OR l.city = :city)
         ORDER BY l.startsOn
         """,
     )
     fun findByAreaFilters(
         @Param("state") state: String?,
         @Param("district") district: String?,
-        @Param("city") city: String?,
     ): List<LeagueEntity>
 
     @Query(
         value = """
             SELECT l.* FROM leagues l
             JOIN grounds g ON g.id = l.ground_id
-            WHERE l.ground_id IS NOT NULL AND l.completed_at IS NULL
+            WHERE l.completed_at IS NULL
             ORDER BY (
                 6371 * acos(
                     cos(radians(:latitude)) * cos(radians(g.latitude)) * cos(radians(g.longitude) - radians(:longitude))

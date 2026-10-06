@@ -40,10 +40,10 @@ final class LeagueCreationViewModelWrapper: ObservableObject {
     func useMyLocation() { viewModel.useMyLocation() }
     func onStateSelected(_ stateDto: StateDto) { viewModel.onStateSelected(stateDto: stateDto) }
     func onDistrictSelected(_ districtDto: DistrictDto) { viewModel.onDistrictSelected(districtDto: districtDto) }
-    func onCitySelected(_ cityDto: CityDto) { viewModel.onCitySelected(cityDto: cityDto) }
     func onGroundSearchQueryChanged(_ query: String) { viewModel.onGroundSearchQueryChanged(query: query) }
     func onGroundSelected(_ ground: GroundDto) { viewModel.onGroundSelected(ground: ground) }
     func onClearGround() { viewModel.onClearGround() }
+    func onChangeGround() { viewModel.onChangeGround() }
     func onStartRegisteringNewGround() { viewModel.onStartRegisteringNewGround() }
     func onCancelRegisteringNewGround() { viewModel.onCancelRegisteringNewGround() }
     func onNewGroundNameChanged(_ value: String) { viewModel.onNewGroundNameChanged(value: value) }
@@ -144,18 +144,9 @@ struct LeagueCreationView: View {
                         }
                         .disabled(wrapper.state.state == nil)
 
-                        Picker("City", selection: Binding(
-                            get: { wrapper.state.cities.first { $0.name == wrapper.state.city } },
-                            set: { newValue in if let newValue { wrapper.onCitySelected(newValue) } }
-                        )) {
-                            ForEach(wrapper.state.cities, id: \.name) { cityDto in
-                                Text(cityDto.name).tag(Optional(cityDto))
-                            }
-                        }
-                        .disabled(wrapper.state.district == nil)
                     }
 
-                    Section("Ground (optional)") { groundSection }
+                    Section("Ground") { groundSection }
 
                     Section("Schedule") {
                         Button(wrapper.state.startsOn ?? "Pick a start date") { showStartsOnPicker = true }
@@ -235,11 +226,16 @@ struct LeagueCreationView: View {
 
     @ViewBuilder
     private var groundSection: some View {
-        if wrapper.state.groundId != nil {
+        if wrapper.state.groundId != nil && !wrapper.state.isChangingGround {
             HStack {
                 Text(wrapper.state.groundDisplayName ?? "Ground selected")
                 Spacer()
-                Button("Clear") { wrapper.onClearGround() }
+                // Design update #6 (I10): a league always has a ground, so edit mode offers Change, never Clear.
+                if wrapper.state.isEditMode {
+                    Button("Change") { wrapper.onChangeGround() }
+                } else {
+                    Button("Clear") { wrapper.onClearGround() }
+                }
             }
         } else if wrapper.state.isRegisteringNewGround {
             // U4 I14: while the name is being typed, the field and Register share one compact row and the
@@ -250,7 +246,7 @@ struct LeagueCreationView: View {
                 if groundNameFocused {
                     Button("Register") { wrapper.registerNewGround() }
                         .buttonStyle(.borderedProminent)
-                        .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty)
+                        .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty || !wrapper.state.canRegisterGround)
                 }
             }
             GroundMapPickerView(
@@ -264,8 +260,12 @@ struct LeagueCreationView: View {
                     Button("Cancel") { wrapper.onCancelRegisteringNewGround() }
                     Spacer()
                     Button(wrapper.state.isRegisteringGround ? "Registering..." : "Register ground") { wrapper.registerNewGround() }
-                        .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty)
+                        .disabled(wrapper.state.isRegisteringGround || wrapper.state.newGroundName.isEmpty || !wrapper.state.canRegisterGround)
                 }
+            }
+            // Design update #6 (I16): a ground needs the league's own State and District first.
+            if !wrapper.state.canRegisterGround {
+                Text("Set the league's State and District before registering a ground").foregroundColor(.red)
             }
             if let error = wrapper.state.errorMessage {
                 Text(error).foregroundColor(.red)
@@ -276,7 +276,7 @@ struct LeagueCreationView: View {
                 ProgressView()
             } else {
                 ForEach(wrapper.state.groundSearchResults, id: \.id) { ground in
-                    Button("\(ground.name) -- \(ground.city)") { wrapper.onGroundSelected(ground) }
+                    Button("\(ground.name) -- \(ground.district)") { wrapper.onGroundSelected(ground) }
                 }
             }
             Button("Can't find it? Register a new ground") { wrapper.onStartRegisteringNewGround() }

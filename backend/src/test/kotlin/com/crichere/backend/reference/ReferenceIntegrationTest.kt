@@ -13,11 +13,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * `/reference/states`, `/reference/states/{state}/districts`, and
- * `/reference/districts/{district}/cities` over real HTTP -- with no `Authorization` header
- * sent at all, proving `SecurityConfig`'s `permitAll()` on every path under
- * `/api/v1/reference/` actually covers this exact path shape (including both path-variable
- * ones) rather than assuming the wiring is correct for it.
+ * `/reference/states` and `/reference/states/{state}/districts` over real HTTP -- with no
+ * `Authorization` header sent at all, proving `SecurityConfig`'s `permitAll()` on every path
+ * under `/api/v1/reference/` actually covers these path shapes rather than assuming the wiring
+ * is correct for them. The district -> cities endpoint is gone since V21 (no city tier).
  */
 class ReferenceIntegrationTest : AbstractWebIntegrationTest {
 
@@ -47,14 +46,9 @@ class ReferenceIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
-    fun `cities for a real district are public and include the real seeded data`() {
-        val districtId = bengaluruUrbanDistrictId()
-
-        val result = mockMvc.perform(get("/api/v1/reference/districts/$districtId/cities"))
-            .andExpect(status().isOk)
-            .andReturn()
-
-        assertTrue(readList(result.response.contentAsString).any { it["name"] == "Bengaluru" })
+    fun `the old district-to-cities endpoint is gone`() {
+        mockMvc.perform(get("/api/v1/reference/districts/${java.util.UUID.randomUUID()}/cities"))
+            .andExpect(status().isNotFound)
     }
 
     @Test
@@ -91,28 +85,6 @@ class ReferenceIntegrationTest : AbstractWebIntegrationTest {
         mockMvc.perform(get("/api/v1/reference/states/12/districts"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("NOT_FOUND"))
-    }
-
-    @Test
-    fun `a syntactically valid but unknown district id returns an empty list, not an error`() {
-        mockMvc.perform(get("/api/v1/reference/districts/${java.util.UUID.randomUUID()}/cities"))
-            .andExpect(status().isOk)
-            .andExpect(content().json("[]"))
-    }
-
-    @Test
-    fun `a malformed district id returns a 404 problem detail`() {
-        mockMvc.perform(get("/api/v1/reference/districts/not-a-uuid/cities"))
-            .andExpect(status().isNotFound)
-            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-            .andExpect(jsonPath("$.code").value("NOT_FOUND"))
-            .andExpect(jsonPath("$.instance").value("/api/v1/reference/districts/not-a-uuid/cities"))
-    }
-
-    private fun bengaluruUrbanDistrictId(): String {
-        val result = mockMvc.perform(get("/api/v1/reference/states/KA/districts")).andReturn()
-        val district = readList(result.response.contentAsString).first { it["name"] == "Bengaluru Urban" }
-        return district["id"] as String
     }
 
     @Suppress("UNCHECKED_CAST")

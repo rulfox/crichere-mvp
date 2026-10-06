@@ -37,7 +37,6 @@ final class ProfileSetupViewModelWrapper: ObservableObject {
     func onNameChanged(_ value: String) { viewModel.onNameChanged(value: value) }
     func onStateSelected(_ stateDto: StateDto) { viewModel.onStateSelected(stateDto: stateDto) }
     func onDistrictSelected(_ districtDto: DistrictDto) { viewModel.onDistrictSelected(districtDto: districtDto) }
-    func onCitySelected(_ cityDto: CityDto) { viewModel.onCitySelected(cityDto: cityDto) }
     func onRoleSelected(_ role: PlayingRole) { viewModel.onRoleSelected(role: role) }
     func onBattingStyleSelected(_ style: BattingStyle) { viewModel.onBattingStyleSelected(style: style) }
     func onBowlingStyleSelected(_ style: BowlingStyle) { viewModel.onBowlingStyleSelected(style: style) }
@@ -51,16 +50,23 @@ final class ProfileSetupViewModelWrapper: ObservableObject {
 /// uses `PhotosPicker` (iOS 16+, the SwiftUI-native equivalent of Android's Photo Picker) --
 /// gallery only, no camera-capture entry point, same documented scope decision as the Android
 /// side (see task-7-report.md).
+///
+/// Design update #6: `onBack` is non-nil only for Edit profile (C1-edit) -- a back button and the
+/// "Edit profile" title, and leaving with unsaved edits asks first (C1-discard). First-time setup
+/// (C1) has no way back; Save is the only way forward.
 struct ProfileSetupView: View {
     let isEditMode: Bool
     let onProfileComplete: () -> Void
+    let onBack: (() -> Void)?
+    @State private var confirmDiscard = false
 
     @StateObject private var wrapper: ProfileSetupViewModelWrapper
     @StateObject private var locationPermission = LocationPermissionRequester()
     @State private var selectedPhotoItem: PhotosPickerItem?
 
-    init(isEditMode: Bool, onProfileComplete: @escaping () -> Void) {
+    init(isEditMode: Bool, onBack: (() -> Void)? = nil, onProfileComplete: @escaping () -> Void) {
         self.isEditMode = isEditMode
+        self.onBack = onBack
         self.onProfileComplete = onProfileComplete
         _wrapper = StateObject(wrappedValue: ProfileSetupViewModelWrapper(isEditMode: isEditMode))
     }
@@ -130,15 +136,6 @@ struct ProfileSetupView: View {
                         }
                         .disabled(wrapper.state.state == nil)
 
-                        Picker("City", selection: Binding(
-                            get: { wrapper.state.cities.first { $0.name == wrapper.state.city } },
-                            set: { newValue in if let newValue { wrapper.onCitySelected(newValue) } }
-                        )) {
-                            ForEach(wrapper.state.cities, id: \.name) { cityDto in
-                                Text(cityDto.name).tag(Optional(cityDto))
-                            }
-                        }
-                        .disabled(wrapper.state.district == nil)
                     }
 
                     Section("Playing") {
@@ -185,7 +182,26 @@ struct ProfileSetupView: View {
                 }
             }
         }
-        .navigationTitle("Set up your profile")
+        .navigationTitle(onBack == nil ? "Set up your profile" : "Edit profile")
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            if let onBack {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        if wrapper.state.isDirty { confirmDiscard = true } else { onBack() }
+                    } label: {
+                        Image(systemName: "chevron.backward")
+                    }
+                    .accessibilityLabel("Back")
+                }
+            }
+        }
+        .alert("Discard changes?", isPresented: $confirmDiscard) {
+            Button("Keep editing", role: .cancel) {}
+            Button("Discard", role: .destructive) { onBack?() }
+        } message: {
+            Text("Your edits won't be saved. Your profile stays as it was.")
+        }
         .onChange(of: selectedPhotoItem) { _, newItem in
             Task {
                 guard let newItem, let data = try? await newItem.loadTransferable(type: Data.self) else { return }

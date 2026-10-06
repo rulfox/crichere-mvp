@@ -1,5 +1,6 @@
 package com.crichere.backend.league
 
+import com.crichere.backend.ground.GroundEntity
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.PhotoUploadService
@@ -80,11 +81,25 @@ class LeagueServiceTest {
     private val otherUserId: UUID = UUID.randomUUID()
     private val leagueId: UUID = UUID.randomUUID()
 
-    private fun validRequest(groundId: UUID? = null) = LeagueSaveRequest(
+    private val defaultGroundId: UUID = UUID.randomUUID()
+
+    init {
+        // Every league has a ground since V21; any id resolves to a ground unless a test says otherwise.
+        every { groundRepository.existsById(any()) } returns true
+        every { groundRepository.findById(any()) } answers {
+            Optional.of(
+                GroundEntity(
+                    id = firstArg(), name = "Test Ground", state = "Karnataka", district = "Bengaluru Urban",
+                    latitude = 12.97, longitude = 77.59, registeredByUserId = UUID.randomUUID(),
+                ),
+            )
+        }
+    }
+
+    private fun validRequest(groundId: UUID? = defaultGroundId) = LeagueSaveRequest(
         name = "Weekend Box Cricket League",
         state = "Karnataka",
         district = "Bengaluru Urban",
-        city = "Bengaluru",
         groundId = groundId,
         startsOn = LocalDate.of(2026, 10, 12),
     )
@@ -95,7 +110,7 @@ class LeagueServiceTest {
         name = "Existing League",
         state = "Karnataka",
         district = "Bengaluru Urban",
-        city = "Bengaluru",
+        groundId = defaultGroundId,
         startsOn = LocalDate.of(2026, 10, 12),
         completedAt = completedAt,
     )
@@ -108,6 +123,16 @@ class LeagueServiceTest {
 
         assertFailsWith<ContentRateLimitExceededException> {
             service.create(organizerId, validRequest())
+        }
+        verify(exactly = 0) { leagueRepository.save(any()) }
+    }
+
+    @Test
+    fun `create rejects a request without a ground`() {
+        every { contentRateLimiter.tryConsumeForLeagueCreate(organizerId) } returns null
+
+        assertFailsWith<GroundNotFoundException> {
+            service.create(organizerId, validRequest(groundId = null))
         }
         verify(exactly = 0) { leagueRepository.save(any()) }
     }

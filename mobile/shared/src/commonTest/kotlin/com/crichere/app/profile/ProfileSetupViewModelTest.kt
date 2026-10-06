@@ -6,7 +6,6 @@ import com.crichere.app.auth.viewModelTest
 import com.crichere.app.location.FakeLocationProvider
 import com.crichere.app.location.GeoPoint
 import com.crichere.app.location.GeocodedLocation
-import com.crichere.app.reference.CityDto
 import com.crichere.app.reference.DistrictDto
 import com.crichere.app.reference.FakeReferenceRepository
 import com.crichere.app.reference.StateDto
@@ -22,8 +21,8 @@ import kotlin.test.assertTrue
 
 /**
  * [ProfileSetupViewModel] coverage per this task's Testing Strategy: first-missing-field
- * resumability for every one of the 8 positions (District retrofit inserted DISTRICT between
- * STATE and CITY) plus the bowling-skip case; edit-mode entry starting at the top instead;
+ * resumability for every one of the 7 positions (name, photo, state, district, role, batting,
+ * bowling; no city since design update #6) plus the bowling-skip case; edit-mode entry starting at the top instead;
  * role-conditional bowling-style visibility and its clear-on-role-change behavior; save-button-
  * enabled logic (mirrored separately, exhaustively, in [ProfileSetupStateIsSaveEnabledTest]);
  * GPS-match-against-fetched-list logic using a fake [com.crichere.app.location.LocationProvider];
@@ -35,8 +34,6 @@ class ProfileSetupViewModelTest {
     private val maharashtra = StateDto(code = "MH", name = "Maharashtra")
     private val bengaluruUrban = DistrictDto(id = "d-ka-1", name = "Bengaluru Urban")
     private val mysuruDistrict = DistrictDto(id = "d-ka-2", name = "Mysuru")
-    private val bengaluru = CityDto(name = "Bengaluru")
-    private val mysuru = CityDto(name = "Mysuru")
 
     private fun newViewModel(
         isEditMode: Boolean = false,
@@ -44,7 +41,6 @@ class ProfileSetupViewModelTest {
         referenceRepository: FakeReferenceRepository = FakeReferenceRepository(
             states = listOf(karnataka, maharashtra),
             districtsByStateCode = mapOf("KA" to listOf(bengaluruUrban, mysuruDistrict)),
-            citiesByDistrictId = mapOf(bengaluruUrban.id to listOf(bengaluru, mysuru)),
         ),
         locationProvider: FakeLocationProvider = FakeLocationProvider(),
     ): ProfileSetupViewModel =
@@ -86,20 +82,9 @@ class ProfileSetupViewModelTest {
     }
 
     @Test
-    fun `first missing field CITY once name photo state and district are set`() = viewModelTest {
+    fun `first missing field ROLE once name photo state and district are set`() = viewModelTest {
         val profile = emptyProfile().copy(
             name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban",
-        )
-        val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
-        advanceUntilIdle()
-        assertEquals(ProfileField.CITY, viewModel.state.value.initialFocusField)
-    }
-
-    @Test
-    fun `first missing field ROLE once name photo state district and city are set`() = viewModelTest {
-        val profile = emptyProfile().copy(
-            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban",
-            city = "Bengaluru",
         )
         val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
         advanceUntilIdle()
@@ -109,8 +94,7 @@ class ProfileSetupViewModelTest {
     @Test
     fun `first missing field BATTING once role is set but batting style is not`() = viewModelTest {
         val profile = emptyProfile().copy(
-            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban",
-            city = "Bengaluru", playingRole = PlayingRole.BATSMAN,
+            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban", playingRole = PlayingRole.BATSMAN,
         )
         val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
         advanceUntilIdle()
@@ -120,8 +104,7 @@ class ProfileSetupViewModelTest {
     @Test
     fun `first missing field BOWLING when role is BOWLER and bowling style is not set`() = viewModelTest {
         val profile = emptyProfile().copy(
-            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban",
-            city = "Bengaluru", playingRole = PlayingRole.BOWLER, battingStyle = BattingStyle.RIGHT_HAND,
+            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban", playingRole = PlayingRole.BOWLER, battingStyle = BattingStyle.RIGHT_HAND,
         )
         val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
         advanceUntilIdle()
@@ -131,8 +114,7 @@ class ProfileSetupViewModelTest {
     @Test
     fun `bowling is skipped for a BATSMAN - nothing missing - defaults to NAME`() = viewModelTest {
         val profile = emptyProfile().copy(
-            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban",
-            city = "Bengaluru", playingRole = PlayingRole.BATSMAN, battingStyle = BattingStyle.RIGHT_HAND,
+            name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka", district = "Bengaluru Urban", playingRole = PlayingRole.BATSMAN, battingStyle = BattingStyle.RIGHT_HAND,
         )
         val viewModel = newViewModel(profileRepository = FakeProfileRepository(profile))
         advanceUntilIdle()
@@ -156,7 +138,7 @@ class ProfileSetupViewModelTest {
     fun `edit mode pre-fills the form from the existing complete profile`() = viewModelTest {
         val profile = ProfileDto(
             userId = "u1", name = "Rahul Sharma", photoUrl = "https://x/y.jpg", state = "Karnataka",
-            district = "Bengaluru Urban", city = "Bengaluru", playingRole = PlayingRole.WICKETKEEPER,
+            district = "Bengaluru Urban", playingRole = PlayingRole.WICKETKEEPER,
             battingStyle = BattingStyle.LEFT_HAND, profileComplete = true,
         )
         val viewModel = newViewModel(isEditMode = true, profileRepository = FakeProfileRepository(profile))
@@ -166,7 +148,6 @@ class ProfileSetupViewModelTest {
         assertEquals("Rahul Sharma", state.name)
         assertEquals("Karnataka", state.state)
         assertEquals("Bengaluru Urban", state.district)
-        assertEquals("Bengaluru", state.city)
         assertEquals(PlayingRole.WICKETKEEPER, state.playingRole)
     }
 
@@ -217,14 +198,13 @@ class ProfileSetupViewModelTest {
         assertEquals(BowlingStyle.LEFT_ARM_ORTHODOX, viewModel.state.value.bowlingStyle)
     }
 
-    // ---- State/district/city selection ----
+    // ---- State/district selection ----
 
     @Test
-    fun `selecting a state clears the previous district and city and fetches that state's districts`() = viewModelTest {
+    fun `selecting a state clears the previous district and fetches that state's districts`() = viewModelTest {
         val referenceRepository = FakeReferenceRepository(
             states = listOf(karnataka, maharashtra),
             districtsByStateCode = mapOf("KA" to listOf(bengaluruUrban, mysuruDistrict)),
-            citiesByDistrictId = mapOf(bengaluruUrban.id to listOf(bengaluru, mysuru)),
         )
         val viewModel = newViewModel(referenceRepository = referenceRepository)
         advanceUntilIdle()
@@ -238,23 +218,18 @@ class ProfileSetupViewModelTest {
 
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        viewModel.onCitySelected(bengaluru)
-        assertEquals("Bengaluru", viewModel.state.value.city)
 
-        // Changing the state again must clear the previously-selected district/city and re-fetch.
+        // Changing the state again must clear the previously-selected district and re-fetch.
         viewModel.onStateSelected(maharashtra)
         assertNull(viewModel.state.value.district)
-        assertNull(viewModel.state.value.city)
         assertTrue(viewModel.state.value.districts.isEmpty())
-        assertTrue(viewModel.state.value.cities.isEmpty())
     }
 
     @Test
-    fun `selecting a district clears the previous city and fetches that district's cities`() = viewModelTest {
+    fun `selecting a district replaces the previous one`() = viewModelTest {
         val referenceRepository = FakeReferenceRepository(
             states = listOf(karnataka),
             districtsByStateCode = mapOf("KA" to listOf(bengaluruUrban)),
-            citiesByDistrictId = mapOf(bengaluruUrban.id to listOf(bengaluru, mysuru)),
         )
         val viewModel = newViewModel(referenceRepository = referenceRepository)
         advanceUntilIdle()
@@ -265,27 +240,41 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Bengaluru Urban", viewModel.state.value.district)
-        assertEquals(listOf(bengaluru, mysuru), viewModel.state.value.cities)
-        assertEquals(listOf(bengaluruUrban.id), referenceRepository.getCitiesForDistrictCalls)
 
-        viewModel.onCitySelected(bengaluru)
-        assertEquals("Bengaluru", viewModel.state.value.city)
-
-        // Changing the district again must clear the previously-selected city and re-fetch.
         viewModel.onDistrictSelected(mysuruDistrict)
-        assertNull(viewModel.state.value.city)
+        assertEquals("Mysuru", viewModel.state.value.district)
+    }
+
+    // ---- Edit profile discard (design update #6, C1-discard) ----
+
+    @Test
+    fun `a freshly loaded profile is not dirty, an edit makes it dirty and undoing it clears that`() = viewModelTest {
+        val profileRepository = FakeProfileRepository(
+            profile = ProfileDto(
+                userId = "u1", name = "Rahul", photoUrl = "https://x/y.jpg", state = "Karnataka",
+                district = "Bengaluru Urban", playingRole = PlayingRole.BATSMAN, battingStyle = BattingStyle.RIGHT_HAND,
+            ),
+        )
+        val viewModel = newViewModel(profileRepository = profileRepository, isEditMode = true)
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isDirty)
+
+        viewModel.onNameChanged("Rahul S")
+        assertTrue(viewModel.state.value.isDirty)
+
+        viewModel.onNameChanged("Rahul")
+        assertFalse(viewModel.state.value.isDirty)
     }
 
     // ---- GPS auto-fill / matching (fake LocationProvider) ----
 
     @Test
-    fun `useMyLocation pre-selects state district and city when all three reverse-geocoded names match`() = viewModelTest {
+    fun `useMyLocation pre-selects state and district when both reverse-geocoded names match`() = viewModelTest {
         val locationProvider = FakeLocationProvider(
             location = GeoPoint(12.9716, 77.5946),
             geocoded = GeocodedLocation(
                 administrativeArea = "Karnataka",
                 subAdministrativeArea = "Bengaluru Urban",
-                locality = "Bengaluru",
             ),
         )
         val viewModel = newViewModel(locationProvider = locationProvider)
@@ -296,7 +285,6 @@ class ProfileSetupViewModelTest {
 
         assertEquals("Karnataka", viewModel.state.value.state)
         assertEquals("Bengaluru Urban", viewModel.state.value.district)
-        assertEquals("Bengaluru", viewModel.state.value.city)
         assertFalse(viewModel.state.value.isLocating)
     }
 
@@ -307,7 +295,6 @@ class ProfileSetupViewModelTest {
             geocoded = GeocodedLocation(
                 administrativeArea = "karnataka",
                 subAdministrativeArea = "BENGALURU URBAN",
-                locality = "BENGALURU",
             ),
         )
         val viewModel = newViewModel(locationProvider = locationProvider)
@@ -318,7 +305,6 @@ class ProfileSetupViewModelTest {
 
         assertEquals("Karnataka", viewModel.state.value.state)
         assertEquals("Bengaluru Urban", viewModel.state.value.district)
-        assertEquals("Bengaluru", viewModel.state.value.city)
     }
 
     @Test
@@ -328,7 +314,6 @@ class ProfileSetupViewModelTest {
             geocoded = GeocodedLocation(
                 administrativeArea = "Greater London",
                 subAdministrativeArea = null,
-                locality = "London",
             ),
         )
         val viewModel = newViewModel(locationProvider = locationProvider)
@@ -339,7 +324,6 @@ class ProfileSetupViewModelTest {
 
         assertNull(viewModel.state.value.state)
         assertNull(viewModel.state.value.district)
-        assertNull(viewModel.state.value.city)
         assertFalse(viewModel.state.value.isLocating)
     }
 
@@ -350,7 +334,6 @@ class ProfileSetupViewModelTest {
             geocoded = GeocodedLocation(
                 administrativeArea = "Karnataka",
                 subAdministrativeArea = "Somewhere Unseeded",
-                locality = "Bengaluru",
             ),
         )
         val viewModel = newViewModel(locationProvider = locationProvider)
@@ -361,30 +344,7 @@ class ProfileSetupViewModelTest {
 
         assertEquals("Karnataka", viewModel.state.value.state)
         assertNull(viewModel.state.value.district)
-        assertNull(viewModel.state.value.city)
         assertEquals(listOf(bengaluruUrban, mysuruDistrict), viewModel.state.value.districts)
-    }
-
-    @Test
-    fun `useMyLocation pre-selects the state and district even when the city doesn't match`() = viewModelTest {
-        val locationProvider = FakeLocationProvider(
-            location = GeoPoint(12.9716, 77.5946),
-            geocoded = GeocodedLocation(
-                administrativeArea = "Karnataka",
-                subAdministrativeArea = "Bengaluru Urban",
-                locality = "Hubballi",
-            ),
-        )
-        val viewModel = newViewModel(locationProvider = locationProvider)
-        advanceUntilIdle()
-
-        viewModel.useMyLocation()
-        advanceUntilIdle()
-
-        assertEquals("Karnataka", viewModel.state.value.state)
-        assertEquals("Bengaluru Urban", viewModel.state.value.district)
-        assertNull(viewModel.state.value.city)
-        assertEquals(listOf(bengaluru, mysuru), viewModel.state.value.cities)
     }
 
     @Test
@@ -398,7 +358,6 @@ class ProfileSetupViewModelTest {
 
         assertNull(viewModel.state.value.state)
         assertNull(viewModel.state.value.district)
-        assertNull(viewModel.state.value.city)
         assertFalse(viewModel.state.value.isLocating)
     }
 
@@ -409,7 +368,6 @@ class ProfileSetupViewModelTest {
             geocoded = GeocodedLocation(
                 administrativeArea = "Karnataka",
                 subAdministrativeArea = "Bengaluru Urban",
-                locality = "Bengaluru",
             ),
         )
         newViewModel(locationProvider = locationProvider)
@@ -530,7 +488,6 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        viewModel.onCitySelected(bengaluru)
         viewModel.onRoleSelected(PlayingRole.BATSMAN)
         viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
 
@@ -553,7 +510,6 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        viewModel.onCitySelected(bengaluru)
         viewModel.onRoleSelected(PlayingRole.BATSMAN)
         viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
 
@@ -581,7 +537,6 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        viewModel.onCitySelected(bengaluru)
         viewModel.onRoleSelected(PlayingRole.BATSMAN)
         viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
 
@@ -598,7 +553,6 @@ class ProfileSetupViewModelTest {
         assertEquals("Rahul Sharma", snapshot.name)
         assertEquals("Karnataka", snapshot.state)
         assertEquals("Bengaluru Urban", snapshot.district)
-        assertEquals("Bengaluru", snapshot.city)
         assertEquals(PlayingRole.BATSMAN, snapshot.playingRole)
         assertNull(snapshot.bowlingStyle)
         assertEquals(1, observedEvents.size)
@@ -620,7 +574,6 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        viewModel.onCitySelected(bengaluru)
         viewModel.onRoleSelected(PlayingRole.BATSMAN)
         viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
 
@@ -660,7 +613,6 @@ class ProfileSetupViewModelTest {
         advanceUntilIdle()
         viewModel.onDistrictSelected(bengaluruUrban)
         advanceUntilIdle()
-        viewModel.onCitySelected(bengaluru)
         viewModel.onRoleSelected(PlayingRole.BOWLER)
         viewModel.onBattingStyleSelected(BattingStyle.RIGHT_HAND)
 

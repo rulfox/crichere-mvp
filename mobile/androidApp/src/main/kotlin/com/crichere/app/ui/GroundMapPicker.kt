@@ -95,7 +95,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 private val DEFAULT_CAMERA_POSITION = CameraPosition.fromLatLngZoom(LatLng(20.5937, 78.9629), 4f) // India, whole-country zoom
-private const val CITY_ZOOM = 13f
+private const val DISTRICT_ZOOM = 11f
 private const val GROUND_ZOOM = 16f
 private const val AS_YOU_TYPE_MIN_CHARS = 3
 private const val AS_YOU_TYPE_DEBOUNCE_MS = 300L
@@ -110,7 +110,10 @@ private const val AS_YOU_TYPE_DEBOUNCE_MS = 300L
  *
  * The location is reported to the ViewModel each time the map comes to rest, but only once the
  * user has actually placed it (a gesture, a search pick, or an existing seed) -- the camera's
- * starting point (India, or the league's city) is not a location anyone chose.
+ * starting point (India, or the league's district) is not a location anyone chose.
+ *
+ * Design update #6 (I16): without the league's State and District the sheet says so up front, the
+ * name field is disabled and Register ground can't be tapped.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -132,17 +135,18 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
         position = seed?.let { CameraPosition.fromLatLngZoom(it, GROUND_ZOOM) } ?: DEFAULT_CAMERA_POSITION
     }
     var pinPlaced by remember { mutableStateOf(seed != null) }
-    val areaName = listOfNotNull(state.city, state.district, state.state).joinToString(", ").ifBlank { null }
+    val areaName = listOfNotNull(state.district, state.state).joinToString(", ").ifBlank { null }
+    val locationMissing = !state.canRegisterGround
     var areaCentre by remember { mutableStateOf<GeoPoint?>(null) }
 
-    // Open on the league's city rather than all of India. Always the free platform geocoder --
+    // Open on the league's district rather than all of India. Always the free platform geocoder --
     // one lookup per open isn't worth a billed Places session.
     LaunchedEffect(Unit) {
         if (seed != null || areaName == null) return@LaunchedEffect
         val point = GeocoderPlaceSearch(context).search(areaName, near = null).firstOrNull()?.point ?: return@LaunchedEffect
         areaCentre = point
         if (!pinPlaced && !cameraPositionState.isMoving) {
-            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), CITY_ZOOM), 700)
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), DISTRICT_ZOOM), 700)
         }
     }
 
@@ -282,6 +286,7 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                     label = "New ground name",
                     look = if (compact) FieldVariant.Form.copy(height = 48.dp) else FieldVariant.Form,
                     error = if (state.newGroundNameError) "Enter the ground name" else null,
+                    enabled = !locationMissing,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                     modifier = Modifier.weight(1f).onFocusChanged { nameFocused = it.isFocused },
                 )
@@ -289,7 +294,7 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                 AnimatedVisibility(visible = compact, enter = fadeIn(tween(150)), exit = fadeOut(tween(150))) {
                 Row {
                     Spacer(Modifier.width(8.dp))
-                    val canRegister = state.newGroundName.isNotBlank() && !state.isRegisteringGround
+                    val canRegister = state.newGroundName.isNotBlank() && !state.isRegisteringGround && !locationMissing
                     Box(
                         Modifier
                             .height(48.dp)
@@ -306,15 +311,17 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
             }
             AnimatedVisibility(visible = !compact, enter = fadeIn(tween(150)), exit = fadeOut(tween(150))) {
             Column {
-            Spacer(Modifier.height(12.dp))
-            val lat = state.newGroundLatitude
-            val lng = state.newGroundLongitude
-            Text(
-                if (lat != null && lng != null) String.format(Locale.US, "%.4f, %.4f", lat, lng) else "Pin not placed yet",
-                style = TextStyle(fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 12.sp),
-                color = colors.onSurfaceVariant,
-            )
-            val errorTitle = state.groundErrorTitle
+            if (!locationMissing) {
+                Spacer(Modifier.height(12.dp))
+                val lat = state.newGroundLatitude
+                val lng = state.newGroundLongitude
+                Text(
+                    if (lat != null && lng != null) String.format(Locale.US, "%.4f, %.4f", lat, lng) else "Pin not placed yet",
+                    style = TextStyle(fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 12.sp),
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            val errorTitle = if (locationMissing) LeagueCreationViewModel.GROUND_LOCATION_MISSING_MESSAGE else state.groundErrorTitle
             if (errorTitle != null) {
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth().background(colors.errorContainer, RoundedCornerShape(12.dp)).padding(12.dp)) {
@@ -322,7 +329,7 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(errorTitle, style = pText(13.sp, FontWeight.SemiBold, 17.55.sp), color = CrichereErrorStrong)
-                        state.groundErrorMessage?.let {
+                        state.groundErrorMessage?.takeIf { !locationMissing }?.let {
                             Spacer(Modifier.height(2.dp))
                             Text(it, style = pText(12.sp, lineHeight = 16.8.sp), color = CrichereErrorStrong)
                         }
@@ -345,8 +352,8 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                         .weight(1f)
                         .height(44.dp)
                         .clip(RoundedCornerShape(22.dp))
-                        .background(colors.primary)
-                        .clickable(enabled = !state.isRegisteringGround, onClick = viewModel::registerNewGround),
+                        .background(if (locationMissing) CompactRegisterDisabled else colors.primary)
+                        .clickable(enabled = !state.isRegisteringGround && !locationMissing, onClick = viewModel::registerNewGround),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -354,7 +361,11 @@ internal fun GroundRegisterOverlay(state: LeagueCreationState, viewModel: League
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(if (state.isRegisteringGround) "Registering…" else "Register ground", style = pText(13.5.sp, FontWeight.SemiBold), color = Color.White)
+                    Text(
+                        if (state.isRegisteringGround) "Registering…" else "Register ground",
+                        style = pText(13.5.sp, FontWeight.SemiBold),
+                        color = if (locationMissing) CompactRegisterDisabledText else Color.White,
+                    )
                 }
             }
             }

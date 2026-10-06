@@ -124,7 +124,7 @@ export default async function Landing() {
               <Icon name="travel_explore" />
             </span>
             <h3 className={styles.cardTitle}>Discover leagues near you</h3>
-            <p className={styles.cardCopy}>Filter by state, district and city, or tap “Nearest to me” to see what’s running this weekend.</p>
+            <p className={styles.cardCopy}>Filter by state and district, or tap “Nearest to me” to see what’s running this weekend.</p>
             <div className={styles.vignette}>
               <div className={styles.chips}>
                 <span className={styles.chipSolid}>

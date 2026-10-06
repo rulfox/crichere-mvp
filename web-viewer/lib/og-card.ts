@@ -73,8 +73,9 @@ export function formatAuctionDate(iso: string): string {
   return `${parts.day} ${MONTHS[Number(parts.month) - 1]} ${parts.year}, ${parts.hour}:${parts.minute} ${(parts.dayPeriod ?? "").toUpperCase()}`;
 }
 
-export function locationLine(city: string, state: string): string {
-  return [city, state].filter((part) => part && part.trim().length > 0).join(", ");
+/** W11 (design update #6): "District, State". */
+export function locationLine(district: string, state: string): string {
+  return [district, state].filter((part) => part && part.trim().length > 0).join(", ");
 }
 
 export type CardStatus = { kind: "live" } | { kind: "scheduled"; label: string } | { kind: "none" };

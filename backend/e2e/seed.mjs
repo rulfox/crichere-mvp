@@ -41,19 +41,19 @@ for (const person of cast) {
     RETURNING id;`)
   // A placeholder https photo: the profile is only "complete" with one, and S3 uploads don't exist locally.
   sql(`
-    INSERT INTO profiles (user_id, name, photo_url, country, state, district, city, playing_role, batting_style, bowling_style)
+    INSERT INTO profiles (user_id, name, photo_url, country, state, district, playing_role, batting_style, bowling_style)
     VALUES (${quote(userId)}, ${quote(person.name)}, ${quote(`https://example.com/e2e/${person.key}.jpg`)}, 'IN',
-            'Maharashtra', 'Pune', 'Pune', ${quote(person.role)}, ${quote(person.bat)}, ${person.bowl ? quote(person.bowl) : 'NULL'})
+            'Maharashtra', 'Pune', ${quote(person.role)}, ${quote(person.bat)}, ${person.bowl ? quote(person.bowl) : 'NULL'})
     ON CONFLICT (user_id) DO UPDATE SET name = EXCLUDED.name, photo_url = EXCLUDED.photo_url, state = EXCLUDED.state,
-      district = EXCLUDED.district, city = EXCLUDED.city, playing_role = EXCLUDED.playing_role,
+      district = EXCLUDED.district, playing_role = EXCLUDED.playing_role,
       batting_style = EXCLUDED.batting_style, bowling_style = EXCLUDED.bowling_style;`)
   result[person.key] = { userId, name: person.name, phone: person.phone }
 }
 
 const groundName = 'E2E Test Ground'
 sql(`
-  INSERT INTO grounds (name, state, district, city, latitude, longitude, registered_by_user_id)
-  SELECT ${quote(groundName)}, 'Maharashtra', 'Pune', 'Pune', 18.5204, 73.8567, ${quote(result.organizer.userId)}
+  INSERT INTO grounds (name, state, district, latitude, longitude, registered_by_user_id)
+  SELECT ${quote(groundName)}, 'Maharashtra', 'Pune', 18.5204, 73.8567, ${quote(result.organizer.userId)}
   WHERE NOT EXISTS (SELECT 1 FROM grounds WHERE name = ${quote(groundName)});`)
 
 mkdirSync(new URL('./out/', import.meta.url), { recursive: true })

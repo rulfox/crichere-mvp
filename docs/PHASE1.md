@@ -7,6 +7,8 @@ Part of the Crichere full rewrite. See [OVERVIEW.md](OVERVIEW.md) for stack/infr
 
 ---
 
+> **Superseded 2026-10-06 (design update #6):** location is State -> District only (LGD districts); City was removed everywhere and every league now requires a ground. See [OPEN-ITEMS.md](OPEN-ITEMS.md) section 6 and DESIGN-REVIEW "Design update #6". City mentions below are history.
+
 ## 1. Overview
 
 In plain terms: this phase lets a cricket player create an account using just their phone number — no email, no password to remember. They get a one-time code by SMS, enter it, and they're in. The first time, they're asked for a few basics: their name, a photo, where they're from (state and city), and how they play (batsman, bowler, all-rounder, or wicketkeeper — plus which hand they bat with, and how they bowl if that applies to them).

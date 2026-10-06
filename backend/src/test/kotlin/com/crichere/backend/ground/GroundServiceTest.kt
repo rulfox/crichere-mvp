@@ -31,27 +31,26 @@ class GroundServiceTest {
         name = "MRF Ground",
         state = "Tamil Nadu",
         district = "Chennai",
-        city = "Chennai",
         latitude = 13.0827,
         longitude = 80.2707,
     )
 
     @Test
     fun `search builds a lowercased wildcard pattern and delegates the area filters straight through`() {
-        every { groundRepository.searchByPattern("%mrf%", "Tamil Nadu", "Chennai", "Chennai") } returns emptyList()
+        every { groundRepository.searchByPattern("%mrf%", "Tamil Nadu", "Chennai") } returns emptyList()
 
-        service.search("MRF", "Tamil Nadu", "Chennai", "Chennai")
+        service.search("MRF", "Tamil Nadu", "Chennai")
 
-        verify(exactly = 1) { groundRepository.searchByPattern("%mrf%", "Tamil Nadu", "Chennai", "Chennai") }
+        verify(exactly = 1) { groundRepository.searchByPattern("%mrf%", "Tamil Nadu", "Chennai") }
     }
 
     @Test
     fun `a null search becomes a match-everything wildcard, not a null parameter`() {
-        every { groundRepository.searchByPattern("%%", null, null, null) } returns emptyList()
+        every { groundRepository.searchByPattern("%%", null, null) } returns emptyList()
 
-        service.search(null, null, null, null)
+        service.search(null, null, null)
 
-        verify(exactly = 1) { groundRepository.searchByPattern("%%", null, null, null) }
+        verify(exactly = 1) { groundRepository.searchByPattern("%%", null, null) }
     }
 
     @Test
@@ -75,7 +74,7 @@ class GroundServiceTest {
         assertEquals(userId, saved.captured.registeredByUserId)
         assertEquals("MRF Ground", saved.captured.name)
         assertEquals(saved.captured.id, response.id)
-        assertEquals("Chennai", response.city)
+        assertEquals("Chennai", response.district)
         assertEquals(13.0827, response.latitude)
         assertEquals(80.2707, response.longitude)
     }

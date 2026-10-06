@@ -21,9 +21,9 @@ class GroundService(
      * parameter can't be handed to Postgres directly here.
      */
     @Transactional(readOnly = true)
-    fun search(search: String?, state: String?, district: String?, city: String?): List<GroundResponse> {
+    fun search(search: String?, state: String?, district: String?): List<GroundResponse> {
         val pattern = "%${search.orEmpty().lowercase()}%"
-        return groundRepository.searchByPattern(pattern, state, district, city).map { it.toResponse() }
+        return groundRepository.searchByPattern(pattern, state, district).map { it.toResponse() }
     }
 
     /**
@@ -43,7 +43,6 @@ class GroundService(
             name = request.name,
             state = request.state,
             district = request.district,
-            city = request.city,
             latitude = requireNotNull(request.latitude),
             longitude = requireNotNull(request.longitude),
             registeredByUserId = userId,
@@ -56,7 +55,6 @@ class GroundService(
         name = name,
         state = state,
         district = district,
-        city = city,
         latitude = latitude,
         longitude = longitude,
     )

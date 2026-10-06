@@ -19,7 +19,7 @@ class OwnProfileScreenTest {
     @Test
     fun rendersTheLoadedProfileAndLogsOutOnTap() {
         val profileRepository = FakeProfileRepository(
-            profile = ProfileDto(userId = "user-1", name = "Rahul Sharma", state = "Karnataka", city = "Bengaluru"),
+            profile = ProfileDto(userId = "user-1", name = "Rahul Sharma", state = "Karnataka"),
         )
         val authRepository = FakeAuthRepository(currentUserId = "user-1")
         val viewModel = OwnProfileViewModel(profileRepository, authRepository)

@@ -1,6 +1,8 @@
 package com.crichere.backend.me
 
 import com.crichere.backend.franchise.FranchiseRepository
+import com.crichere.backend.ground.GroundRepository
+import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueFollowRepository
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.toSummaryResponse
@@ -17,7 +19,7 @@ import java.util.UUID
  * `GET /api/v1/me/leagues` -- the four My Leagues lists (organizing/playing/franchiseOwner/
  * following) in one round trip (see docs/PHASE3.md's implementation plan, decision 4). Each
  * per-row league lookup is an accepted N+1, same tradeoff `LeagueService.toResponse` already
- * takes for ground/awards.
+ * takes for awards; ground names for all rows come from one `findAllById`.
  */
 @Service
 class MeService(
@@ -26,6 +28,7 @@ class MeService(
     private val franchiseRepository: FranchiseRepository,
     private val leagueFollowRepository: LeagueFollowRepository,
     private val deviceTokenRepository: DeviceTokenRepository,
+    private val groundRepository: GroundRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -43,11 +46,16 @@ class MeService(
         val following = leagueFollowRepository.findByUserId(callerId)
             .mapNotNull { leagueRepository.findById(it.leagueId).orElse(null) }
 
+        val groundNames = groundRepository
+            .findAllById((organizing + playing + franchiseOwner + following).map { it.groundId }.toSet())
+            .associate { requireNotNull(it.id) to it.name }
+        fun List<LeagueEntity>.rows() = map { it.toSummaryResponse(groundNames.getValue(it.groundId)) }
+
         return MyLeaguesResponse(
-            organizing = organizing.map { it.toSummaryResponse() },
-            playing = playing.map { it.toSummaryResponse() },
-            franchiseOwner = franchiseOwner.map { it.toSummaryResponse() },
-            following = following.map { it.toSummaryResponse() },
+            organizing = organizing.rows(),
+            playing = playing.rows(),
+            franchiseOwner = franchiseOwner.rows(),
+            following = following.rows(),
         )
     }
 

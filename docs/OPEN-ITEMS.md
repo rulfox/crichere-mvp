@@ -45,9 +45,9 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 - **Older gaps:** share-card live checks, 10-digit phone input on device, MSG91 against the real service, C1 new-user
   profile, G/H/I scenarios on device, auction settings J5 failure live, co-organizer flows on the real backend, My
   leagues empty/error, My profile photo change, Navigation 3 on device. See DESIGN-REVIEW Follow-ups.
-- **Location data (LGD, V20):** backend tests + local DB/API checked only. Not seen in the app: long pickers
-  (UP has 75 districts, Kanniyakumari 56 cities; pickers have no search), GPS auto-fill matching against the new
-  names (geocoder spellings vs LGD), the remapped rows on the Railway DB after deploy.
+- **Location data (LGD, V20/V21):** not seen in the app: long district pickers (UP has 75; form pickers have
+  no search), GPS auto-fill matching against LGD district names (geocoder spellings differ). See DESIGN-REVIEW
+  Follow-ups for the update #6 list.
 
 ## 5. Future scope (not scheduled)
 
@@ -66,7 +66,7 @@ sub-district fill; old rows remapped where the rename is known.
 - **States:** our 36 V4 codes and names kept (stored rows hold the name; ours already match LGD). `lgd_code` added.
 - **Districts:** all 784 LGD districts (was ~95). LGD's Odia transliterations replaced by English names (Kataka →
   Cuttack, Sundaragada → Sundargarh, …); `Ntr` → NTR, `Leh Ladakh` → Leh.
-- **Cities (5,280):** urban local bodies mapped to the district *or one of its sub-districts* (district-level
+- **Cities (5,280, dropped by V21 the same day):** urban local bodies mapped to the district *or one of its sub-districts* (district-level
   mapping alone misses e.g. Guntur, Vijayawada), names stripped of type suffixes. Districts with no ULB get their
   sub-districts. Karnataka = ULBs + taluks (LGD maps few Karnataka ULBs: Kolar, Mandya, Udupi had no own town).
   Delhi = sub-districts (LGD still has the three pre-2022 corporations). A district missing its HQ town gets the
@@ -79,7 +79,7 @@ sub-district fill; old rows remapped where the rename is known.
 - **Known limits:** LGD spellings kept elsewhere (Cuddapah, Port Blair not Sri Vijaya Puram); some sub-district
   fills are admin names (Arunachal circles). A refresh is a new migration; `REMAP` must be rebuilt then.
 
-### 6.1 Decided 2026-10-06 (owner), not built yet — design update #6 first
+### 6.1 Decided 2026-10-06 (owner), built 2026-10-06 (design update #6)
 
 - **Drop City everywhere** (profile, league, ground, filters, display, `cities` table and endpoint). App is
   unreleased, so columns are dropped, not kept nullable.
@@ -87,5 +87,6 @@ sub-district fill; old rows remapped where the rename is known.
   every active league.
 - **League keeps its own State/District (option B)**, independent of the ground's.
 - **Profile back button:** none on first-time profile setup (new registration); shown on Edit profile.
-- Order: Claude Design update #6 → owner approves screens → backend → shared → Android → web → iOS → docs.
+- Built: backend V21 (drops `cities` + city columns, deletes ground-less leagues, ground NOT NULL / RESTRICT),
+  shared, Android, web, iOS. Record and unverified list: DESIGN-REVIEW "Design update #6" + Follow-ups.
 

@@ -43,7 +43,7 @@ class ProfileCompletionServiceTest {
     @Test
     fun `a user with a half-filled profile is incomplete`() {
         every { profileRepository.findById(USER_ID) } returns
-            Optional.of(complete(PlayingRole.BATSMAN).apply { city = null })
+            Optional.of(complete(PlayingRole.BATSMAN).apply { district = null })
 
         assertFalse(service.isComplete(USER_ID))
     }
@@ -151,7 +151,6 @@ class ProfileCompletionServiceTest {
             country = "IN",
             state = "Maharashtra",
             district = "Mumbai City",
-            city = "Mumbai",
             playingRole = role,
             battingStyle = BattingStyle.RIGHT_HAND,
             bowlingStyle = BowlingStyle.RIGHT_ARM_OFFBREAK,
@@ -168,7 +167,6 @@ class ProfileCompletionServiceTest {
                 "photoUrl" to { p -> p.photoUrl = null },
                 "state" to { p -> p.state = null },
                 "district" to { p -> p.district = null },
-                "city" to { p -> p.city = null },
                 "playingRole" to { p -> p.playingRole = null },
                 "battingStyle" to { p -> p.battingStyle = null },
             )
@@ -187,7 +185,6 @@ class ProfileCompletionServiceTest {
                 "photoUrl" to { p -> p.photoUrl = "" },
                 "state" to { p -> p.state = " " },
                 "district" to { p -> p.district = " " },
-                "city" to { p -> p.city = "\t" },
             )
             return PlayingRole.entries.flatMap { role ->
                 blanks.map { (field, blank) ->

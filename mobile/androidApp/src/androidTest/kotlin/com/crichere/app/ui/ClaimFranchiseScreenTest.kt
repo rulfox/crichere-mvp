@@ -26,8 +26,7 @@ class ClaimFranchiseScreenTest {
         organizerUserId = "organizer-1",
         name = "Riverside Premier League",
         state = "Karnataka",
-        district = "Bengaluru Urban",
-        city = "Bengaluru",
+        district = "Bengaluru Urban", groundId = "g1", groundName = "Test Ground",
         startsOn = "2026-10-04",
         status = LeagueStatus.ANNOUNCED,
         // No franchiseFee -- keeps this test focused on the claim action, not the screenshot sub-flow.

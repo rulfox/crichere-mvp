@@ -50,16 +50,16 @@ class LeagueService(
         findLeagueOrThrow(leagueId).toResponse(callerId)
 
     /**
-     * `GET /api/v1/leagues` with the area filters (state/district/city, each optional). Mutually
+     * `GET /api/v1/leagues` with the area filters (state/district, each optional). Mutually
      * exclusive with [listNearest] in the UI -- see docs/PHASE2.md's Decisions Made.
      */
     @Transactional(readOnly = true)
-    fun listByArea(state: String?, district: String?, city: String?, callerId: UUID?): List<LeagueResponse> =
-        leagueRepository.findByAreaFilters(state, district, city).map { it.toResponse(callerId) }
+    fun listByArea(state: String?, district: String?, callerId: UUID?): List<LeagueResponse> =
+        leagueRepository.findByAreaFilters(state, district).map { it.toResponse(callerId) }
 
     /**
-     * `GET /api/v1/leagues?near=lat,lng`. Only leagues with a ground attached participate --
-     * no city/district-centroid fallback (see docs/PHASE2.md's Decisions Made).
+     * `GET /api/v1/leagues?near=lat,lng`, ordered by distance to each league's ground (every
+     * league has one since V21).
      */
     @Transactional(readOnly = true)
     fun listNearest(latitude: Double, longitude: Double, callerId: UUID?): List<LeagueResponse> =
@@ -81,7 +81,7 @@ class LeagueService(
         contentRateLimiter.tryConsumeForLeagueCreate(organizerUserId)?.let { retryAfter ->
             throw ContentRateLimitExceededException(retryAfter)
         }
-        requireGroundExistsIfReferenced(request.groundId)
+        requireGroundExists(request.groundId)
         requireOrganizerUpiIdIfFeeSet(request)
 
         val league = LeagueEntity(
@@ -92,8 +92,7 @@ class LeagueService(
             bannerUrl = request.bannerUrl,
             state = request.state,
             district = request.district,
-            city = request.city,
-            groundId = request.groundId,
+            groundId = requireNotNull(request.groundId),
             startsOn = requireNotNull(request.startsOn),
             format = request.format,
             franchisesRequired = request.franchisesRequired,
@@ -139,7 +138,7 @@ class LeagueService(
     fun update(leagueId: UUID, callerId: UUID, request: LeagueSaveRequest): LeagueResponse {
         val league = findLeagueOrThrow(leagueId)
         leagueAuthorization.requireOrganizer(league, callerId)
-        requireGroundExistsIfReferenced(request.groundId)
+        requireGroundExists(request.groundId)
         requireOrganizerUpiIdIfFeeSet(request)
         requireCapacityNotBelowActiveCount(league, request)
         requireFeeNotLockedByActiveRows(league, request)
@@ -346,8 +345,7 @@ class LeagueService(
         league.bannerUrl = request.bannerUrl
         league.state = request.state
         league.district = request.district
-        league.city = request.city
-        league.groundId = request.groundId
+        league.groundId = requireNotNull(request.groundId)
         league.startsOn = requireNotNull(request.startsOn)
         league.format = request.format
         league.franchisesRequired = request.franchisesRequired
@@ -357,8 +355,8 @@ class LeagueService(
         league.organizerUpiId = request.organizerUpiId
     }
 
-    private fun requireGroundExistsIfReferenced(groundId: UUID?) {
-        if (groundId != null && !groundRepository.existsById(groundId)) throw GroundNotFoundException()
+    private fun requireGroundExists(groundId: UUID?) {
+        if (groundId == null || !groundRepository.existsById(groundId)) throw GroundNotFoundException()
     }
 
     /** See docs/PHASE3.md's Decisions Made: a fee with nowhere to pay it is a dead end. */
@@ -407,7 +405,7 @@ class LeagueService(
         // Same per-row lookup shape as the awards fetch just above -- an accepted N+1 for Phase 2's
         // data volume (see docs/PHASE2.md's Decisions Made / the code review that flagged this same
         // tradeoff for awards).
-        val groundName = groundId?.let { groundRepository.findById(it).orElse(null)?.name }
+        val groundName = groundRepository.findById(groundId).orElseThrow().name
         val coOrganizers = leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId).map { it.toResponse() }
         return LeagueResponse(
             id = leagueId,
@@ -419,7 +417,6 @@ class LeagueService(
             country = country,
             state = state,
             district = district,
-            city = city,
             groundId = groundId,
             groundName = groundName,
             startsOn = startsOn,

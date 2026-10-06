@@ -207,7 +207,6 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
                 country = "IN",
                 state = "Gujarat",
                 district = "Ahmedabad",
-                city = "Ahmedabad",
                 playingRole = PlayingRole.BOWLER,
                 battingStyle = BattingStyle.RIGHT_HAND,
                 bowlingStyle = BowlingStyle.RIGHT_ARM_FAST,

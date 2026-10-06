@@ -40,9 +40,9 @@ class LeaguePhotoUploadUnavailableException(
  */
 interface LeagueRepository {
     /** `GET /api/v1/leagues` with the area filters. Mutually exclusive with [listNearest] in the UI. */
-    suspend fun listByArea(state: String? = null, district: String? = null, city: String? = null): List<LeagueDto>
+    suspend fun listByArea(state: String? = null, district: String? = null): List<LeagueDto>
 
-    /** `GET /api/v1/leagues?nearLat=&nearLng=`. Only leagues with a ground attached participate. */
+    /** `GET /api/v1/leagues?nearLat=&nearLng=`, ordered by distance to each league's ground (every league has one). */
     suspend fun listNearest(latitude: Double, longitude: Double): List<LeagueDto>
 
     suspend fun getLeague(id: String): LeagueDto
@@ -95,11 +95,10 @@ internal class KtorLeagueRepository(
     private val uploadClient: HttpClient,
 ) : LeagueRepository {
 
-    override suspend fun listByArea(state: String?, district: String?, city: String?): List<LeagueDto> =
+    override suspend fun listByArea(state: String?, district: String?): List<LeagueDto> =
         httpClient.get("/api/v1/leagues") {
             state?.let { parameter("state", it) }
             district?.let { parameter("district", it) }
-            city?.let { parameter("city", it) }
         }.body()
 
     override suspend fun listNearest(latitude: Double, longitude: Double): List<LeagueDto> =

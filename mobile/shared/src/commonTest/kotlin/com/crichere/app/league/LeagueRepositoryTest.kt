@@ -40,7 +40,7 @@ class LeagueRepositoryTest {
 
     private fun sampleLeagueJson(id: String = "l1") = """
         {"id":"$id","organizerUserId":"u1","name":"Weekend League","country":"IN",
-         "state":"Karnataka","district":"Bengaluru Urban","city":"Bengaluru",
+         "state":"Karnataka","district":"Bengaluru Urban","groundId":"g1","groundName":"Test Ground",
          "startsOn":"2026-10-12","status":"ANNOUNCED","awards":[]}
     """.trimIndent()
 
@@ -48,7 +48,7 @@ class LeagueRepositoryTest {
     fun `listByArea GETs leagues with the area filters as query params`() = runTest {
         val repository = repository(mockClient(expectedMethod = HttpMethod.Get, expectedPath = "/api/v1/leagues", body = "[${sampleLeagueJson()}]"))
 
-        val result = repository.listByArea(state = "Karnataka", district = "Bengaluru Urban", city = "Bengaluru")
+        val result = repository.listByArea(state = "Karnataka", district = "Bengaluru Urban")
 
         assertEquals(1, result.size)
         assertEquals(LeagueStatus.ANNOUNCED, result[0].status)
@@ -66,7 +66,7 @@ class LeagueRepositoryTest {
         val repository = repository(mockClient(expectedMethod = HttpMethod.Post, expectedPath = "/api/v1/leagues", body = sampleLeagueJson()))
 
         val result = repository.createLeague(
-            LeagueSaveRequestDto(name = "Weekend League", state = "Karnataka", district = "Bengaluru Urban", city = "Bengaluru", startsOn = "2026-10-12"),
+            LeagueSaveRequestDto(name = "Weekend League", state = "Karnataka", district = "Bengaluru Urban", groundId = "g1", startsOn = "2026-10-12"),
         )
 
         assertEquals("l1", result.id)
@@ -77,7 +77,7 @@ class LeagueRepositoryTest {
         val repository = repository(mockClient(status = HttpStatusCode.TooManyRequests, body = "{}"))
 
         assertFailsWith<LeagueSaveFailedException> {
-            repository.createLeague(LeagueSaveRequestDto(name = "x", state = "x", district = "x", city = "x", startsOn = "2026-01-01"))
+            repository.createLeague(LeagueSaveRequestDto(name = "x", state = "x", district = "x", groundId = "g1", startsOn = "2026-01-01"))
         }
     }
 

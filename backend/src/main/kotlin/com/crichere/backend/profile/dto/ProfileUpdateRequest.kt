@@ -42,9 +42,6 @@ data class ProfileUpdateRequest(
     @field:Size(min = 1, max = 100, message = "district must be between 1 and 100 characters")
     val district: String? = null,
 
-    @field:Size(min = 1, max = 100, message = "city must be between 1 and 100 characters")
-    val city: String? = null,
-
     val playingRole: PlayingRole? = null,
 
     val battingStyle: BattingStyle? = null,

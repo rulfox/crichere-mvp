@@ -9,7 +9,7 @@ class FakeGroundRepository(
     var nextRegistered: GroundDto? = null
     val registeredRequests = mutableListOf<GroundCreateRequestDto>()
 
-    override suspend fun search(search: String?, state: String?, district: String?, city: String?): List<GroundDto> {
+    override suspend fun search(search: String?, state: String?, district: String?): List<GroundDto> {
         searchCalls += search
         return searchResults
     }

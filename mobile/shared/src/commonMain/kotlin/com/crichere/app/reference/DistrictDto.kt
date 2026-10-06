@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 /**
  * Mirrors the backend's `DistrictResponse`
  * (`backend/src/main/kotlin/com/crichere/backend/reference/dto/DistrictResponse.kt`): one row
- * of `GET /api/v1/reference/states/{stateCode}/districts`. [id] is a UUID string -- it's what
- * `getCitiesForDistrict` is keyed on, not the district's name.
+ * of `GET /api/v1/reference/states/{stateCode}/districts`. [id] is a UUID string; screens select
+ * and store the district by [name].
  */
 @Serializable
 data class DistrictDto(

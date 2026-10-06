@@ -15,17 +15,17 @@ describe("truncate", () => {
 
 describe("leagueShareDescription", () => {
   it("uses the organizer's description when present", () => {
-    expect(leagueShareDescription({ name: "Kochi Super Sixes", city: "Kochi", description: "Six teams, one night." })).toBe(
+    expect(leagueShareDescription({ name: "Kochi Super Sixes", district: "Ernakulam", description: "Six teams, one night." })).toBe(
       "Six teams, one night.",
     );
   });
 
-  it("falls back to a line naming the league and city", () => {
-    expect(leagueShareDescription({ name: "Kochi Super Sixes", city: "Kochi", description: "  " })).toBe(
-      "Follow Kochi Super Sixes's live player auction in Kochi -- no account needed.",
+  it("falls back to a line naming the league and district", () => {
+    expect(leagueShareDescription({ name: "Kochi Super Sixes", district: "Ernakulam", description: "  " })).toBe(
+      "Follow Kochi Super Sixes's live player auction in Ernakulam -- no account needed.",
     );
-    expect(leagueShareDescription({ name: "Kochi Super Sixes ", city: "Kochi" })).toBe(
-      "Follow Kochi Super Sixes's live player auction in Kochi -- no account needed.",
+    expect(leagueShareDescription({ name: "Kochi Super Sixes ", district: "Ernakulam" })).toBe(
+      "Follow Kochi Super Sixes's live player auction in Ernakulam -- no account needed.",
     );
   });
 });

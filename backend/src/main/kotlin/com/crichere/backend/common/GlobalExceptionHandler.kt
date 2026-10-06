@@ -45,7 +45,6 @@ import com.crichere.backend.player.NoLeaveRequestPendingException as PlayerNoLea
 import com.crichere.backend.player.NotPlayerOwnerException
 import com.crichere.backend.profile.BowlingStyleNotAllowedException
 import com.crichere.backend.profile.BowlingStyleRequiredException
-import com.crichere.backend.reference.MalformedDistrictIdException
 import com.crichere.backend.reference.MalformedStateCodeException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
@@ -307,18 +306,6 @@ class GlobalExceptionHandler {
             title = "Not found",
             code = "NOT_FOUND",
             detail = "No state matches this code.",
-            instance = request.requestURI,
-        )
-
-    /** Same shape as [handleMalformedStateCode], for the District-retrofit `districts/{id}/cities` endpoint. */
-    @ExceptionHandler(MalformedDistrictIdException::class)
-    fun handleMalformedDistrictId(request: HttpServletRequest): ProblemDetail =
-        ProblemDetails.of(
-            status = HttpStatus.NOT_FOUND,
-            slug = "not-found",
-            title = "Not found",
-            code = "NOT_FOUND",
-            detail = "No district matches this id.",
             instance = request.requestURI,
         )
 

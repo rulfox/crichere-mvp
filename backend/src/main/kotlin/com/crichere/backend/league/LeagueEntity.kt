@@ -14,7 +14,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Maps to the `leagues` table (V8__create_leagues_table.sql). [name]/[state]/[district]/[city]/
+ * Maps to the `leagues` table (V8__create_leagues_table.sql). [name]/[state]/[district]/[groundId]/
  * [startsOn] are required (`NOT NULL`) -- League Creation has no resumable partial-save (see
  * docs/PHASE2.md's Decisions Made), so there is no "DRAFT" status to derive; [completedAt] set
  * or unset is the only lifecycle signal (see [LeagueStatus]).
@@ -55,11 +55,9 @@ class LeagueEntity(
     @Column(name = "district", nullable = false)
     var district: String,
 
-    @Column(name = "city", nullable = false)
-    var city: String,
-
-    @Column(name = "ground_id")
-    var groundId: UUID? = null,
+    /** Mandatory since V21 (design update #6): every league is placed by its ground's map pin. */
+    @Column(name = "ground_id", nullable = false)
+    var groundId: UUID,
 
     @Column(name = "starts_on", nullable = false)
     var startsOn: LocalDate,
