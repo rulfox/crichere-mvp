@@ -1,6 +1,6 @@
 # Open items
 
-**Last updated:** 2026-10-06 (location data refreshed from LGD)
+**Last updated:** 2026-10-06 (LGD live; City removal + mandatory Ground decided)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
@@ -78,4 +78,14 @@ sub-district fill; old rows remapped where the rename is known.
   outside the old seed is left as-is.
 - **Known limits:** LGD spellings kept elsewhere (Cuddapah, Port Blair not Sri Vijaya Puram); some sub-district
   fills are admin names (Arunachal circles). A refresh is a new migration; `REMAP` must be rebuilt then.
+
+### 6.1 Decided 2026-10-06 (owner), not built yet — design update #6 first
+
+- **Drop City everywhere** (profile, league, ground, filters, display, `cities` table and endpoint). App is
+  unreleased, so columns are dropped, not kept nullable.
+- **Ground mandatory** on every league (`ground_id NOT NULL`, FK no longer `SET NULL`); "Nearest to me" then covers
+  every active league.
+- **League keeps its own State/District (option B)**, independent of the ground's.
+- **Profile back button:** none on first-time profile setup (new registration); shown on Edit profile.
+- Order: Claude Design update #6 → owner approves screens → backend → shared → Android → web → iOS → docs.
 
