@@ -53,7 +53,7 @@ class LeagueServiceTest {
         every { it.countByLeagueIdAndRemovedAtIsNull(any()) } returns 0L
     }
     private val profileRepository = mockk<ProfileRepository>()
-    private val contentRateLimiter = mockk<ContentRateLimiter>()
+    private val contentRateLimiter = mockk<ContentRateLimiter>().also { io.mockk.every { it.requireUploadUrlAllowed(any()) } returns Unit }
     private val photoUploadService = mockk<PhotoUploadService>()
     private val leagueRoleRepository = mockk<LeagueRoleRepository>().also {
         // Every toResponse() call loads active co-organizers -- default to "none" so tests that

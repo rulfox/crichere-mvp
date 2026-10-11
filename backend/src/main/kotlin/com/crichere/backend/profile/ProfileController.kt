@@ -1,5 +1,6 @@
 package com.crichere.backend.profile
 
+import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.profile.dto.ProfileResponse
@@ -26,6 +27,7 @@ import java.util.UUID
 class ProfileController(
     private val profileService: ProfileService,
     private val photoUploadService: PhotoUploadService,
+    private val contentRateLimiter: ContentRateLimiter,
 ) {
 
     /**
@@ -46,6 +48,8 @@ class ProfileController(
 
     /** A presigned S3 POST for the caller's own profile photo. See [PhotoUploadService]. */
     @PostMapping("/me/photo-upload-url")
-    fun createPhotoUploadUrl(@AuthenticationPrincipal userId: UUID): PhotoUploadUrlResponse =
-        photoUploadService.createUploadUrl(userId)
+    fun createPhotoUploadUrl(@AuthenticationPrincipal userId: UUID): PhotoUploadUrlResponse {
+        contentRateLimiter.requireUploadUrlAllowed(userId)
+        return photoUploadService.createUploadUrl(userId)
+    }
 }

@@ -176,6 +176,7 @@ class FranchiseService(
      */
     @Transactional(readOnly = true)
     fun createLogoUploadUrl(leagueId: UUID, franchiseId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        contentRateLimiter.requireUploadUrlAllowed(callerId)
         val league = findLeagueOrThrow(leagueId)
         val franchise = findFranchiseOrThrow(leagueId, franchiseId)
         if (!leagueAuthorization.isOrganizer(league, callerId) && callerId != franchise.ownerUserId) throw NotFranchiseOwnerException()

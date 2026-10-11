@@ -96,6 +96,12 @@ Finding 4).
 - Dev and CI (no bucket configured) are not checked.
 - Backend 515/515.
 
+## 7a. Follow-up hardening (2026-10-11)
+
+The same day's security pass also changed uploads: links are rate limited, the policy is JPEG only,
+each upload gets its own key, and a daily sweep deletes unreferenced uploads. See SECURITY-AUDIT.md
+Findings 5 and 6, which also cover the refresh-token fix.
+
 ## 8. Not verified
 
 - Manage co-organizers photo on a device (needs that league's organizer signed in).

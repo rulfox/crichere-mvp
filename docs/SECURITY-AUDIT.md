@@ -173,6 +173,63 @@ address. Phase 17 put photos into roster rows, which widened this. Found by the 
   test with a bucket configured. 515 backend tests pass.
 - **Open:** run a one-off query on production for stored image URLs outside the bucket (see OPEN-ITEMS).
 
+## Finding 5: refresh tokens could be raced, and a replayed one went unnoticed (Medium), fixed 2026-10-11
+
+**Problem:**
+- `AuthService.refresh` read the token before the user-row lock and never re-read it. Two refreshes with
+  the same token at once (for example a thief and the owner) both rotated it and both got a live session.
+- A replayed, already-rotated token only got a 401, so a stolen token used first by the thief went
+  unnoticed. Meanwhile a refresh whose reply was lost on a bad network logged the real user out (possibly the
+  2026-10-01 "stale refresh token" report).
+
+**Fix (owner decision: recover a lost reply, detect theft):**
+- The refresh path locks the token row (`findByTokenHashForUpdate`), so the second call sees the first one's
+  rotation. A two-thread integration test fails without the lock.
+- Each rotated token points at its successor (`V24`, `refresh_tokens.replaced_by_id`).
+- The old token coming back **within 60 s with its successor unused** is a lost reply. It gets a fresh pair,
+  and the unused successor is revoked, so one token stays live. The window starts at the first rotation
+  and never stretches. `crichere.jwt.refresh-reuse-grace` sets it.
+- **Any other reuse is theft:** late, successor already used, or a token revoked by logout or by a grace
+  retry. Every session of the user is revoked (`noRollbackFor`, so the revoke survives the 401), and a
+  `WARN` is logged with the user id only.
+- **Assumes** one app sends one refresh at a time. That holds today: Ktor's Auth plugin single-flights
+  refreshes, and there is one authenticated client. An app that sent two at once and kept the first reply
+  would trip theft detection.
+- **Tests:** 5 unit cases and 3 integration tests (lost reply, theft revoking a second device, concurrent
+  refresh).
+- **Live check:** local backend, fake OTP, `backend/e2e/out/refresh-reuse.mjs`:
+  - an immediate replay returns 200 and the retried token keeps working;
+  - a replay after the successor was used returns 401 and leaves 0 live tokens across 2 devices;
+  - a replay backdated 2 minutes returns 401 and leaves 0 live tokens.
+- **Emulator:** the app reopened signed in, and its token rotated normally.
+
+## Finding 6: uploads could fill the bucket, carry SVG, and change images before Save (Medium), fixed 2026-10-11
+
+**Problem:**
+- Upload-link endpoints had no rate limit, and franchise-logo keys are random. One account could store
+  10 MB objects without limit.
+- The upload policy allowed any `image/*`. An SVG served from the public bucket can run script when its
+  URL is opened.
+- Keys were fixed per owner, so an upload replaced the live image before Save.
+- Abandoned uploads were never removed.
+
+**Fix:**
+- **Rate limit:** 30 upload links per user per hour, shared across all six endpoints. The 31st call gets
+  429 with `Retry-After` (integration test).
+- **JPEG only:** the policy requires exactly `Content-Type: image/jpeg`. Both apps already send that. The
+  SigV4 reference vector was recomputed in Python from the previous policy, changing only the key and this
+  condition.
+- **Own key per upload:** `users/{id}/profile-{uuid}.jpg`, `leagues/{id}/logo-{uuid}.jpg`,
+  `banner-{uuid}.jpg`. `MediaUrlPolicy` accepts these and the legacy fixed keys, still bound to the owner.
+  The account purge also deletes the profile's current photo key.
+- **Daily media sweep** (`MediaSweepService`, 04:00 IST):
+  - lists `users/` and `leagues/`;
+  - deletes image keys of the issued shapes that are older than 24 h and named by no stored URL;
+  - never touches payment screenshots, and deletes at most 1000 per run;
+  - if listing fails (no IAM grant yet), it logs and deletes nothing.
+- **Open (owner):** IAM `s3:ListBucket` + `s3:DeleteObject` for the sweep (OPEN-ITEMS).
+- **Not verified against AWS:** the JPEG-only policy and the sweep (no local bucket).
+
 ## Account deletion (2026-10-11)
 
 Built in Phase 16; the full analysis is [PHASE16.md](PHASE16.md) section 5. Points that change this audit:

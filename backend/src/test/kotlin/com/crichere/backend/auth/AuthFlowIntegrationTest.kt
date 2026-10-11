@@ -105,16 +105,69 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
         assertNotEquals(firstRefreshToken, secondRefreshToken, "refresh must hand back a new token")
         assertNotEquals(session["accessToken"], refreshed["accessToken"])
 
-        // Rotation means the spent token is dead, not merely superseded.
-        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to firstRefreshToken))
-            .andExpect(status().isUnauthorized)
-
         // --- log out -------------------------------------------------------------
         postJson("/api/v1/auth/logout", mapOf("refreshToken" to secondRefreshToken))
             .andExpect(status().isNoContent)
 
         postJson("/api/v1/auth/refresh", mapOf("refreshToken" to secondRefreshToken))
             .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `a lost refresh reply - the old token comes back at once - gets a fresh pair, and the unused one dies`() {
+        givenFirebaseAccepts(phone)
+        val first = signIn()["refreshToken"] as String
+        val lost = refresh(first)["refreshToken"] as String
+
+        val retried = refresh(first)["refreshToken"] as String
+
+        assertNotEquals(lost, retried)
+        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to lost)).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `a spent token replayed after its successor was used revokes every session of the user`() {
+        givenFirebaseAccepts(phone)
+        val session = signIn()
+        val userId = UUID.fromString(session["userId"] as String)
+        val other = signIn()["refreshToken"] as String // a second device
+        val first = session["refreshToken"] as String
+        val second = refresh(first)["refreshToken"] as String
+        val third = refresh(second)["refreshToken"] as String
+
+        // The thief replays the first token: its successor was already used.
+        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to first)).andExpect(status().isUnauthorized)
+
+        for (token in listOf(third, other)) {
+            postJson("/api/v1/auth/refresh", mapOf("refreshToken" to token)).andExpect(status().isUnauthorized)
+        }
+        assertTrue(refreshTokenRepository.findAll().filter { it.userId == userId }.all { it.revokedAt != null })
+    }
+
+    @Test
+    fun `two refreshes with the same token at once leave exactly one live token`() {
+        givenFirebaseAccepts(phone)
+        val session = signIn()
+        val userId = UUID.fromString(session["userId"] as String)
+        val token = session["refreshToken"] as String
+        val start = java.util.concurrent.CountDownLatch(1)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        try {
+            val calls = List(2) {
+                pool.submit<Int> {
+                    start.await()
+                    postJson("/api/v1/auth/refresh", mapOf("refreshToken" to token)).andReturn().response.status
+                }
+            }
+            start.countDown()
+            calls.forEach { assertEquals(200, it.get(), "a lost-reply retry inside the grace window still succeeds") }
+        } finally {
+            pool.shutdown()
+        }
+
+        // Serialized by the row lock: the second call revoked the first one's unused successor.
+        val live = refreshTokenRepository.findAll().filter { it.userId == userId && it.revokedAt == null }
+        assertEquals(1, live.size)
     }
 
     @Test
@@ -401,6 +454,12 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
         every { firebaseTokenVerifier.verify(any()) } returns
             VerifiedFirebaseToken(uid = "firebase-uid-$phoneNumber", phoneNumber = phoneNumber)
     }
+
+    private fun refresh(token: String): Map<String, Any?> =
+        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to token))
+            .andExpect(status().isOk)
+            .andReturn()
+            .body()
 
     private fun signIn(): Map<String, Any?> =
         postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))

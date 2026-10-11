@@ -93,6 +93,12 @@ crichere:
     purge-enabled: ${ACCOUNT_PURGE_ENABLED:true}
     purge-cron: "0 30 3 * * *"
     purge-zone: Asia/Kolkata
+  media-sweep:
+    # docs/SECURITY-AUDIT.md Finding 6: deletes uploads no record points to, once they are a day old.
+    # Needs s3:ListBucket + s3:DeleteObject for the backend IAM user; without them it logs and skips.
+    enabled: ${MEDIA_SWEEP_ENABLED:true}
+    cron: "0 0 4 * * *"
+    zone: Asia/Kolkata
   web-viewer:
     # Comma-separated CORS allowlist for the public web viewer (docs/PHASE6.md). Blank means CORS
     # is entirely off -- see SecurityConfig.webViewerCorsConfigurationSource.
@@ -157,3 +163,6 @@ crichere:
   account-deletion:
     # Tests call AccountPurgeService directly; the scheduled run never fires mid-suite.
     purge-enabled: false
+  media-sweep:
+    # Tests call MediaSweepService directly.
+    enabled: false

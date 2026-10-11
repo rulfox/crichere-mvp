@@ -41,4 +41,8 @@ class RefreshTokenEntity(
 
     @Column(name = "revoked_at")
     var revokedAt: Instant? = null,
+
+    /** The token issued in this one's place when it was rotated; `null` if never rotated (or revoked by logout). */
+    @Column(name = "replaced_by_id")
+    var replacedById: UUID? = null,
 )

@@ -38,7 +38,7 @@ class FranchiseServiceTest {
     private val profileRepository = mockk<ProfileRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
     }
-    private val contentRateLimiter = mockk<ContentRateLimiter>()
+    private val contentRateLimiter = mockk<ContentRateLimiter>().also { io.mockk.every { it.requireUploadUrlAllowed(any()) } returns Unit }
     private val photoUploadService = mockk<PhotoUploadService>()
     private val leagueAuthorization = LeagueAuthorization(
         mockk<LeagueRoleRepository>().also {

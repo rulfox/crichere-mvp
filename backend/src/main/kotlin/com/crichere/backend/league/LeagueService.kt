@@ -232,6 +232,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun createLogoUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        contentRateLimiter.requireUploadUrlAllowed(callerId)
         val league = findLeagueOrThrow(leagueId)
         leagueAuthorization.requireOrganizer(league, callerId)
         return photoUploadService.createLeagueLogoUploadUrl(leagueId)
@@ -240,6 +241,7 @@ class LeagueService(
     /** Same as [createLogoUploadUrl], for the league's banner. */
     @Transactional(readOnly = true)
     fun createBannerUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        contentRateLimiter.requireUploadUrlAllowed(callerId)
         val league = findLeagueOrThrow(leagueId)
         leagueAuthorization.requireOrganizer(league, callerId)
         return photoUploadService.createLeagueBannerUploadUrl(leagueId)
@@ -254,6 +256,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun createPaymentScreenshotUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        contentRateLimiter.requireUploadUrlAllowed(callerId)
         findLeagueOrThrow(leagueId)
         return photoUploadService.createPaymentScreenshotUploadUrl(leagueId, callerId)
     }
@@ -268,6 +271,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun createFranchiseLogoUploadUrl(leagueId: UUID, callerId: UUID): PhotoUploadUrlResponse {
+        contentRateLimiter.requireUploadUrlAllowed(callerId)
         findLeagueOrThrow(leagueId)
         return photoUploadService.createPendingFranchiseLogoUploadUrl(leagueId, callerId)
     }

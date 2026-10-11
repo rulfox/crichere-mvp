@@ -58,8 +58,8 @@ class PhotoUploadServiceTest {
     fun `the key is namespaced under the caller's own user id`() {
         val result = service().createUploadUrl(userId)
 
-        assertEquals("users/$userId/profile.jpg", result.key)
-        assertEquals("users/$userId/profile.jpg", result.fields["key"])
+        assertTrue(Regex("^users/$userId/profile-[0-9a-f-]{36}\\.jpg$").matches(result.key))
+        assertEquals(result.key, result.fields["key"])
     }
 
     @Test
@@ -101,11 +101,11 @@ class PhotoUploadServiceTest {
     }
 
     @Test
-    fun `the policy restricts content type to image mime types`() {
+    fun `the policy allows JPEG only, never SVG or other image types`() {
         val result = service().createUploadUrl(userId)
 
-        val contentTypeCondition = conditionList(result).first { it.firstOrNull() == "starts-with" }
-        assertEquals(listOf("starts-with", "\$Content-Type", "image/"), contentTypeCondition)
+        assertTrue(conditionList(result).none { it.firstOrNull() == "starts-with" && it.getOrNull(1) == "\$Content-Type" })
+        assertTrue(conditionMaps(result).any { it["Content-Type"] == "image/jpeg" })
     }
 
     @Test
@@ -123,7 +123,7 @@ class PhotoUploadServiceTest {
 
         val conditionMaps = conditionMaps(result)
         assertEquals("crichere-media-dev", conditionMaps.first { it.containsKey("bucket") }["bucket"])
-        assertEquals("users/$userId/profile.jpg", conditionMaps.first { it.containsKey("key") }["key"])
+        assertEquals(result.key, conditionMaps.first { it.containsKey("key") }["key"])
     }
 
     @Test
@@ -153,7 +153,7 @@ class PhotoUploadServiceTest {
      * k_service = hmac_sha256(k_region, "s3")
      * k_signing = hmac_sha256(k_service, "aws4_request")
      * hmac.new(k_signing, policy_base64.encode(), hashlib.sha256).hexdigest()
-     * # -> "8ae9838d8a2cccfc0aa5b8248ec5b898ba4c0661f3e2a5e31a086bde9db8941b"
+     * # -> "023d43c3f8811b2c68d7806b652212110a09eb54adf038666df24cfeb94ebfb5"
      * ```
      * with `secret = "fakeSecretAccessKeyFakeSecretAccessKey12"` (this file's [secretAccessKey])
      * and `policy_base64` equal to the exact string this test asserts `createUploadUrl` produced
@@ -162,19 +162,24 @@ class PhotoUploadServiceTest {
      * 2026-10-04 when the policy gained its `Cache-Control` condition (docs/PHASE14.md): the new policy
      * was decoded and checked to equal the previous one plus exactly that condition, and the same
      * snippet reproduced the previous signature before producing this one.
+     *
+     * Recomputed again 2026-10-11 (docs/SECURITY-AUDIT.md Finding 6): profile keys are random now, so the
+     * vector uses the payment-screenshot key (still fixed), and the content-type condition is the exact
+     * `{"Content-Type":"image/jpeg"}`. The snippet first reproduced the 2026-10-04 signature from its
+     * policy, then the policy was edited for exactly those two changes and re-signed.
      */
     @Test
     fun `the signature matches a fixed AWS SigV4 reference vector computed independently`() {
-        val result = service().createUploadUrl(userId)
+        val result = service().createPaymentScreenshotUploadUrl(UUID.fromString("99999999-8888-7777-6666-555555555555"), userId)
 
         val expectedPolicyBase64 =
-            "eyJleHBpcmF0aW9uIjoiMjAyNi0wOS0wMlQxMDoyMDozMC4wMDBaIiwiY29uZGl0aW9ucyI6W3siYnVja2V0IjoiY3JpY2hlcmUtbWVkaWEtZGV2In0seyJrZXkiOiJ1c2Vycy8xMTExMTExMS0yMjIyLTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUvcHJvZmlsZS5qcGcifSxbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwxLDEwNDg1NzYwXSxbInN0YXJ0cy13aXRoIiwiJENvbnRlbnQtVHlwZSIsImltYWdlLyJdLHsiQ2FjaGUtQ29udHJvbCI6InB1YmxpYywgbWF4LWFnZT0zMTUzNjAwMCwgaW1tdXRhYmxlIn0seyJ4LWFtei1hbGdvcml0aG0iOiJBV1M0LUhNQUMtU0hBMjU2In0seyJ4LWFtei1jcmVkZW50aWFsIjoiQUtJQUZBS0VBQ0NFU1NLRVkvMjAyNjA5MDIvYXAtc291dGgtMS9zMy9hd3M0X3JlcXVlc3QifSx7IngtYW16LWRhdGUiOiIyMDI2MDkwMlQxMDE1MzBaIn1dfQ=="
+            "eyJleHBpcmF0aW9uIjoiMjAyNi0wOS0wMlQxMDoyMDozMC4wMDBaIiwiY29uZGl0aW9ucyI6W3siYnVja2V0IjoiY3JpY2hlcmUtbWVkaWEtZGV2In0seyJrZXkiOiJsZWFndWVzLzk5OTk5OTk5LTg4ODgtNzc3Ny02NjY2LTU1NTU1NTU1NTU1NS9wYXltZW50cy8xMTExMTExMS0yMjIyLTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUuanBnIn0sWyJjb250ZW50LWxlbmd0aC1yYW5nZSIsMSwxMDQ4NTc2MF0seyJDb250ZW50LVR5cGUiOiJpbWFnZS9qcGVnIn0seyJDYWNoZS1Db250cm9sIjoicHVibGljLCBtYXgtYWdlPTMxNTM2MDAwLCBpbW11dGFibGUifSx7IngtYW16LWFsZ29yaXRobSI6IkFXUzQtSE1BQy1TSEEyNTYifSx7IngtYW16LWNyZWRlbnRpYWwiOiJBS0lBRkFLRUFDQ0VTU0tFWS8yMDI2MDkwMi9hcC1zb3V0aC0xL3MzL2F3czRfcmVxdWVzdCJ9LHsieC1hbXotZGF0ZSI6IjIwMjYwOTAyVDEwMTUzMFoifV19"
         // Sanity check that this test's fixture setup hasn't silently drifted from the vector's
         // derivation -- if this fails, the reference vector above is stale and must be
         // recomputed against the new policy string, not patched around.
         assertEquals(expectedPolicyBase64, result.fields.getValue("policy"))
 
-        val expectedSignature = "8ae9838d8a2cccfc0aa5b8248ec5b898ba4c0661f3e2a5e31a086bde9db8941b"
+        val expectedSignature = "023d43c3f8811b2c68d7806b652212110a09eb54adf038666df24cfeb94ebfb5"
         assertEquals(expectedSignature, result.fields["x-amz-signature"])
     }
 

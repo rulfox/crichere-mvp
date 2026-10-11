@@ -56,7 +56,7 @@ suspend fun uploadPhotoViaPresignedPost(
         url = uploadInfo.uploadUrl,
         formData = formData {
             uploadInfo.fields.forEach { (key, value) -> append(key, value) }
-            // S3's presigned-POST policy condition `["starts-with", "$Content-Type", ...]`
+            // S3's presigned-POST policy condition `{"Content-Type": "image/jpeg"}`
             // (see backend PhotoUploadService) is checked against a plain form field named
             // "Content-Type", not the "file" part's own Content-Type header below -- both are
             // required, and this field must come before "file" like every other field.
@@ -78,7 +78,7 @@ suspend fun uploadPhotoViaPresignedPost(
     if (!response.status.isSuccess()) {
         throw PhotoUploadFailedException("S3 upload failed with status ${response.status}")
     }
-    // Keys are fixed per owner (e.g. users/{id}/profile.jpg), so a new upload would otherwise get the
-    // same URL and image caches would keep serving the old picture. S3 ignores the extra query param.
+    // Photo and logo keys are unique per upload since 2026-10-11, but payment screenshots keep one key
+    // per payer, so the ?v= still keeps image caches from serving an old picture. S3 ignores it.
     return "${uploadInfo.uploadUrl}${uploadInfo.key}?v=${Random.nextLong().toULong().toString(36)}"
 }

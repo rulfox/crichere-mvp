@@ -105,11 +105,19 @@ class AccountPurgeService(
         return result.outcome
     }
 
-    /** Profile photo plus the one payment-screenshot key per league the user ever paid into (`PhotoUploadService.paymentScreenshotKey`). */
+    /**
+     * The current profile photo, the old fixed photo key, and the one payment-screenshot key per league
+     * the user ever paid into (`PhotoUploadService.paymentScreenshotKey`). Photos replaced earlier
+     * (each upload has its own key since 2026-10-11) are unreferenced, so the daily media sweep
+     * removes them (docs/SECURITY-AUDIT.md Finding 6).
+     */
     private fun objectKeys(userId: UUID): List<String> {
         val leagueIds = playerRepository.findByUserId(userId).map { it.leagueId } +
             franchiseRepository.findByOwnerUserId(userId).map { it.leagueId }
-        return listOf("users/$userId/profile.jpg") +
+        val currentPhoto = profileRepository.findById(userId).orElse(null)?.photoUrl
+            ?.substringAfter(".amazonaws.com/", "")?.substringBefore('?')
+            ?.takeIf { it.startsWith("users/$userId/") }
+        return listOfNotNull(currentPhoto, "users/$userId/profile.jpg").distinct() +
             leagueIds.distinct().map { PhotoUploadService.paymentScreenshotKey(it, userId) }
     }
 

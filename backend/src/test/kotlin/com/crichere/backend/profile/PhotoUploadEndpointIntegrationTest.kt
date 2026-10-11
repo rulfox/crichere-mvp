@@ -81,9 +81,9 @@ class PhotoUploadEndpointIntegrationTest : AbstractWebIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken"),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.key").value("users/$userId/profile.jpg"))
+            .andExpect(jsonPath("$.key").value(org.hamcrest.Matchers.matchesPattern("users/$userId/profile-[0-9a-f-]{36}\\.jpg")))
             .andExpect(jsonPath("$.uploadUrl").value("https://crichere-media-dev.s3.ap-south-1.amazonaws.com/"))
-            .andExpect(jsonPath("$.fields.key").value("users/$userId/profile.jpg"))
+            .andExpect(jsonPath("$.fields.key").value(org.hamcrest.Matchers.startsWith("users/$userId/profile-")))
             .andExpect(jsonPath("$.fields['x-amz-signature']").isNotEmpty)
             .andExpect(jsonPath("$.fields['policy']").isNotEmpty)
             .andExpect(jsonPath("$.expiresAt").isNotEmpty)
@@ -116,8 +116,27 @@ class PhotoUploadEndpointIntegrationTest : AbstractWebIntegrationTest {
         putPhoto("https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/${UUID.randomUUID()}/profile.jpg")
             .andExpect(status().isBadRequest)
 
-        val own = "https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/$userId/profile.jpg?v=k3x9"
+        val own = "https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/$userId/profile-${UUID.randomUUID()}.jpg?v=k3x9"
         putPhoto(own).andExpect(status().isOk).andExpect(jsonPath("$.photoUrl").value(own))
+    }
+
+    @Test
+    fun `upload links are rate limited per user (docs SECURITY-AUDIT Finding 6)`() {
+        val phone = uniquePhone()
+        every { firebaseTokenVerifier.verify(any()) } returns VerifiedFirebaseToken(uid = "fb-$phone", phoneNumber = phone)
+        val session = mockMvc.perform(
+            post("/api/v1/auth/session")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token"))),
+        ).andExpect(status().isOk).andReturn()
+        @Suppress("UNCHECKED_CAST")
+        val accessToken = (objectMapper.readValue(session.response.contentAsString, Map::class.java) as Map<String, Any?>)["accessToken"] as String
+        fun request() = mockMvc.perform(post("/api/v1/profiles/me/photo-upload-url").header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken"))
+
+        repeat(30) { request().andExpect(status().isOk) }
+        request()
+            .andExpect(status().isTooManyRequests)
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().exists(HttpHeaders.RETRY_AFTER))
     }
 
     private fun uniquePhone(): String =

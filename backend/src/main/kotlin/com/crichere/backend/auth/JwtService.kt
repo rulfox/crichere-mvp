@@ -37,6 +37,12 @@ data class JwtProperties(
     val accessTokenTtl: Duration = Duration.ofMinutes(15),
     /** Refresh-token lifetime. Long-lived so the mobile app rarely forces a re-login. */
     val refreshTokenTtl: Duration = Duration.ofDays(30),
+    /**
+     * How long after a rotation the old refresh token may still be exchanged once, when its successor
+     * was never used -- the reply to a refresh got lost on a bad network (docs/SECURITY-AUDIT.md
+     * Finding 5). Any other reuse is treated as theft.
+     */
+    val refreshReuseGrace: Duration = Duration.ofSeconds(60),
 )
 
 @Configuration
@@ -68,6 +74,9 @@ class JwtService(
     private val properties: JwtProperties,
     private val clock: Clock = Clock.systemUTC(),
 ) {
+
+    /** See [JwtProperties.refreshReuseGrace]. */
+    val refreshReuseGrace: Duration get() = properties.refreshReuseGrace
 
     private val secretBytes: ByteArray = decodeSecret(properties.secret).also {
         require(it.size >= MIN_SECRET_BYTES) {

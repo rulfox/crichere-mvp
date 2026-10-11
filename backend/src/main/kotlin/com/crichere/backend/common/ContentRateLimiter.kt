@@ -39,6 +39,12 @@ data class ContentRateLimitProperties(
     val roleLookupCapacity: Long = 10,
     /** Account deletion requests (docs/PHASE16.md) -- a real user asks once; this only bounds a script hammering the blockers query. */
     val accountDeletionCapacity: Long = 5,
+    /**
+     * Presigned upload links, shared across every upload-link endpoint (docs/SECURITY-AUDIT.md
+     * Finding 6). Each link lets the caller store up to 10 MB, and franchise-logo keys are random, so
+     * without this one account could fill the bucket. A real user uploads a few images an hour.
+     */
+    val uploadUrlCapacity: Long = 30,
     /** The refill period every capacity above uses. */
     val window: Duration = Duration.ofHours(1),
     /** Safety valve on each in-memory bucket map -- see [ContentRateLimiter] for what happens then. */
@@ -66,6 +72,7 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     private val bidBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val roleLookupBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val accountDeletionBuckets = ConcurrentHashMap<UUID, Bucket>()
+    private val uploadUrlBuckets = ConcurrentHashMap<UUID, Bucket>()
 
     /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
     fun tryConsumeForLeagueCreate(userId: UUID): Duration? =
@@ -99,6 +106,15 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     fun tryConsumeForAccountDeletion(userId: UUID): Duration? =
         consume(accountDeletionBuckets, userId, properties.accountDeletionCapacity)
 
+    /**
+     * Every presigned upload-link endpoint calls this first.
+     *
+     * @throws ContentRateLimitExceededException the caller asked for too many links this hour.
+     */
+    fun requireUploadUrlAllowed(userId: UUID) {
+        consume(uploadUrlBuckets, userId, properties.uploadUrlCapacity)?.let { throw ContentRateLimitExceededException(it) }
+    }
+
     // Leave-request/approve/dismiss/remove/follow/unfollow are deliberately NOT rate-limited: a
     // player leave-requesting repeatedly only harms themselves (no capacity/money consumed), and
     // follow/unfollow has no abuse vector (no capacity, no money, no notification spam since
@@ -114,6 +130,7 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
         bidBuckets.clear()
         roleLookupBuckets.clear()
         accountDeletionBuckets.clear()
+        uploadUrlBuckets.clear()
     }
 
     private fun consume(buckets: ConcurrentHashMap<UUID, Bucket>, key: UUID, capacity: Long): Duration? {

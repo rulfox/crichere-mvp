@@ -22,13 +22,13 @@ import java.util.UUID
 class MediaUrlPolicy(private val properties: AwsProperties) {
 
     /** `users/{userId}/profile.jpg`, see [PhotoUploadService.createUploadUrl]. */
-    fun requireProfilePhoto(url: String?, userId: UUID) = require(url) { it == "users/$userId/profile.jpg" }
+    fun requireProfilePhoto(url: String?, userId: UUID) = require(url) { Regex("^users/$userId/profile(-$UUID_PATTERN)?\\.jpg$").matches(it) }
 
     /** On update: this league's own logo key. */
-    fun requireLeagueLogo(url: String?, leagueId: UUID) = require(url) { it == "leagues/$leagueId/logo.jpg" }
+    fun requireLeagueLogo(url: String?, leagueId: UUID) = require(url) { Regex("^leagues/$leagueId/logo(-$UUID_PATTERN)?\\.jpg$").matches(it) }
 
     /** On update: this league's own banner key. */
-    fun requireLeagueBanner(url: String?, leagueId: UUID) = require(url) { it == "leagues/$leagueId/banner.jpg" }
+    fun requireLeagueBanner(url: String?, leagueId: UUID) = require(url) { Regex("^leagues/$leagueId/banner(-$UUID_PATTERN)?\\.jpg$").matches(it) }
 
     /**
      * On create the league has no id yet; the apps create first and upload after, so a create
@@ -60,7 +60,7 @@ class MediaUrlPolicy(private val properties: AwsProperties) {
 
     private companion object {
         const val UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-        val LEAGUE_IMAGE = Regex("^leagues/$UUID_PATTERN/(logo|banner)\\.jpg$")
+        val LEAGUE_IMAGE = Regex("^leagues/$UUID_PATTERN/(logo|banner)(-$UUID_PATTERN)?\\.jpg$")
     }
 }
 

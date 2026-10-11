@@ -53,9 +53,11 @@ class AwsConfiguration {
 }
 
 /**
- * Generates S3 presigned POST requests -- profile photo uploads (`users/{userId}/profile.jpg`),
- * and (since Phase 2) league logos/banners (`leagues/{leagueId}/logo.jpg` /
- * `leagues/{leagueId}/banner.jpg`). Originally profile-only (Phase 1); moved to `common` and
+ * Generates S3 presigned POST requests -- profile photo uploads (`users/{userId}/profile-{uuid}.jpg`),
+ * and (since Phase 2) league logos/banners (`leagues/{leagueId}/logo-{uuid}.jpg` /
+ * `leagues/{leagueId}/banner-{uuid}.jpg`). Each upload gets its own key (2026-10-11,
+ * docs/SECURITY-AUDIT.md Finding 6), so nothing changes until the record is saved with the new URL;
+ * [MediaSweepService] later removes uploads nothing points to. Originally profile-only (Phase 1); moved to `common` and
  * given league-specific methods once a second feature needed the exact same S3 presigned-POST
  * mechanism -- the SigV4 signing logic itself is untouched by that move, only its package and
  * the set of key-building methods around it changed.
@@ -100,19 +102,19 @@ class PhotoUploadService(
     private val log = LoggerFactory.getLogger(javaClass)
 
     /**
-     * Builds a presigned POST for `users/{userId}/profile.jpg`.
+     * Builds a presigned POST for `users/{userId}/profile-{uuid}.jpg`.
      *
      * @throws PhotoUploadUnavailableException the bucket/region are not configured, or no AWS
      *   credentials could be resolved -- both expected in this environment until AWS setup
      *   happens (see [AwsConfiguration]).
      */
-    fun createUploadUrl(userId: UUID): PhotoUploadUrlResponse = presign("users/$userId/profile.jpg")
+    fun createUploadUrl(userId: UUID): PhotoUploadUrlResponse = presign("users/$userId/profile-${UUID.randomUUID()}.jpg")
 
-    /** Builds a presigned POST for `leagues/{leagueId}/logo.jpg`. See the class doc's security-boundary note. */
-    fun createLeagueLogoUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/logo.jpg")
+    /** Builds a presigned POST for `leagues/{leagueId}/logo-{uuid}.jpg`. See the class doc's security-boundary note. */
+    fun createLeagueLogoUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/logo-${UUID.randomUUID()}.jpg")
 
-    /** Builds a presigned POST for `leagues/{leagueId}/banner.jpg`. See the class doc's security-boundary note. */
-    fun createLeagueBannerUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/banner.jpg")
+    /** Builds a presigned POST for `leagues/{leagueId}/banner-{uuid}.jpg`. See the class doc's security-boundary note. */
+    fun createLeagueBannerUploadUrl(leagueId: UUID): PhotoUploadUrlResponse = presign("leagues/$leagueId/banner-${UUID.randomUUID()}.jpg")
 
     /** Builds a presigned POST for `franchises/{franchiseId}/logo.jpg`. See the class doc's security-boundary note -- the ownership check is `FranchiseService`'s responsibility. */
     fun createFranchiseLogoUploadUrl(franchiseId: UUID): PhotoUploadUrlResponse = presign("franchises/$franchiseId/logo.jpg")
@@ -171,7 +173,9 @@ class PhotoUploadService(
             add(mapOf("bucket" to bucket))
             add(mapOf("key" to key))
             add(listOf("content-length-range", MIN_PHOTO_BYTES, MAX_PHOTO_BYTES))
-            add(listOf("starts-with", "\$Content-Type", "image/"))
+            // JPEG only (docs/SECURITY-AUDIT.md Finding 6): both apps always send image/jpeg, and an
+            // SVG served from this public bucket could carry script that runs when its URL is opened.
+            add(mapOf("Content-Type" to CONTENT_TYPE))
             add(mapOf("Cache-Control" to CACHE_CONTROL))
             add(mapOf("x-amz-algorithm" to ALGORITHM))
             add(mapOf("x-amz-credential" to amzCredential))
@@ -248,11 +252,14 @@ class PhotoUploadService(
 
         /**
          * Stored on every uploaded object (docs/PHASE14.md) so browsers and chat apps keep images for a
-         * year. Safe although keys are reused (`.../profile.jpg`): the app saves each upload's URL with
-         * a fresh `?v=` (PhotoUpload.kt), so a new upload is always a new URL. Signed into the policy
+         * year. Each upload has its own key, and the app also adds a fresh `?v=` (PhotoUpload.kt), so a
+         * new upload is always a new URL. Signed into the policy
          * and returned as a field, so the client just sends it back -- no app change needed.
          */
         const val CACHE_CONTROL = "public, max-age=31536000, immutable"
+
+        /** The only upload type the policy allows (docs/SECURITY-AUDIT.md Finding 6). */
+        const val CONTENT_TYPE = "image/jpeg"
 
         /** How long the presigned fields remain usable. Short enough to limit a leaked URL's blast radius. */
         val EXPIRY: Duration = Duration.ofMinutes(5)

@@ -12,10 +12,12 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.Optional
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -56,7 +58,7 @@ class AuthServiceTest {
             clock = clock,
         )
         every { profileCompletionLookup.isComplete(any()) } returns false
-        every { refreshTokenRepository.save(any()) } answers { firstArg() }
+        every { refreshTokenRepository.save(any()) } answers { firstArg<RefreshTokenEntity>().also { if (it.id == null) it.id = UUID.randomUUID() } }
         every { userRepository.findByIdForUpdate(any()) } answers { UserEntity(id = firstArg(), phoneLookupHash = "h", phoneEncrypted = "e") }
     }
 
@@ -129,7 +131,7 @@ class AuthServiceTest {
     fun `sign-in issues a usable access token and persists only the refresh token's hash`() {
         givenExistingUser()
         val savedToken = slot<RefreshTokenEntity>()
-        every { refreshTokenRepository.save(capture(savedToken)) } answers { firstArg() }
+        every { refreshTokenRepository.save(capture(savedToken)) } answers { firstArg<RefreshTokenEntity>().also { it.id = UUID.randomUUID() } }
 
         val result = authService.verifySession("firebase-id-token")
 
@@ -198,9 +200,9 @@ class AuthServiceTest {
     fun `refresh rotates - the presented token is revoked and a new one is stored`() {
         val raw = "raw-refresh-token"
         val stored = storedRefreshToken(raw)
-        every { refreshTokenRepository.findByTokenHash(jwtService.hashRefreshToken(raw)) } returns stored
+        every { refreshTokenRepository.findByTokenHashForUpdate(jwtService.hashRefreshToken(raw)) } returns stored
         val saves = mutableListOf<RefreshTokenEntity>()
-        every { refreshTokenRepository.save(capture(saves)) } answers { firstArg() }
+        every { refreshTokenRepository.save(capture(saves)) } answers { firstArg<RefreshTokenEntity>().also { if (it.id == null) it.id = UUID.randomUUID() } }
 
         val result = authService.refresh(raw)
 
@@ -209,7 +211,7 @@ class AuthServiceTest {
         // ...a genuinely different token handed back...
         assertNotEquals(raw, result.refreshToken)
         // ...and its hash persisted as a fresh, unrevoked row.
-        val inserted = saves.last()
+        val inserted = saves.first { it !== stored }
         assertEquals(jwtService.hashRefreshToken(result.refreshToken), inserted.tokenHash)
         assertNull(inserted.revokedAt)
         assertEquals(USER_ID, inserted.userId)
@@ -219,34 +221,90 @@ class AuthServiceTest {
     @Test
     fun `refresh reports profileComplete too`() {
         val raw = "raw-refresh-token"
-        every { refreshTokenRepository.findByTokenHash(any()) } returns storedRefreshToken(raw)
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns storedRefreshToken(raw)
         every { profileCompletionLookup.isComplete(USER_ID) } returns true
 
         assertTrue(authService.refresh(raw).profileComplete)
     }
 
     @Test
-    fun `an already-revoked refresh token is rejected`() {
+    fun `refresh records the new token as the old one's successor`() {
         val raw = "raw-refresh-token"
-        val revoked = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(60) }
-        every { refreshTokenRepository.findByTokenHash(any()) } returns revoked
+        val stored = storedRefreshToken(raw)
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns stored
+
+        authService.refresh(raw)
+
+        assertNotNull(stored.replacedById)
+    }
+
+    @Test
+    fun `a revoked token with no successor (logged out) is treated as theft - every session goes`() {
+        val raw = "raw-refresh-token"
+        val revoked = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(10) }
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns revoked
+        every { refreshTokenRepository.revokeAllForUser(USER_ID, now) } returns 3
 
         assertThrows<InvalidRefreshTokenException> { authService.refresh(raw) }
+        verify(exactly = 1) { refreshTokenRepository.revokeAllForUser(USER_ID, now) }
         verify(exactly = 0) { refreshTokenRepository.save(any()) }
+    }
+
+    @Test
+    fun `a lost reply - the old token within the grace window, successor unused - gets a fresh pair`() {
+        val raw = "raw-refresh-token"
+        val successor = storedRefreshToken("successor")
+        val rotated = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(30); replacedById = successor.id }
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns rotated
+        every { refreshTokenRepository.findById(successor.id!!) } returns Optional.of(successor)
+
+        val result = authService.refresh(raw)
+
+        assertEquals(USER_ID, jwtService.parseAccessToken(result.accessToken))
+        assertEquals(now, successor.revokedAt, "the unused successor no longer works")
+        assertEquals(now.minusSeconds(30), rotated.revokedAt, "the grace window keeps its original start")
+        assertNotEquals(successor.id, rotated.replacedById)
+        verify(exactly = 0) { refreshTokenRepository.revokeAllForUser(any(), any()) }
+    }
+
+    @Test
+    fun `the old token after the grace window is theft`() {
+        val raw = "raw-refresh-token"
+        val successor = storedRefreshToken("successor")
+        val rotated = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(61); replacedById = successor.id }
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns rotated
+        every { refreshTokenRepository.findById(successor.id!!) } returns Optional.of(successor)
+        every { refreshTokenRepository.revokeAllForUser(USER_ID, now) } returns 2
+
+        assertThrows<InvalidRefreshTokenException> { authService.refresh(raw) }
+        verify(exactly = 1) { refreshTokenRepository.revokeAllForUser(USER_ID, now) }
+    }
+
+    @Test
+    fun `the old token once its successor was used is theft, even inside the grace window`() {
+        val raw = "raw-refresh-token"
+        val used = storedRefreshToken("successor").apply { revokedAt = now.minusSeconds(5) }
+        val rotated = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(20); replacedById = used.id }
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns rotated
+        every { refreshTokenRepository.findById(used.id!!) } returns Optional.of(used)
+        every { refreshTokenRepository.revokeAllForUser(USER_ID, now) } returns 2
+
+        assertThrows<InvalidRefreshTokenException> { authService.refresh(raw) }
+        verify(exactly = 1) { refreshTokenRepository.revokeAllForUser(USER_ID, now) }
     }
 
     @Test
     fun `an expired refresh token is rejected`() {
         val raw = "raw-refresh-token"
         val expired = storedRefreshToken(raw).apply { expiresAt = now.minusSeconds(1) }
-        every { refreshTokenRepository.findByTokenHash(any()) } returns expired
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns expired
 
         assertThrows<InvalidRefreshTokenException> { authService.refresh(raw) }
     }
 
     @Test
     fun `an unknown refresh token is rejected with the same error as a revoked one`() {
-        every { refreshTokenRepository.findByTokenHash(any()) } returns null
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns null
 
         // Same exception type as the revoked/expired cases, so the API cannot be used to
         // distinguish "no such token" from "token you no longer own".
@@ -257,7 +315,7 @@ class AuthServiceTest {
     fun `refresh looks the token up by hash, never by its raw value`() {
         val raw = "raw-refresh-token"
         val queried = slot<String>()
-        every { refreshTokenRepository.findByTokenHash(capture(queried)) } returns storedRefreshToken(raw)
+        every { refreshTokenRepository.findByTokenHashForUpdate(capture(queried)) } returns storedRefreshToken(raw)
 
         authService.refresh(raw)
 
@@ -307,6 +365,8 @@ class AuthServiceTest {
         val raw = "raw-refresh-token"
         val stored = storedRefreshToken(raw)
         every { refreshTokenRepository.findByTokenHash(any()) } returns stored
+        every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns stored
+        every { refreshTokenRepository.revokeAllForUser(any(), any()) } returns 0
 
         authService.logout(raw)
 

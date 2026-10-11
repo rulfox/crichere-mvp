@@ -644,7 +644,9 @@ Open items found while implementing the redesign, not yet scheduled.
   production permission. `OtpFlowIntegrationTest` unrun (no Docker). On-device: SMS autofill (likely
   absent), switching `OTP_PROVIDER` back to `firebase`. App Check needs the mobile client first.
 
-- [ ] **Uploads go live before Save** (found on screen C, 2026-10-01). Photo uploads use a fixed
+- [x] **Uploads go live before Save** (found on screen C, 2026-10-01). Fixed 2026-10-11: every
+  photo/logo/banner upload gets its own key, so the record changes only on Save; a daily sweep removes
+  the leftovers (SECURITY-AUDIT Finding 6). Not checked against real S3 (no local bucket). Photo uploads use a fixed
   S3 key per owner (`users/{userId}/profile.jpg`, `leagues/{id}/logo.jpg`, ...), so the live image
   is replaced the moment the upload finishes, even if the user then cancels or never taps Save.
   Backend change: upload to a fresh key and only point the record at it on save.
@@ -653,12 +655,16 @@ Open items found while implementing the redesign, not yet scheduled.
   full name." after Save with fewer than 2 letters (seen on the emulator, edit mode; the photo row didn't move).
 - [ ] **C1 (empty new-user Profile setup) not verified on-device** -- needs a second Firebase test
   number for a fresh account.
-- [ ] **Stale refresh token -> 401 after reinstall** (2026-10-01, 10:08 IST). App start presented an
+- [x] **Stale refresh token -> 401 after reinstall** (2026-10-01, 10:08 IST). Addressed 2026-10-11:
+  an already-rotated token coming back within 60 s, with its successor unused (a lost reply), now gets a
+  fresh pair; any other reuse revokes all the user's sessions (SECURITY-AUDIT Finding 5). Whether a lost
+  reply was the 2026-10-01 cause stays unconfirmed. App start presented an
   already-rotated refresh token and the session was wiped, although the previous rotation (04:30
   UTC) had succeeded. Railway's HTTP log showed only 2 requests in that window despite other app
   traffic, so the cause is unconfirmed. Investigate rotation/persistence ordering (e.g. a refresh
   whose response is lost) and consider a short reuse grace window on the backend.
-- [ ] **Orphaned test uploads in S3** (screens G/H, 2026-10-01). On-device verification uploaded the
+- [x] **Orphaned test uploads in S3** (screens G/H, 2026-10-01). The daily media sweep (2026-10-11,
+  SECURITY-AUDIT Finding 6) deletes them once the backend IAM user may list and delete. On-device verification uploaded the
   generated test logo and payment receipt (twice) without attaching them to any franchise or
   player. Delete them, or add a cleanup for uploads that are never referenced.
 - [ ] **Not yet verified on-device** -- scenarios built but not exercised on CPH2487:

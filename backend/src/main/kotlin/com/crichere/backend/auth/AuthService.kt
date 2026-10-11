@@ -98,25 +98,43 @@ class AuthService(
     /**
      * Exchanges a refresh token for a new pair, rotating the old one out.
      *
-     * Rotation is the point: the presented token is revoked in the same transaction that
-     * issues its replacement, so a token can be spent exactly once. If it is stolen and
-     * replayed, at most one of the two holders gets a session and the other's next attempt
-     * fails -- which is a detectable symptom rather than a silent shared session.
+     * Rotation is the point: the presented token is revoked in the same transaction that issues its
+     * replacement, and the old row points at the new one ([RefreshTokenEntity.replacedById]). The
+     * row is read with a lock, so two refreshes with the same token can't both rotate it.
      *
-     * `@Transactional` here, unlike [verifySession], because revoking the old row and
-     * inserting the new one must not come apart: half of that would either strand the user or
-     * leave two live tokens.
+     * A token that comes back after it was rotated is one of two things (docs/SECURITY-AUDIT.md
+     * Finding 5):
+     * - **A lost reply:** within [JwtService.refreshReuseGrace] of the rotation, and its successor
+     *   was never used. The phone never got the new pair. It gets a fresh one, and the unused
+     *   successor is revoked, so there is still only one live token.
+     * - **Theft:** anything else (late, successor already used, or revoked by logout). Every session
+     *   of the user is revoked, the thief's and the owner's alike; the owner signs in again.
+     *
+     * `noRollbackFor`: the revoke-all must survive the 401 that follows it.
      */
-    @Transactional
+    @Transactional(noRollbackFor = [InvalidRefreshTokenException::class])
     fun refresh(rawRefreshToken: String): AuthResult {
-        val existing = refreshTokenRepository.findByTokenHash(jwtService.hashRefreshToken(rawRefreshToken))
+        val existing = refreshTokenRepository.findByTokenHashForUpdate(jwtService.hashRefreshToken(rawRefreshToken))
             ?: throw InvalidRefreshTokenException()
 
         val now = clock.instant()
         // One flat failure for "revoked", "expired" and "unknown" alike -- see
         // AuthenticationFailedException.
-        if (existing.revokedAt != null) throw InvalidRefreshTokenException()
         if (!existing.expiresAt.isAfter(now)) throw InvalidRefreshTokenException()
+
+        val rotatedAt = existing.revokedAt
+        if (rotatedAt != null) {
+            val successor = existing.replacedById?.let { refreshTokenRepository.findById(it).orElse(null) }
+            val lostReply = successor != null && successor.revokedAt == null &&
+                !now.isAfter(rotatedAt.plus(jwtService.refreshReuseGrace))
+            if (!lostReply) {
+                refreshTokenRepository.revokeAllForUser(existing.userId, now)
+                log.warn("Refresh token reused for user {}; revoked all of their sessions", existing.userId)
+                throw InvalidRefreshTokenException()
+            }
+            successor!!.revokedAt = now
+            refreshTokenRepository.save(successor)
+        }
 
         // An account pending deletion (or purged) gets no new session from an old token: signing
         // in again is the only way back, and that cancels the deletion (docs/PHASE16.md). The row
@@ -124,10 +142,12 @@ class AuthService(
         val user = userRepository.findByIdForUpdate(existing.userId)
         if (user == null || user.deletionRequestedAt != null || user.deletedAt != null) throw InvalidRefreshTokenException()
 
-        existing.revokedAt = now
+        // A lost-reply retry keeps the original rotation time, so the grace window never stretches.
+        if (existing.revokedAt == null) existing.revokedAt = now
+        val (result, newTokenId) = mintSession(existing.userId)
+        existing.replacedById = newTokenId
         refreshTokenRepository.save(existing)
-
-        return issueSession(existing.userId)
+        return result
     }
 
     /**
@@ -173,11 +193,14 @@ class AuthService(
     }
 
     /** Mints a token pair for [userId] and records the refresh token's hash. */
-    private fun issueSession(userId: UUID): AuthResult {
+    private fun issueSession(userId: UUID): AuthResult = mintSession(userId).first
+
+    /** A new access + refresh pair, and the stored refresh-token row's id (for [refresh]'s successor link). */
+    private fun mintSession(userId: UUID): Pair<AuthResult, UUID> {
         val access = jwtService.issueAccessToken(userId)
         val refresh = jwtService.issueRefreshToken()
 
-        refreshTokenRepository.save(
+        val stored = refreshTokenRepository.save(
             RefreshTokenEntity(
                 userId = userId,
                 // Only the hash is ever persisted; the raw token below leaves in the response
@@ -188,12 +211,13 @@ class AuthService(
             ),
         )
 
-        return AuthResult(
+        val result = AuthResult(
             userId = userId,
             accessToken = access.token,
             accessTokenExpiresAt = access.expiresAt,
             refreshToken = refresh.rawToken,
             profileComplete = profileCompletionLookup.isComplete(userId),
         )
+        return result to requireNotNull(stored.id)
     }
 }
