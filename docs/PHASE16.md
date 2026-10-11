@@ -111,6 +111,21 @@ query and no name-text match) and `leagues.organizer_handover_seen_at`.
   (`CRICHERE_ACCOUNTDELETION_PURGECRON="0 * * * * *"`) purged it: phone NULL, profile "Deleted user", 0 refresh
   tokens; the same number then signed up as a new user id.
 - Web: `npm test`, `npm run lint`, `npx playwright test` (legal spec covers `/delete-account`).
+- Live, round 2 (2026-10-11, after the design-export API gaps): `node backend/e2e/account-deletion-live.mjs`
+  against the local backend with the per-minute test cron, 18/18 checks pass:
+  - the blocker carries `leagueLogoUrl`; `erasesOn` is now + 14 days and stays at the original date while
+    pending; the handover names the co-organizer;
+  - after the purge the co-organizer is organizer with `showHandoverNotice: true`, while anonymous callers see
+    false;
+  - dismiss by another user gives 403; the organizer gets 204 twice and the notice stays hidden;
+  - the history row reads "Deleted user" with `deleted: true`, and `profiles.account_deleted` is set;
+  - signing in after a request returns `accountRestored`.
+- Browser (2026-10-11, Playwright MCP through the Chrome extension, ~300 px wide): `/delete-account` and `/privacy`
+  render with no horizontal overflow and `noindex, follow`; the mailto link carries the subject "Delete my account".
+  Found and fixed a bug: a bullet containing a link split into three columns, because legal list items are flex
+  rows (marker + text). Both such bullets now wrap their text in one span. Web `npm test` 74/74, lint clean,
+  `npx playwright test` 25/25. Run e2e with no dev server on :3000, or it reuses that server against the real
+  backend and fails.
 
 ## 8. Design export: API gaps and mobile (2026-10-11)
 

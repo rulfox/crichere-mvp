@@ -119,8 +119,11 @@ const SECTIONS: LegalSection[] = [
           <li>Access the personal data we hold about you (most of it is in My Profile).</li>
           <li>Correct or update it (Edit profile in the app).</li>
           <li>
-            Delete your account and data: in the app, open My Profile, tap Delete account and type DELETE to confirm. See{" "}
-            <Link href="/delete-account">Delete your account</Link> for what happens next and how to ask by email.
+            {/* One flex item: the list item is a flex row (marker + text), so a bare link would split the sentence. */}
+            <span>
+              Delete your account and data: in the app, open My Profile, tap Delete account and type DELETE to confirm. See{" "}
+              <Link href="/delete-account">Delete your account</Link> for what happens next and how to ask by email.
+            </span>
           </li>
           <li>Withdraw consent, for example by turning off location or notifications, or deleting your account. This does not affect earlier lawful processing.</li>
           <li>Nominate another person to exercise your rights if you die or cannot act.</li>

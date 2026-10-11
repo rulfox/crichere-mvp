@@ -53,7 +53,12 @@ const SECTIONS: LegalSection[] = [
             there becomes &ldquo;Deleted user&rdquo;.
           </li>
           <li>Grounds you registered, without your name.</li>
-          <li>Limited records we must keep by law. See the <Link href="/privacy">Privacy Policy</Link> for retention periods.</li>
+          <li>
+            {/* One flex item: the list item is a flex row (marker + text), so a bare link would split the sentence. */}
+            <span>
+              Limited records we must keep by law. See the <Link href="/privacy">Privacy Policy</Link> for retention periods.
+            </span>
+          </li>
         </ul>
       </>
     ),
