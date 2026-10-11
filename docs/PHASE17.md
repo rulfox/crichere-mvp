@@ -72,7 +72,7 @@ This phase fills the existing slots. No layout changes, so no new Claude Design 
 
 ## 6. Tests
 
-- **Backend: 508/508.**
+- **Backend: 508/508** (515/515 after section 7).
   - `AccountDeletionFlowIntegrationTest`: a roster row carries `photoUrl`, and it is `null` after the purge.
   - Also fixed a flaky `JwtServiceTest` case: "tampered signature" flipped the last base64 character, which can
     be padding bits only (about 1 run in 16). It now flips the first signature character.
@@ -86,7 +86,17 @@ This phase fills the existing slots. No layout changes, so no new Claude Design 
   - after a cold start with the image server stopped, every photo still shows (Coil disk cache);
   - auction results show the photos.
 
-## 7. Not verified
+## 7. Image URL check (security review, 2026-10-11)
+
+The commit security review found that any `https://` URL was accepted as a photo or logo, so a user could make
+every roster viewer's app fetch from their server. On the owner's decision, the backend now only stores
+our-bucket URLs at the exact key each upload endpoint issues (`MediaUrlPolicy`; details in SECURITY-AUDIT.md
+Finding 4).
+- Unchanged values on edit are not rechecked.
+- Dev and CI (no bucket configured) are not checked.
+- Backend 515/515.
+
+## 8. Not verified
 
 - Manage co-organizers photo on a device (needs that league's organizer signed in).
 - Web in a browser with real logos. Vitest covers the markup only.

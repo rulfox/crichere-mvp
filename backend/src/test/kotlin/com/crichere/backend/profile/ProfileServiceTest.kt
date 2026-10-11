@@ -25,7 +25,7 @@ class ProfileServiceTest {
 
     private val profileRepository = mockk<ProfileRepository>()
     private val profileCompletionLookup = mockk<ProfileCompletionLookup>()
-    private val service = ProfileService(profileRepository, profileCompletionLookup)
+    private val service = ProfileService(profileRepository, profileCompletionLookup, com.crichere.backend.common.MediaUrlPolicy(com.crichere.backend.common.AwsProperties()))
 
     private val userId: UUID = UUID.randomUUID()
 

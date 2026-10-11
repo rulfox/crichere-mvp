@@ -2,6 +2,7 @@ package com.crichere.backend.player
 
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.common.MediaUrlPolicy
 import com.crichere.backend.common.PaymentScreenshotUrlSigner
 import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueCapacityFullException
@@ -37,6 +38,7 @@ class PlayerService(
     private val leagueAuthorization: LeagueAuthorization,
     private val fcmSender: FcmSender,
     private val screenshotSigner: PaymentScreenshotUrlSigner,
+    private val mediaUrlPolicy: MediaUrlPolicy,
 ) {
 
     /**
@@ -72,6 +74,8 @@ class PlayerService(
         }
 
         if (playerRepository.existsByLeagueIdAndUserIdAndRemovedAtIsNull(leagueId, callerId)) throw AlreadyJoinedException()
+
+        mediaUrlPolicy.requirePaymentScreenshot(request.paymentScreenshotUrl, leagueId, callerId)
 
         val player = PlayerEntity(
             leagueId = leagueId,

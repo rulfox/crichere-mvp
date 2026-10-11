@@ -2,6 +2,7 @@ package com.crichere.backend.franchise
 
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.common.MediaUrlPolicy
 import com.crichere.backend.common.PaymentScreenshotUrlSigner
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
@@ -40,6 +41,7 @@ class FranchiseService(
     private val leagueAuthorization: LeagueAuthorization,
     private val fcmSender: FcmSender,
     private val screenshotSigner: PaymentScreenshotUrlSigner,
+    private val mediaUrlPolicy: MediaUrlPolicy,
 ) {
 
     /**
@@ -70,6 +72,9 @@ class FranchiseService(
         if (league.franchiseFee != null && request.paymentScreenshotUrl.isNullOrBlank()) {
             throw PaymentScreenshotRequiredException("franchise")
         }
+
+        mediaUrlPolicy.requirePendingFranchiseLogo(request.logoUrl, leagueId, callerId)
+        mediaUrlPolicy.requirePaymentScreenshot(request.paymentScreenshotUrl, leagueId, callerId)
 
         val franchise = FranchiseEntity(
             leagueId = leagueId,

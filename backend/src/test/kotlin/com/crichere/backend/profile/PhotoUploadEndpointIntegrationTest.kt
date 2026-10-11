@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -86,6 +87,37 @@ class PhotoUploadEndpointIntegrationTest : AbstractWebIntegrationTest {
             .andExpect(jsonPath("$.fields['x-amz-signature']").isNotEmpty)
             .andExpect(jsonPath("$.fields['policy']").isNotEmpty)
             .andExpect(jsonPath("$.expiresAt").isNotEmpty)
+    }
+
+    @Test
+    fun `a profile photo must be the caller's own upload in our bucket (docs PHASE17)`() {
+        val phone = uniquePhone()
+        every { firebaseTokenVerifier.verify(any()) } returns VerifiedFirebaseToken(uid = "fb-$phone", phoneNumber = phone)
+        val session = mockMvc.perform(
+            post("/api/v1/auth/session")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token"))),
+        ).andExpect(status().isOk).andReturn()
+        @Suppress("UNCHECKED_CAST")
+        val body = objectMapper.readValue(session.response.contentAsString, Map::class.java) as Map<String, Any?>
+        val userId = UUID.fromString(body["userId"] as String)
+        val accessToken = body["accessToken"] as String
+        fun putPhoto(url: String) = mockMvc.perform(
+            put("/api/v1/profiles/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mapOf("name" to "Ravi", "photoUrl" to url))),
+        )
+
+        // Another host would see the IP of everyone who opens a roster with this player in it.
+        putPhoto("https://tracker.example/pixel.jpg")
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("MEDIA_URL_NOT_ALLOWED"))
+        putPhoto("https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/${UUID.randomUUID()}/profile.jpg")
+            .andExpect(status().isBadRequest)
+
+        val own = "https://crichere-media-dev.s3.ap-south-1.amazonaws.com/users/$userId/profile.jpg?v=k3x9"
+        putPhoto(own).andExpect(status().isOk).andExpect(jsonPath("$.photoUrl").value(own))
     }
 
     private fun uniquePhone(): String =

@@ -3,6 +3,7 @@ package com.crichere.backend.league
 import com.crichere.backend.auction.AuctionInProgressException
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
+import com.crichere.backend.common.MediaUrlPolicy
 import com.crichere.backend.common.PaymentScreenshotUrlSigner
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.common.PhotoUploadUrlResponse
@@ -37,6 +38,7 @@ class LeagueService(
     private val leagueAuthorization: LeagueAuthorization,
     private val leagueRoleRepository: LeagueRoleRepository,
     private val screenshotSigner: PaymentScreenshotUrlSigner,
+    private val mediaUrlPolicy: MediaUrlPolicy,
 ) {
 
     /**
@@ -83,6 +85,8 @@ class LeagueService(
         }
         requireGroundExists(request.groundId)
         requireOrganizerUpiIdIfFeeSet(request)
+        mediaUrlPolicy.requireAnyLeagueImage(request.logoUrl)
+        mediaUrlPolicy.requireAnyLeagueImage(request.bannerUrl)
 
         val league = LeagueEntity(
             organizerUserId = organizerUserId,
@@ -142,6 +146,9 @@ class LeagueService(
         requireOrganizerUpiIdIfFeeSet(request)
         requireCapacityNotBelowActiveCount(league, request)
         requireFeeNotLockedByActiveRows(league, request)
+        // Edits resend the current URLs; only a changed one is checked.
+        if (request.logoUrl != league.logoUrl) mediaUrlPolicy.requireLeagueLogo(request.logoUrl, leagueId)
+        if (request.bannerUrl != league.bannerUrl) mediaUrlPolicy.requireLeagueBanner(request.bannerUrl, leagueId)
 
         applyFullReplace(league, request)
         league.updatedAt = Instant.now()

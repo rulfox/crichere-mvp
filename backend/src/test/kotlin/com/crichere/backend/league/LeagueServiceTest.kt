@@ -75,6 +75,7 @@ class LeagueServiceTest {
         leagueAuthorization,
         leagueRoleRepository,
         com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url },
+        com.crichere.backend.common.MediaUrlPolicy(com.crichere.backend.common.AwsProperties()),
     )
 
     private val organizerId: UUID = UUID.randomUUID()

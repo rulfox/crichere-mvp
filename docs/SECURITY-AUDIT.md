@@ -149,6 +149,27 @@ only image responses were used.
     and franchise-logo fields already had.
   - Two new integration tests cover it. All 506 backend tests pass.
 
+## Finding 4: a photo or logo could point at any server (Low), fixed 2026-10-11
+
+**Problem:** every stored image URL (profile photo, league logo and banner, franchise logo, payment screenshot)
+only had to be `https://`. A user could set their photo to an image on a server they run, and every app or
+browser that opened a roster, auction or league page with them in it would fetch it, revealing the viewer's IP
+address. Phase 17 put photos into roster rows, which widened this. Found by the commit security review.
+
+**Fix (owner decision: only accept our bucket):**
+- `MediaUrlPolicy` rejects (400 `MEDIA_URL_NOT_ALLOWED`) a URL that isn't
+  `https://{bucket}.s3.{region}.amazonaws.com/` plus the exact key the upload endpoint issues for that field:
+  - profile photo: `users/{caller}/profile.jpg`;
+  - league logo or banner on update: `leagues/{id}/logo.jpg` or `banner.jpg`;
+  - league images on create: any league logo or banner key (the league has no id yet);
+  - franchise claim logo: `leagues/{league}/franchise-logos/{caller}-…`;
+  - payment proof: `leagues/{league}/payments/{caller}.jpg`.
+- Only a changed value is checked on edits, so rows saved before this rule can still be edited.
+- With no bucket configured (dev, CI) nothing is checked.
+- **Tests:** `MediaUrlPolicyTest` (look-alike host, query trick, other user's key, `..`), plus one integration
+  test with a bucket configured. 515 backend tests pass.
+- **Open:** run a one-off query on production for stored image URLs outside the bucket (see OPEN-ITEMS).
+
 ## Account deletion (2026-10-11)
 
 Built in Phase 16; the full analysis is [PHASE16.md](PHASE16.md) section 5. Points that change this audit:

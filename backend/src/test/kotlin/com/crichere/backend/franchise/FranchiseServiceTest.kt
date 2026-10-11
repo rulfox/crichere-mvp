@@ -46,7 +46,7 @@ class FranchiseServiceTest {
         },
     )
     private val fcmSender = mockk<FcmSender>(relaxed = true)
-    private val service = FranchiseService(franchiseRepository, leagueRepository, profileRepository, contentRateLimiter, photoUploadService, leagueAuthorization, fcmSender, com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url })
+    private val service = FranchiseService(franchiseRepository, leagueRepository, profileRepository, contentRateLimiter, photoUploadService, leagueAuthorization, fcmSender, com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url }, com.crichere.backend.common.MediaUrlPolicy(com.crichere.backend.common.AwsProperties()))
 
     private val organizerId: UUID = UUID.randomUUID()
     private val ownerId: UUID = UUID.randomUUID()

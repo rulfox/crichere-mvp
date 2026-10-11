@@ -67,6 +67,7 @@ class RoleServiceTest {
         leagueAuthorization,
         leagueRoleRepository,
         com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url },
+        com.crichere.backend.common.MediaUrlPolicy(com.crichere.backend.common.AwsProperties()),
     )
     private val fcmSender = mockk<FcmSender>(relaxed = true)
     private val service = RoleService(

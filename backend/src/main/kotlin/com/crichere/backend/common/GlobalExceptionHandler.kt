@@ -359,6 +359,18 @@ class GlobalExceptionHandler {
             instance = request.requestURI,
         )
 
+    /** A photo/logo/banner/screenshot URL that isn't our upload for that field (see [MediaUrlPolicy]). */
+    @ExceptionHandler(MediaUrlNotAllowedException::class)
+    fun handleMediaUrlNotAllowed(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "media-url-not-allowed",
+            title = "Image not accepted",
+            code = "MEDIA_URL_NOT_ALLOWED",
+            detail = "Upload the image through the app before saving it.",
+            instance = request.requestURI,
+        )
+
     /** No league matches the id in the path -- `GET`/`PUT`/`PATCH`/awards-CRUD on a nonexistent league. */
     @ExceptionHandler(LeagueNotFoundException::class)
     fun handleLeagueNotFound(request: HttpServletRequest): ProblemDetail =

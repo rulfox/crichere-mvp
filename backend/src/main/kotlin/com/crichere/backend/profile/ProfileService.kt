@@ -1,5 +1,6 @@
 package com.crichere.backend.profile
 
+import com.crichere.backend.common.MediaUrlPolicy
 import com.crichere.backend.profile.dto.ProfileResponse
 import com.crichere.backend.profile.dto.ProfileUpdateRequest
 import org.springframework.stereotype.Service
@@ -17,6 +18,7 @@ import java.util.UUID
 class ProfileService(
     private val profileRepository: ProfileRepository,
     private val profileCompletionLookup: ProfileCompletionLookup,
+    private val mediaUrlPolicy: MediaUrlPolicy,
 ) {
 
     /**
@@ -45,6 +47,8 @@ class ProfileService(
         validateBowlingStyle(request.playingRole, request.bowlingStyle)
 
         val profile = profileRepository.findById(userId).orElseGet { ProfileEntity(userId = userId) }
+        // An unchanged URL is resent on every profile edit; only a new one is checked.
+        if (request.photoUrl != profile.photoUrl) mediaUrlPolicy.requireProfilePhoto(request.photoUrl, userId)
         profile.name = request.name
         profile.photoUrl = request.photoUrl
         profile.state = request.state
