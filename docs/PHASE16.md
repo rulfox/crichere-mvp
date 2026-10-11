@@ -77,6 +77,11 @@ partial index for the purge scan, `leagues.organizer_handover_at`.
 - **Access tokens after the request:** refresh tokens are revoked at once, but an access token already issued stays
   valid until it expires (15 min); the JWT filter does not check the DB. Acceptable: the account is untouched
   during the grace period anyway.
+- **Refresh racing the request (found by the commit security review, fixed 2026-10-11):** a refresh in flight when
+  the request committed could write a new refresh token the bulk revoke never saw, keeping the session alive.
+  Now `/auth/refresh` takes the same user-row lock as the request (`UserRepository.findByIdForUpdate`) and refuses
+  an account that is pending deletion or purged, so no old token yields a new session. A sign-in racing the
+  request can still get one access token (15 min); its first refresh is refused.
 - **Data left after purge:** phone, profile details, photo, payment screenshots, sessions, push tokens, follows and
   OTP challenges are gone. The user id remains in league rows; it no longer maps to a person (no phone, no name).
   Payment screenshots of *other* users in a league the deleted user organized stay, under that league's retention.
@@ -93,7 +98,7 @@ partial index for the purge scan, `leagues.organizer_handover_at`.
 
 ## 6. How to run / verify
 
-- `cd backend && ./gradlew test`: 507 tests, all passing, including `AccountDeletionFlowIntegrationTest` (7) and
+- `cd backend && ./gradlew test`: 508 tests, all passing, including `AccountDeletionFlowIntegrationTest` (8) and
   `AccountDeletionServiceTest` (4).
 - Live (2026-10-11, local backend + docker Postgres, fake OTP): blocker listed for a player in the running
   "E2E Bid League" auction; for a clean number: wrong confirm 400, request 202, refresh 401, sign-in

@@ -1,6 +1,8 @@
 package com.crichere.backend.auth
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -15,6 +17,15 @@ import java.util.UUID
  */
 interface UserRepository : JpaRepository<UserEntity, UUID> {
     fun findByPhoneLookupHash(phoneLookupHash: String): UserEntity?
+
+    /**
+     * Row lock taken by both a deletion request and a token refresh, so they serialize: a refresh
+     * already in flight when deletion is requested either finishes first (and its new token is
+     * revoked by the request) or runs after and sees the account pending (docs/PHASE16.md).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where u.id = :id")
+    fun findByIdForUpdate(@Param("id") id: UUID): UserEntity?
 
     /**
      * Cancels a pending deletion (sign-in during the grace period, docs/PHASE16.md). Conditional,

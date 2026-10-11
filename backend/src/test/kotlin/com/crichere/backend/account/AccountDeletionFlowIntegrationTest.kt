@@ -85,6 +85,19 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
     }
 
     @Test
+    fun `a refresh token that escaped the revocation still gets no session while deletion is pending`() {
+        val user = signIn()
+        authedPost(user.accessToken, "/api/v1/me/deletion", mapOf("confirm" to "DELETE")).andExpect(status().isAccepted)
+
+        // Simulate a refresh racing the request: its new token was written after the bulk revoke.
+        refreshTokenRepository.findAll().filter { it.userId == user.userId }.forEach {
+            it.revokedAt = null
+            refreshTokenRepository.save(it)
+        }
+        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to user.refreshToken)).andExpect(status().isUnauthorized)
+    }
+
+    @Test
     fun `an organizer without a co-organizer is blocked until the league has one`() {
         val organizer = signIn()
         val leagueId = createLeague(organizer.accessToken)

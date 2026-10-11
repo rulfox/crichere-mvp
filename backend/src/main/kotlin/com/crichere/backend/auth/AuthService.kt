@@ -118,6 +118,12 @@ class AuthService(
         if (existing.revokedAt != null) throw InvalidRefreshTokenException()
         if (!existing.expiresAt.isAfter(now)) throw InvalidRefreshTokenException()
 
+        // An account pending deletion (or purged) gets no new session from an old token: signing
+        // in again is the only way back, and that cancels the deletion (docs/PHASE16.md). The row
+        // lock serializes this with AccountDeletionService.request -- see findByIdForUpdate.
+        val user = userRepository.findByIdForUpdate(existing.userId)
+        if (user == null || user.deletionRequestedAt != null || user.deletedAt != null) throw InvalidRefreshTokenException()
+
         existing.revokedAt = now
         refreshTokenRepository.save(existing)
 

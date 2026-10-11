@@ -57,6 +57,7 @@ class AuthServiceTest {
         )
         every { profileCompletionLookup.isComplete(any()) } returns false
         every { refreshTokenRepository.save(any()) } answers { firstArg() }
+        every { userRepository.findByIdForUpdate(any()) } answers { UserEntity(id = firstArg(), phoneLookupHash = "h", phoneEncrypted = "e") }
     }
 
     // ---------------------------------------------------------------- sign-in

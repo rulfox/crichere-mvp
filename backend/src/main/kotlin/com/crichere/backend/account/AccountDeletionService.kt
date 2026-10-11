@@ -55,7 +55,7 @@ class AccountDeletionService(
         contentRateLimiter.tryConsumeForAccountDeletion(userId)?.let { throw ContentRateLimitExceededException(it) }
         if (confirm != CONFIRMATION) throw AccountDeletionNotConfirmedException()
 
-        val user = userRepository.findById(userId).orElseThrow()
+        val user = requireNotNull(userRepository.findByIdForUpdate(userId))
         user.deletionRequestedAt?.let { return AccountDeletionScheduledResponse(purgeAfter = it.plus(properties.gracePeriod)) }
 
         val blockers = blockers(userId)
