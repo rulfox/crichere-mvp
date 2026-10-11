@@ -166,7 +166,10 @@ address. Phase 17 put photos into roster rows, which widened this. Found by the 
   - payment proof: `leagues/{league}/payments/{caller}.jpg`.
 - Only a changed value is checked on edits, so rows saved before this rule can still be edited.
 - With no bucket configured (dev, CI) nothing is checked.
-- **Tests:** `MediaUrlPolicyTest` (look-alike host, query trick, other user's key, `..`), plus one integration
+- Every key is compared exactly, or against a full regex of the issued shape (franchise claim logo: UUID suffix),
+  so encoded or backslash path tricks (`%2e%2e`, `\..\`), which a browser would resolve to another object, can't
+  pass (second review finding, same day).
+- **Tests:** `MediaUrlPolicyTest` (look-alike host, query trick, other user's key, `..`, `%2e%2e`, `\`), plus one integration
   test with a bucket configured. 515 backend tests pass.
 - **Open:** run a one-off query on production for stored image URLs outside the bucket (see OPEN-ITEMS).
 

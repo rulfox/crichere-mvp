@@ -38,7 +38,9 @@ class MediaUrlPolicy(private val properties: AwsProperties) {
 
     /** `leagues/{leagueId}/franchise-logos/{userId}-{random}.jpg`, see [PhotoUploadService.createPendingFranchiseLogoUploadUrl]. */
     fun requirePendingFranchiseLogo(url: String?, leagueId: UUID, userId: UUID) =
-        require(url) { it.startsWith("leagues/$leagueId/franchise-logos/$userId-") && it.endsWith(".jpg") && !it.contains("..") }
+        // The exact shape the endpoint issues (random part = a UUID): no room for `%2e%2e`, `\` or other
+        // path tricks that a browser would resolve to a different object.
+        require(url) { Regex("^leagues/$leagueId/franchise-logos/$userId-$UUID_PATTERN\\.jpg$").matches(it) }
 
     /** The caller's own payment-proof key in this league, see [PhotoUploadService.paymentScreenshotKey]. */
     fun requirePaymentScreenshot(url: String?, leagueId: UUID, userId: UUID) =
@@ -57,7 +59,8 @@ class MediaUrlPolicy(private val properties: AwsProperties) {
     }
 
     private companion object {
-        val LEAGUE_IMAGE = Regex("^leagues/[0-9a-f-]{36}/(logo|banner)\\.jpg$")
+        const val UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+        val LEAGUE_IMAGE = Regex("^leagues/$UUID_PATTERN/(logo|banner)\\.jpg$")
     }
 }
 

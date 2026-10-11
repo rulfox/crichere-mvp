@@ -43,6 +43,7 @@ class MediaUrlPolicyTest {
         assertThrows<MediaUrlNotAllowedException> { policy.requireLeagueLogo("${host}leagues/${UUID.randomUUID()}/logo.jpg", leagueId) }
 
         assertDoesNotThrow { policy.requireAnyLeagueImage("${host}leagues/$leagueId/logo.jpg") }
+        assertThrows<MediaUrlNotAllowedException> { policy.requireAnyLeagueImage("${host}leagues/------------------------------------/logo.jpg") }
         assertThrows<MediaUrlNotAllowedException> { policy.requireAnyLeagueImage("${host}users/$userId/profile.jpg") }
     }
 
@@ -52,8 +53,12 @@ class MediaUrlPolicyTest {
         assertThrows<MediaUrlNotAllowedException> {
             policy.requirePendingFranchiseLogo("${host}leagues/$leagueId/franchise-logos/${UUID.randomUUID()}-x.jpg", leagueId, userId)
         }
-        assertThrows<MediaUrlNotAllowedException> {
-            policy.requirePendingFranchiseLogo("${host}leagues/$leagueId/franchise-logos/$userId-/../../payments/x.jpg", leagueId, userId)
+        // Path tricks a browser or Coil would resolve to another object in the bucket.
+        val random = UUID.randomUUID()
+        for (trick in listOf("/../../payments/x", "%2e%2e/%2e%2e/payments/x", "$random%2F%2E%2E%2Fx", "$random\\..\\..\\x", "$random/../../y")) {
+            assertThrows<MediaUrlNotAllowedException>(trick) {
+                policy.requirePendingFranchiseLogo("${host}leagues/$leagueId/franchise-logos/$userId-$trick.jpg", leagueId, userId)
+            }
         }
 
         assertDoesNotThrow { policy.requirePaymentScreenshot("${host}leagues/$leagueId/payments/$userId.jpg?v=3", leagueId, userId) }
