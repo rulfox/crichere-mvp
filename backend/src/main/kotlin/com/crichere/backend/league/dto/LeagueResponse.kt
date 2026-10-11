@@ -51,4 +51,6 @@ data class LeagueResponse(
     val auctionScheduledAt: Instant? = null,
     /** Lets the league page explain why Mark completed is unavailable while the auction runs (design update #5, E14). */
     val auctionStatus: AuctionStatus = AuctionStatus.NOT_STARTED,
+    /** Set when the previous organizer deleted their account and the earliest co-organizer took over (docs/PHASE16.md); the league page explains the change. */
+    val organizerHandoverAt: Instant? = null,
 )

@@ -8,7 +8,8 @@ import styles from "./SiteFooter.module.css";
  */
 export const LEGAL_PAGES_LINKED = false;
 
-type LegalPage = "privacy" | "terms";
+/** Legal pages; only privacy and terms are footer links, /delete-account is linked from the Play listing and the policy. */
+export type LegalPage = "privacy" | "terms" | "delete-account";
 
 /**
  * Design update #5 B4: links only -- Contact · Privacy · Terms. Contact renders only when

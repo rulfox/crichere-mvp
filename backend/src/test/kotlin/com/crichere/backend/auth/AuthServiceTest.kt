@@ -84,9 +84,9 @@ class AuthServiceTest {
 
         authService.verifySession("firebase-id-token")
 
-        assertFalse(saved.captured.phoneEncrypted.contains(PHONE), "the number must not be readable at rest")
-        assertFalse(saved.captured.phoneLookupHash.contains(PHONE))
-        assertEquals(PHONE, phoneCryptoService.decryptFromString(saved.captured.phoneEncrypted))
+        assertFalse(saved.captured.phoneEncrypted!!.contains(PHONE), "the number must not be readable at rest")
+        assertFalse(saved.captured.phoneLookupHash!!.contains(PHONE))
+        assertEquals(PHONE, phoneCryptoService.decryptFromString(saved.captured.phoneEncrypted!!))
     }
 
     @Test
@@ -97,7 +97,7 @@ class AuthServiceTest {
             phoneLookupHash = phoneCryptoService.hmacLookupHash(PHONE),
             phoneEncrypted = phoneCryptoService.encryptToString(PHONE),
         )
-        every { userRepository.findByPhoneLookupHash(existing.phoneLookupHash) } returns existing
+        every { userRepository.findByPhoneLookupHash(existing.phoneLookupHash!!) } returns existing
 
         val first = authService.verifySession("firebase-id-token")
         val second = authService.verifySession("another-firebase-id-token")

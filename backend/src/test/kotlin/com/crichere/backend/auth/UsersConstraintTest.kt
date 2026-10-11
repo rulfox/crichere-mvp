@@ -43,12 +43,13 @@ class UsersConstraintTest : AbstractIntegrationTest() {
     }
 
     @Test
-    fun `phone_encrypted is required`() {
-        assertFailsWith<DataIntegrityViolationException> {
+    fun `purged accounts hold no phone, and any number of them can coexist`() {
+        // V22 (docs/PHASE16.md): a purged account keeps its row with both phone columns cleared,
+        // and the unique index on phone_lookup_hash must not treat those NULLs as duplicates.
+        repeat(2) {
             jdbcTemplate.update(
-                "INSERT INTO users (id, phone_lookup_hash, phone_encrypted) VALUES (?, ?, NULL)",
+                "INSERT INTO users (id, phone_lookup_hash, phone_encrypted, deleted_at) VALUES (?, NULL, NULL, now())",
                 UUID.randomUUID(),
-                "hash-null-phone-encrypted",
             )
         }
     }

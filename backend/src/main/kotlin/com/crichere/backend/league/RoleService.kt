@@ -1,5 +1,7 @@
 package com.crichere.backend.league
 
+import com.crichere.backend.account.AccountDeletionService
+import com.crichere.backend.account.LastSuccessorRoleException
 import com.crichere.backend.auth.PhoneCryptoService
 import com.crichere.backend.auth.PhoneNumberNormalizer
 import com.crichere.backend.auth.UserRepository
@@ -32,6 +34,7 @@ class RoleService(
     private val phoneCryptoService: PhoneCryptoService,
     private val contentRateLimiter: ContentRateLimiter,
     private val fcmSender: FcmSender,
+    private val accountDeletionService: AccountDeletionService,
 ) {
 
     /**
@@ -106,6 +109,7 @@ class RoleService(
      *
      * @throws NotOrganizerException [callerId] is not [leagueId]'s organizer or an active co-organizer.
      * @throws RoleNotFoundException [roleId] doesn't exist under this league, or is already revoked.
+     * @throws LastSuccessorRoleException the organizer is deleting their account and this is the only co-organizer who could take over (docs/PHASE16.md).
      */
     @Transactional
     fun revoke(leagueId: UUID, callerId: UUID, roleId: UUID): LeagueResponse {
@@ -114,6 +118,7 @@ class RoleService(
 
         val role = leagueRoleRepository.findByIdAndLeagueId(roleId, leagueId).orElseThrow { RoleNotFoundException() }
         if (role.revokedAt != null) throw RoleNotFoundException()
+        if (accountDeletionService.wouldStrandLeague(league, roleId)) throw LastSuccessorRoleException()
         role.revokedAt = Instant.now()
         leagueRoleRepository.save(role)
         val response = leagueService.getLeague(leagueId, callerId)

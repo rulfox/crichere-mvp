@@ -579,6 +579,12 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
+- [ ] **Account deletion screens** (2026-10-11, [PHASE16.md](PHASE16.md)). Backend and web are done; the app has no
+  Delete account entry yet. Claude Design prompt written (`docs/design-prompts/ACCOUNT-DELETION-PROMPT.md`, D1-D10:
+  profile entry, blockers, typed-DELETE confirm, signed-out and restored notices, handover banner, "Deleted user"
+  rows). Build after the export. **Not verified:** everything on mobile; "Deleted user" already appears in rosters
+  from the backend, not checked on a device.
+
 - [ ] **Design update #6 (2026-10-06): no City, ground required, Edit profile back.** Built on backend (V21),
   shared, Android, web and iOS (Swift never compiled). See "Design update #6" in Decisions below.
   Verified on the Pixel_9_Pro emulator against the local backend: C1 first-time setup (no back, District full

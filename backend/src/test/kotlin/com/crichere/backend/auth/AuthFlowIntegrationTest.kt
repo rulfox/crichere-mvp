@@ -157,9 +157,9 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
 
         val user = userRepository.findById(userId).orElseThrow()
 
-        assertFalse(user.phoneEncrypted.contains(phone))
-        assertFalse(user.phoneLookupHash.contains(phone))
-        assertEquals(phone, phoneCryptoService.decryptFromString(user.phoneEncrypted))
+        assertFalse(user.phoneEncrypted!!.contains(phone))
+        assertFalse(user.phoneLookupHash!!.contains(phone))
+        assertEquals(phone, phoneCryptoService.decryptFromString(user.phoneEncrypted!!))
     }
 
     @Test

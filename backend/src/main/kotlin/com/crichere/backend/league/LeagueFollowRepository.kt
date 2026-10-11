@@ -10,6 +10,9 @@ interface LeagueFollowRepository : JpaRepository<LeagueFollowEntity, LeagueFollo
 
     fun deleteByLeagueIdAndUserId(leagueId: UUID, userId: UUID)
 
+    /** Account purge (docs/PHASE16.md). */
+    fun deleteByUserId(userId: UUID)
+
     /** Every league a user follows -- feeds `GET /api/v1/me/leagues`'s "following" list. */
     fun findByUserId(userId: UUID): List<LeagueFollowEntity>
 }

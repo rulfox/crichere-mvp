@@ -17,6 +17,9 @@ interface PlayerRepository : JpaRepository<PlayerEntity, UUID> {
     /** Every league a user has actively joined as a player -- feeds `GET /api/v1/me/leagues`'s "playing" list. */
     fun findByUserIdAndRemovedAtIsNull(userId: UUID): List<PlayerEntity>
 
+    /** Every row a user ever had, removed ones included -- an account purge clears payment proof on all of them (docs/PHASE16.md). */
+    fun findByUserId(userId: UUID): List<PlayerEntity>
+
     /** The auction pool: still-unsold active joins -- see `com.crichere.backend.auction.AuctionService`. */
     fun findByLeagueIdAndAuctionOutcome(leagueId: UUID, outcome: AuctionOutcome): List<PlayerEntity>
 

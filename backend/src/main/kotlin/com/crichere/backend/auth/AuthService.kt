@@ -20,6 +20,8 @@ data class AuthResult(
     val accessTokenExpiresAt: Instant,
     val refreshToken: String,
     val profileComplete: Boolean,
+    /** `true` when this sign-in cancelled a pending account deletion (docs/PHASE16.md), so the app can say so. */
+    val accountRestored: Boolean = false,
 )
 
 /**
@@ -84,7 +86,13 @@ class AuthService(
         val user = findOrCreateUser(lookupHash, phoneNumber)
         val userId = requireNotNull(user.id) { "persisted user must have an id" }
 
-        return issueSession(userId)
+        // Signing in during the deletion grace period cancels the deletion (docs/PHASE16.md).
+        // Conditional update, so it is a no-op if a purge got there first -- and a purged account
+        // has no phone hash, so it can't have been found above anyway.
+        val restored = user.deletionRequestedAt != null && userRepository.cancelPendingDeletion(userId) == 1
+        if (restored) log.info("Account deletion cancelled by sign-in for user {}", userId)
+
+        return issueSession(userId).copy(accountRestored = restored)
     }
 
     /**

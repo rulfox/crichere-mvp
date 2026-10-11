@@ -1,0 +1,111 @@
+# Phase 16 — Account deletion
+
+**Last updated:** 2026-10-11
+**Status:** backend and web built and tested (unit, integration, live against the local backend). Mobile UI waits
+for a Claude Design export (prompt: `docs/design-prompts/ACCOUNT-DELETION-PROMPT.md`).
+
+---
+
+## 1. Why / scope
+
+Google Play requires every app that lets users create an account to offer account deletion in the app and to
+give a web URL for it in the Data safety form. The App Store requires in-app deletion too. The privacy draft
+(`docs/legal/PRIVACY-POLICY.md`) promises erasure. Before this phase there was no delete path at all.
+
+A plain `DELETE FROM users` cannot work. Every FK to `users(id)` cascades (leagues, players, franchises, grounds,
+follows, roles, tokens), so it would wipe other people's leagues and auction history. `league_roles.granted_by_user_id`
+has no `ON DELETE` rule and would block the delete. A pure soft delete (`deleted_at` only) keeps the personal data,
+which fails Play and the DPDP Act.
+
+In scope: backend (request, grace period, purge, handover), the web `/delete-account` page, the Privacy and Terms
+text on `/privacy` and `/terms`, docs. Out of scope this round: the mobile screens (design first).
+
+## 2. Decisions made (owner, 2026-10-11)
+
+| Decision | Why |
+|---|---|
+| **Tombstone, not a row delete.** Personal data is erased; the `users` row stays with `deleted_at` and both phone columns `NULL`. | Keeps other people's leagues, results and bids intact. The unique index on `phone_lookup_hash` allows many `NULL`s, so the number can sign up again as a new account. |
+| **"Deleted user" comes from the backend.** The purge keeps the profile row with only `name = "Deleted user"`. | Every existing mapping (rosters, results, co-organizer lists, auction) already reads the profile name, so all clients show it with no release. Using "profile missing" as the signal was not possible: a player can join a league before finishing their profile. |
+| **14-day grace period.** The request signs the user out everywhere (all refresh tokens revoked, push tokens deleted). Signing in again within 14 days cancels the deletion; the session response carries `accountRestored: true`. | Undoes mistakes and a request made by someone else holding the phone. No cancel endpoint is needed: signing in is the cancel. |
+| **Typed confirmation ("DELETE"), no OTP re-check.** | OTP verify always signs in (no confirm-only mode) and prod has two OTP providers. The grace period plus restore-on-sign-in covers the risk at no SMS cost. |
+| **Blocked while an auction the user organizes, plays in or owns a franchise in is `IN_PROGRESS`.** | Removing a bidder or player mid-auction breaks purse and squad maths. |
+| **Organizer of a non-completed league needs a co-organizer.** At the purge the earliest-granted active co-organizer (not pending deletion themselves) becomes the organizer, gets a push, and the league carries `organizerHandoverAt` for a banner. No accept step. With no co-organizer the request is refused, listing those leagues. | Owner's choice: the league continues without a stuck invite. The new organizer inherits payment screenshots and fee duty; the push and banner tell them. |
+| **Handover happens at the purge, not at the request.** | A user who restores during the grace period keeps their leagues untouched. |
+| **The last eligible co-organizer of a leaving organizer cannot be revoked** (409 `LAST_SUCCESSOR`). | Otherwise the purge could never finish. |
+| **Web: `/delete-account` explains the in-app steps and an email route.** No web OTP form. | Satisfies the Play deletion URL with no new auth surface on the web. Play's rule covers every app with accounts, not only games. |
+
+## 3. What the purge does
+
+Runs daily at 03:30 IST (`crichere.account-deletion.purge-cron`). For each account past its grace period:
+
+1. Blocker pre-check (read only). Blocked: postpone, retry next run.
+2. S3 deletes: `users/{id}/profile.jpg` and `leagues/{leagueId}/payments/{userId}.jpg` for every league the user
+   ever had a player or franchise row in. Done before the database so nothing personal is left if the DB step
+   fails (deleting a missing key succeeds, so the retry is harmless). A failed delete stops this account until
+   the next run.
+3. One transaction, holding `SELECT … FOR UPDATE SKIP LOCKED` on the user row (safe if two instances ever run):
+   - re-check live auctions and find every successor first; any missing: postpone, nothing written;
+   - revoke the successors' co-organizer rows and the user's own co-organizer rows;
+   - player and franchise rows: payment screenshot URL cleared on all; rows in leagues still taking sign-ups
+     (auction not started, not completed) are withdrawn (`removed_at`), rows in auctioned or completed leagues stay;
+   - profile reduced to `name = "Deleted user"`; follows, device tokens, refresh tokens and OTP challenges deleted;
+   - phone columns cleared, `deleted_at` set;
+   - last, `organizer_user_id` moved to each successor (`organizer_handover_at` set).
+4. After commit: push to each new organizer.
+
+Kept: the tombstone row, grounds the user registered, league history in auctioned or completed leagues,
+franchise names and logos in them.
+
+## 4. API
+
+| Endpoint | Result |
+|---|---|
+| `GET /api/v1/me/deletion` | `{blockers: [{leagueId, leagueName, reason}], gracePeriodDays: 14}`; reason `AUCTION_LIVE` or `NO_CO_ORGANIZER` |
+| `POST /api/v1/me/deletion` `{confirm: "DELETE"}` | 202 `{purgeAfter}`; 400 `CONFIRMATION_REQUIRED`; 409 `ACCOUNT_DELETION_BLOCKED` with `blockers`; idempotent while pending; rate limit 5/hour |
+| `POST /auth/session`, `/auth/otp/verify` | new field `accountRestored` |
+| `GET /api/v1/leagues/{id}` | new field `organizerHandoverAt` |
+| `DELETE /api/v1/leagues/{id}/roles/{roleId}` | new 409 `LAST_SUCCESSOR` |
+
+Migration `V22__account_deletion.sql`: `users.deletion_requested_at`, `users.deleted_at`, phone columns nullable,
+partial index for the purge scan, `leagues.organizer_handover_at`.
+
+## 5. Security analysis
+
+- **Who can delete:** only the signed-in user, for their own id (JWT principal). No id in the path or body.
+- **No re-auth:** someone holding an unlocked phone can request deletion. Mitigated: nothing is erased for 14 days
+  and the owner's next sign-in cancels it. Accepted by the owner.
+- **Access tokens after the request:** refresh tokens are revoked at once, but an access token already issued stays
+  valid until it expires (15 min); the JWT filter does not check the DB. Acceptable: the account is untouched
+  during the grace period anyway.
+- **Data left after purge:** phone, profile details, photo, payment screenshots, sessions, push tokens, follows and
+  OTP challenges are gone. The user id remains in league rows; it no longer maps to a person (no phone, no name).
+  Payment screenshots of *other* users in a league the deleted user organized stay, under that league's retention.
+- **Race with sign-in:** restore is a conditional update (`deleted_at IS NULL`), the purge re-checks
+  `deletion_requested_at` under the row lock. A purged account has no phone hash, so sign-in creates a new account.
+- **Handover consent:** the promoted co-organizer gets payer data without opting in (owner decision); push and
+  banner tell them.
+- **Rate limit:** 5 requests per user per hour (bounds a script hammering the blockers query).
+- **Ops step (owner):** grant the backend IAM user `s3:DeleteObject` on `crichere-media-prod` for the `users/`
+  and `leagues/*/payments/` prefixes. Until then every purge in production fails at the S3 step and retries
+  daily (no data is lost, but nothing is erased either).
+- **Single instance assumption:** rate limiting is in memory (as elsewhere); the purge itself is safe with
+  several instances (`SKIP LOCKED`).
+
+## 6. How to run / verify
+
+- `cd backend && ./gradlew test`: 507 tests, all passing, including `AccountDeletionFlowIntegrationTest` (7) and
+  `AccountDeletionServiceTest` (4).
+- Live (2026-10-11, local backend + docker Postgres, fake OTP): blocker listed for a player in the running
+  "E2E Bid League" auction; for a clean number: wrong confirm 400, request 202, refresh 401, sign-in
+  `accountRestored: true`; request again, `deletion_requested_at` back-dated 15 days, the per-minute test cron
+  (`CRICHERE_ACCOUNTDELETION_PURGECRON="0 * * * * *"`) purged it: phone NULL, profile "Deleted user", 0 refresh
+  tokens; the same number then signed up as a new user id.
+- Web: `npm test`, `npm run lint`, `npx playwright test` (legal spec covers `/delete-account`).
+
+## 7. Not verified / open
+
+- Mobile screens: not built (design prompt written, waiting for the Claude Design export).
+- Real S3 deletes: local has no bucket, so the deleter logged and skipped. Needs the IAM change above, then one
+  real purge in production to confirm.
+- Push to the promoted co-organizer: covered by code, not seen on a device (no FCM locally).
+- Organizer handover live: covered by the integration test, not run against the local backend by hand.

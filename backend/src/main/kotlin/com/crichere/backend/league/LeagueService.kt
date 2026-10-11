@@ -440,6 +440,7 @@ class LeagueService(
             coOrganizers = coOrganizers,
             auctionScheduledAt = auctionScheduledAt,
             auctionStatus = auctionStatus,
+            organizerHandoverAt = organizerHandoverAt,
         )
     }
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SiteFooter } from "@/components/ui/SiteFooter";
+import { SiteFooter, type LegalPage } from "@/components/ui/SiteFooter";
 import { LegalToc, type TocItem } from "./LegalToc";
 import styles from "./Legal.module.css";
 
@@ -15,7 +15,7 @@ export function LegalArticle({
   intro,
   sections,
 }: {
-  page: "privacy" | "terms";
+  page: LegalPage;
   title: string;
   /** ISO date, e.g. "2026-10-04". */
   updated: string;

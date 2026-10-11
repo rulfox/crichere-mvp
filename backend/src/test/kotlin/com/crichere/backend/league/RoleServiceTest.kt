@@ -72,6 +72,7 @@ class RoleServiceTest {
     private val service = RoleService(
         leagueRepository, leagueRoleRepository, leagueAuthorization, leagueService,
         userRepository, profileRepository, phoneCryptoService, contentRateLimiter, fcmSender,
+        mockk<com.crichere.backend.account.AccountDeletionService>().also { every { it.wouldStrandLeague(any(), any()) } returns false },
     )
 
     private val organizerId = UUID.randomUUID()

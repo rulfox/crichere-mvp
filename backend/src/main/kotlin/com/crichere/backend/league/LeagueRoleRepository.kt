@@ -13,6 +13,12 @@ interface LeagueRoleRepository : JpaRepository<LeagueRoleEntity, UUID> {
     /** A league's current co-organizers -- feeds `LeagueResponse.coOrganizers` and the mobile management screen. */
     fun findByLeagueIdAndRevokedAtIsNull(leagueId: UUID): List<LeagueRoleEntity>
 
+    /** Same rows, oldest grant first -- an account purge promotes the first eligible one (docs/PHASE16.md). */
+    fun findByLeagueIdAndRevokedAtIsNullOrderByGrantedAtAsc(leagueId: UUID): List<LeagueRoleEntity>
+
+    /** Every active grant a user holds, across leagues -- revoked when their account is purged. */
+    fun findByUserIdAndRevokedAtIsNull(userId: UUID): List<LeagueRoleEntity>
+
     /** Also rejects a role id that's real but belongs to a *different* league, same guard every other `findByIdAnd<Parent>` lookup in this codebase uses. */
     fun findByIdAndLeagueId(id: UUID, leagueId: UUID): Optional<LeagueRoleEntity>
 }

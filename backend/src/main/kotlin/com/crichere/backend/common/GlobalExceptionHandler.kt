@@ -1,5 +1,8 @@
 package com.crichere.backend.common
 
+import com.crichere.backend.account.AccountDeletionBlockedException
+import com.crichere.backend.account.AccountDeletionNotConfirmedException
+import com.crichere.backend.account.LastSuccessorRoleException
 import com.crichere.backend.auction.AuctionAlreadyStartedException
 import com.crichere.backend.auction.AuctionInProgressException
 import com.crichere.backend.auction.AuctionNoPlayerOpenException
@@ -756,6 +759,47 @@ class GlobalExceptionHandler {
             title = "Not found",
             code = "NOT_FOUND",
             detail = "No active role matches this id.",
+            instance = request.requestURI,
+        )
+
+    /** Account deletion refused; every blocking league is listed so the app can show them all (docs/PHASE16.md). */
+    @ExceptionHandler(AccountDeletionBlockedException::class)
+    fun handleAccountDeletionBlocked(exception: AccountDeletionBlockedException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "account-deletion-blocked",
+            title = "Account deletion blocked",
+            code = "ACCOUNT_DELETION_BLOCKED",
+            detail = "Some of your leagues need attention before your account can be deleted.",
+            instance = request.requestURI,
+            extensions = mapOf(
+                "blockers" to exception.blockers.map {
+                    mapOf("leagueId" to it.leagueId.toString(), "leagueName" to it.leagueName, "reason" to it.reason.name)
+                },
+            ),
+        )
+
+    /** The typed `DELETE` confirmation was missing or wrong (docs/PHASE16.md). */
+    @ExceptionHandler(AccountDeletionNotConfirmedException::class)
+    fun handleAccountDeletionNotConfirmed(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "confirmation-required",
+            title = "Confirmation required",
+            code = "CONFIRMATION_REQUIRED",
+            detail = "Type DELETE to confirm.",
+            instance = request.requestURI,
+        )
+
+    /** Revoking this co-organizer would leave a league whose organizer is leaving with nobody to take it over (docs/PHASE16.md). */
+    @ExceptionHandler(LastSuccessorRoleException::class)
+    fun handleLastSuccessorRole(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "last-successor",
+            title = "Co-organizer needed",
+            code = "LAST_SUCCESSOR",
+            detail = "The organizer is deleting their account and this co-organizer will take the league over. Add another co-organizer first.",
             instance = request.requestURI,
         )
 

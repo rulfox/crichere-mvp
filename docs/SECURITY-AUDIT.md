@@ -149,6 +149,18 @@ only image responses were used.
     and franchise-logo fields already had.
   - Two new integration tests cover it. All 506 backend tests pass.
 
+## Account deletion (2026-10-11)
+
+Built in Phase 16; the full analysis is [PHASE16.md](PHASE16.md) section 5. Points that change this audit:
+
+- Personal data of a deleted account is erased by a daily purge after a 14-day grace period; the `users` row
+  stays as a tombstone with no phone and the profile name "Deleted user".
+- No re-authentication before a deletion request (owner decision): the grace period and restore-on-sign-in
+  cover a request made from someone else's hands.
+- An access token issued before the request stays valid for up to 15 minutes (refresh tokens are revoked at once).
+- **Open:** the backend IAM user needs `s3:DeleteObject` on `crichere-media-prod` for `users/` and
+  `leagues/*/payments/`; without it production purges fail at the S3 step (nothing is erased, they retry daily).
+
 ## Mobile audit (2026-10-05)
 
 **Reviewed and sound:**

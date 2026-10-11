@@ -73,7 +73,7 @@ These providers may process data outside India. We share only what each needs.
 - Account, profile and league data: while your account is active.
 - Payment screenshots: [12] months after the league is completed, then deleted.
 - Server logs: up to [90] days.
-- After you delete your account (section 5) we delete or anonymise your personal data within [30] days. We may keep limited records longer where law requires, or to resolve disputes (for example a league's historical auction results may remain with your name replaced by "Deleted user").
+- After you delete your account (section 5) there is a 14-day grace period, then we erase your personal data, normally within a day. We may keep limited records longer where law requires. League history other people rely on (auction results, rosters of leagues that already ran) stays, with your name replaced by "Deleted user".
 
 ## 5. Your rights and choices
 
@@ -81,7 +81,8 @@ Under the DPDP Act you may:
 
 - **Access** the personal data we hold about you (most of it is visible in My Profile).
 - **Correct or update** it (Edit profile in the app).
-- **Delete** your account and data. Email hello@crichere.com from the address you registered, or write with your registered mobile number and the subject "Delete my account". We act within 30 days. [An in-app "Delete account" option and a web deletion page are planned; update this line when live.]
+- **Delete** your account and data: in the app, open My Profile, tap Delete account and type DELETE to confirm. You are signed out on every device straight away. If you sign in again within 14 days the deletion is cancelled; after 14 days we erase your phone number, profile details, photo, payment screenshots, notification tokens and follows. If you cannot use the app, email hello@crichere.com with your registered mobile number and the subject "Delete my account"; we act within 30 days. Details: https://crichere.com/delete-account
+  - If you organise a league that isn't completed, it passes to its earliest co-organiser when your account is erased; you need at least one co-organiser (or to mark the league completed) before you can delete. You cannot delete while an auction you take part in is running.
 - **Withdraw consent** (for example turn off location or notifications in device settings, or delete your account). Withdrawal does not affect earlier lawful processing.
 - **Nominate** another person to exercise your rights if you die or cannot act.
 - **Complain** to our Grievance Officer (above). We reply within [7] days and resolve within 30 days. If unsatisfied, you may approach the Data Protection Board of India.

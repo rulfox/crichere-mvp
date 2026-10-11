@@ -86,6 +86,13 @@ crichere:
     ground-create-capacity: 20
     award-create-capacity: 100
     window: 1h
+  account-deletion:
+    # docs/PHASE16.md. Signing in during the grace period cancels the deletion; the purge job
+    # erases what is left after it.
+    grace-period: 14d
+    purge-enabled: ${ACCOUNT_PURGE_ENABLED:true}
+    purge-cron: "0 30 3 * * *"
+    purge-zone: Asia/Kolkata
   web-viewer:
     # Comma-separated CORS allowlist for the public web viewer (docs/PHASE6.md). Blank means CORS
     # is entirely off -- see SecurityConfig.webViewerCorsConfigurationSource.
@@ -147,3 +154,6 @@ crichere:
     secret: dGVzdC1vbmx5LWp3dC1zaWduaW5nLXNlY3JldC0hISE=
   phone-crypto:
     secret: dGVzdC1vbmx5LXBob25lLWNyeXB0by1zZWNyZXQtISE=
+  account-deletion:
+    # Tests call AccountPurgeService directly; the scheduled run never fires mid-suite.
+    purge-enabled: false

@@ -16,4 +16,7 @@ interface FranchiseRepository : JpaRepository<FranchiseEntity, UUID> {
 
     /** Every league a user actively owns a franchise in -- feeds `GET /api/v1/me/leagues`'s "franchiseOwner" list. */
     fun findByOwnerUserIdAndRemovedAtIsNull(ownerUserId: UUID): List<FranchiseEntity>
+
+    /** Every franchise a user ever owned, removed ones included -- see `PlayerRepository.findByUserId`. */
+    fun findByOwnerUserId(ownerUserId: UUID): List<FranchiseEntity>
 }

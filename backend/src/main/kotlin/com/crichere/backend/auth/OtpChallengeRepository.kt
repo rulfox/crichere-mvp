@@ -61,6 +61,12 @@ interface OtpChallengeRepository : JpaRepository<OtpChallengeEntity, UUID> {
         @Param("maxResends") maxResends: Int,
     ): Int
 
+    /** Account purge (docs/PHASE16.md): challenges hold the phone (hashed and encrypted). */
+    @Transactional
+    @Modifying
+    @Query("delete from OtpChallengeEntity c where c.phoneLookupHash = :phoneLookupHash")
+    fun deleteByPhoneLookupHash(@Param("phoneLookupHash") phoneLookupHash: String): Int
+
     /** Housekeeping: drop rows that can no longer matter. */
     @Transactional
     @Modifying

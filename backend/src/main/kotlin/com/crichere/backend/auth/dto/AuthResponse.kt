@@ -21,6 +21,8 @@ data class AuthResponse(
     val accessTokenExpiresAt: Instant,
     val refreshToken: String,
     val profileComplete: Boolean,
+    /** `true` when this sign-in cancelled a pending account deletion (docs/PHASE16.md). Always `false` on refresh. */
+    val accountRestored: Boolean = false,
 ) {
     companion object {
         fun from(result: AuthResult) =
@@ -30,6 +32,7 @@ data class AuthResponse(
                 accessTokenExpiresAt = result.accessTokenExpiresAt,
                 refreshToken = result.refreshToken,
                 profileComplete = result.profileComplete,
+                accountRestored = result.accountRestored,
             )
     }
 }

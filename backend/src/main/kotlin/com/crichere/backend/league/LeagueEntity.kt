@@ -136,6 +136,14 @@ class LeagueEntity(
     @Column(name = "completed_at")
     var completedAt: Instant? = null,
 
+    /**
+     * When an account purge handed this league to its earliest co-organizer (docs/PHASE16.md).
+     * Read-only here, like the [organizerUserId] it travels with: only
+     * [LeagueRepository.handOverOrganizer] writes it, so a stale entity save can't clear it.
+     */
+    @Column(name = "organizer_handover_at", insertable = false, updatable = false)
+    var organizerHandoverAt: Instant? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 

@@ -1,6 +1,6 @@
 # Open items
 
-**Last updated:** 2026-10-06 (LGD live; City removal + mandatory Ground decided)
+**Last updated:** 2026-10-11 (account deletion built: backend + web, PHASE16)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
@@ -10,8 +10,9 @@ were answered by update #5 (PHASE15 8).
 
 | Item | Why it matters | Where |
 |---|---|---|
-| Privacy and Terms text | Drafts written 2026-10-11 in `docs/legal/` (PRIVACY-POLICY.md, TERMS-OF-SERVICE.md; copies in Downloads). Fill the [placeholders] (legal name, address, grievance officer, jurisdiction), lawyer review, then load into /privacy and /terms. Play also needs an account-deletion path (in-app + web URL), not built yet. Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
+| Privacy and Terms text | Drafts in `docs/legal/` (copies in Downloads), now also on /privacy and /terms (2026-10-11, still `noindex`, not in the footer). Fill the [placeholders] (legal name, address, grievance officer, jurisdiction, retention periods, liability cap) in both places, lawyer review, then flip `LEGAL_PAGES_LINKED`. Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
 | Old bucket `crichere-media-dev` still serves a payment screenshot publicly | Prod bucket fixed 2026-10-05. Owner approved deleting it (2026-10-05); `crichere-claude` lacks delete rights, so delete it in the S3 console (empty, then delete). Also remove the temporary `crichere-media-move-temp` IAM policy. | SECURITY-AUDIT 1 |
+| Account deletion: mobile UI + S3 permission | Backend and `/delete-account` done (PHASE16). Mobile screens wait for the Claude Design export (prompt: `docs/design-prompts/ACCOUNT-DELETION-PROMPT.md`, copy in Downloads). Grant the backend IAM user `s3:DeleteObject` on `crichere-media-prod` (`users/`, `leagues/*/payments/`) before deploying, or every production purge fails at the S3 step and retries. Play Console: Data safety deletion URL = https://crichere.com/delete-account. | PHASE16 5, 7 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 
 ## 2. Decided (2026-10-04)

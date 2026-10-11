@@ -15,6 +15,9 @@ interface DeviceTokenRepository : JpaRepository<DeviceTokenEntity, UUID> {
     /** [FcmSender]'s stale-token cleanup on a failed send -- system-initiated, not caller-scoped. */
     fun deleteByToken(token: String)
 
+    /** Account deletion request and purge (docs/PHASE16.md): no more push to an account that's leaving. */
+    fun deleteByUserId(userId: UUID)
+
     /** The explicit unregister-on-logout endpoint -- scoped to the caller's own token, so nobody can unregister a token they don't own. */
     fun deleteByTokenAndUserId(token: String, userId: UUID)
 }
