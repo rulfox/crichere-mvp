@@ -87,6 +87,8 @@ data class PlayerAuctionResultDto(
     val playerName: String? = null,
     val soldPrice: Double,
     val photoUrl: String? = null,
+    /** The player's account was deleted (design D10). */
+    val deleted: Boolean = false,
 )
 
 /** Body of `POST /leagues/{id}/auction/bids`. */

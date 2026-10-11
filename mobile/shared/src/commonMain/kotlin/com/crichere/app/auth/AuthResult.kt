@@ -28,4 +28,6 @@ data class AuthResult(
     val accessTokenExpiresAt: String,
     val refreshToken: String,
     val profileComplete: Boolean,
+    /** A pending account deletion was cancelled by this sign-in (docs/PHASE16.md, design D8). */
+    val accountRestored: Boolean = false,
 )

@@ -42,5 +42,13 @@ class FakeAuthRepository(
         currentUserId = null
     }
 
+    var clearLocalSessionCallCount = 0
+        private set
+
+    override suspend fun clearLocalSession() {
+        clearLocalSessionCallCount++
+        currentUserId = null
+    }
+
     override suspend fun getCurrentUserId(): String? = currentUserId
 }

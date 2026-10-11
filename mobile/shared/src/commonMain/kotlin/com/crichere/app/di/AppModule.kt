@@ -1,5 +1,9 @@
 package com.crichere.app.di
 
+import com.crichere.app.account.AccountDeletionRepository
+import com.crichere.app.account.AccountNotices
+import com.crichere.app.account.DeleteAccountViewModel
+import com.crichere.app.account.KtorAccountDeletionRepository
 import com.crichere.app.auth.AppStartViewModel
 import com.crichere.app.auth.AuthRepository
 import com.crichere.app.auth.AuthTokenProvider
@@ -98,8 +102,13 @@ val sharedModule: Module = module {
             // Backend-driven OTP (docs/PHASE12.md). Which provider is live is the backend's call
             // (GET /auth/config); Firebase stays wired and is the fallback.
             backendOtpClient = BackendOtpClient(get(AUTH_HTTP_CLIENT)),
+            accountNotices = get(),
         )
     }
+
+    single { AccountNotices() }
+
+    single<AccountDeletionRepository> { KtorAccountDeletionRepository(httpClient = get()) }
 
     single<ReferenceRepository> { KtorReferenceRepository(get()) }
 
@@ -172,6 +181,7 @@ val sharedModule: Module = module {
     }
     factory { (leagueId: String) -> ClaimFranchiseViewModel(leagueId = leagueId, leagueRepository = get(), franchiseRepository = get()) }
     factory { MyLeaguesViewModel(myLeaguesRepository = get()) }
+    factory { DeleteAccountViewModel(accountDeletionRepository = get(), authRepository = get(), accountNotices = get()) }
     factory { (leagueId: String) -> AuctionSettingsViewModel(leagueId = leagueId, leagueRepository = get()) }
     factory { (leagueId: String) ->
         AuctionViewModel(

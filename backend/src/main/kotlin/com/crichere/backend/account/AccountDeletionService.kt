@@ -9,6 +9,7 @@ import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueRoleEntity
 import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.notification.DeviceTokenRepository
+import com.crichere.backend.profile.ProfileRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -31,6 +32,7 @@ class AccountDeletionService(
     private val leagueRoleRepository: LeagueRoleRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val deviceTokenRepository: DeviceTokenRepository,
+    private val profileRepository: ProfileRepository,
     private val contentRateLimiter: ContentRateLimiter,
     private val properties: AccountDeletionProperties,
     private val clock: Clock,
@@ -40,8 +42,36 @@ class AccountDeletionService(
 
     /** `GET /api/v1/me/deletion`. */
     @Transactional(readOnly = true)
-    fun status(userId: UUID): AccountDeletionStatusResponse =
-        AccountDeletionStatusResponse(blockers = blockers(userId), gracePeriodDays = properties.gracePeriod.toDays())
+    fun status(userId: UUID): AccountDeletionStatusResponse {
+        val requestedAt = userRepository.findById(userId).orElse(null)?.deletionRequestedAt ?: clock.instant()
+        return AccountDeletionStatusResponse(
+            blockers = blockers(userId),
+            gracePeriodDays = properties.gracePeriod.toDays(),
+            erasesOn = requestedAt.plus(properties.gracePeriod),
+            handovers = handovers(userId),
+        )
+    }
+
+    /**
+     * The leagues [userId] organizes that would pass to a co-organizer at the purge, with who gets
+     * each -- the same [successorFor] rule the purge applies, so the screen shows what will happen.
+     * Leagues with a live auction are left out (they're blockers).
+     */
+    fun handovers(userId: UUID): List<DeletionHandover> {
+        val liveIds = leagueRepository.findLiveAuctionsInvolving(userId).mapNotNull { it.id }.toSet()
+        return leagueRepository.findByOrganizerUserIdAndCompletedAtIsNull(userId)
+            .filter { it.id !in liveIds }
+            .mapNotNull { league ->
+                val successor = successorFor(requireNotNull(league.id), userId) ?: return@mapNotNull null
+                DeletionHandover(
+                    leagueId = requireNotNull(league.id),
+                    leagueName = league.name,
+                    leagueLogoUrl = league.logoUrl,
+                    newOrganizerUserId = successor.userId,
+                    newOrganizerName = profileRepository.findById(successor.userId).orElse(null)?.name,
+                )
+            }
+    }
 
     /**
      * `POST /api/v1/me/deletion`. Idempotent: asking again while already pending returns the
@@ -112,7 +142,7 @@ class AccountDeletionService(
     }
 
     private fun LeagueEntity.toBlocker(reason: DeletionBlockReason) =
-        DeletionBlocker(leagueId = requireNotNull(id), leagueName = name, reason = reason)
+        DeletionBlocker(leagueId = requireNotNull(id), leagueName = name, reason = reason, leagueLogoUrl = logoUrl)
 
     companion object {
         const val CONFIRMATION = "DELETE"

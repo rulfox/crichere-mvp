@@ -1,8 +1,9 @@
 # Phase 16 — Account deletion
 
 **Last updated:** 2026-10-11
-**Status:** backend and web built and tested (unit, integration, live against the local backend). Mobile UI waits
-for a Claude Design export (prompt: `docs/design-prompts/ACCOUNT-DELETION-PROMPT.md`).
+**Status:** backend and web built and tested (unit, integration, live against the local backend). The Claude Design
+export is in (`Crichere Account Deletion.dc.html`, frames D1–D10). Section 8 covers the API gaps it needed and the
+shared mobile layer, both built. The Android and iOS screens are in progress.
 
 ---
 
@@ -60,14 +61,18 @@ franchise names and logos in them.
 
 | Endpoint | Result |
 |---|---|
-| `GET /api/v1/me/deletion` | `{blockers: [{leagueId, leagueName, reason}], gracePeriodDays: 14}`; reason `AUCTION_LIVE` or `NO_CO_ORGANIZER` |
+| `GET /api/v1/me/deletion` | `{blockers: [{leagueId, leagueName, leagueLogoUrl, reason}], gracePeriodDays: 14, erasesOn, handovers: [{leagueId, leagueName, leagueLogoUrl, newOrganizerUserId, newOrganizerName}]}`; reason `AUCTION_LIVE` or `NO_CO_ORGANIZER`; `erasesOn` is now + 14 days, or the original date while a request is pending |
 | `POST /api/v1/me/deletion` `{confirm: "DELETE"}` | 202 `{purgeAfter}`; 400 `CONFIRMATION_REQUIRED`; 409 `ACCOUNT_DELETION_BLOCKED` with `blockers`; idempotent while pending; rate limit 5/hour |
 | `POST /auth/session`, `/auth/otp/verify` | new field `accountRestored` |
-| `GET /api/v1/leagues/{id}` | new field `organizerHandoverAt` |
+| `GET /api/v1/leagues/{id}` | new fields `organizerHandoverAt`, `showHandoverNotice` (true only for the current organizer until dismissed); `deleted` on `players[]` and `coOrganizers[]`, `ownerDeleted` on `franchises[]` |
+| `POST /api/v1/leagues/{id}/handover-notice/dismiss` | 204, organizer only (not co-organizers), idempotent; a later handover shows it again |
+| `GET /api/v1/leagues/{id}/auction/results` | `deleted` on each won player |
 | `DELETE /api/v1/leagues/{id}/roles/{roleId}` | new 409 `LAST_SUCCESSOR` |
 
 Migration `V22__account_deletion.sql`: `users.deletion_requested_at`, `users.deleted_at`, phone columns nullable,
-partial index for the purge scan, `leagues.organizer_handover_at`.
+partial index for the purge scan, `leagues.organizer_handover_at`. Migration `V23__account_deletion_display.sql`:
+`profiles.account_deleted` (set by the purge; every mapping already loads the profile, so the flag costs no extra
+query and no name-text match) and `leagues.organizer_handover_seen_at`.
 
 ## 5. Security analysis
 
@@ -106,6 +111,26 @@ partial index for the purge scan, `leagues.organizer_handover_at`.
   (`CRICHERE_ACCOUNTDELETION_PURGECRON="0 * * * * *"`) purged it: phone NULL, profile "Deleted user", 0 refresh
   tokens; the same number then signed up as a new user id.
 - Web: `npm test`, `npm run lint`, `npx playwright test` (legal spec covers `/delete-account`).
+
+## 8. Design export: API gaps and mobile (2026-10-11)
+
+The handoff text (`Crichere Account Deletion.dc.html`) described its own API. The owner chose to keep the existing
+one with no renames and to add only what the screens need.
+- **Mapping:** `deletionCancelled` is `accountRestored`, `NEEDS_CO_ORGANIZER` is `NO_CO_ORGANIZER`, POST
+  `erasesOn` is `purgeAfter`. "Blocked" is an empty `blockers` list, and the POST 409 carries the list.
+- **Added:** `handovers` (D3b) and `erasesOn` (D3, D6) on GET; league logos on blockers and handovers (D4); the D9
+  notice flag plus a dismiss endpoint; the D10 `deleted` flags. See section 4.
+- **D9:** only the new organizer sees the notice. The dismissal is stored server-side in one column per league,
+  since only one person sees it.
+- **Not flagged:** the live auction state (`currentPlayerName`, last result). A deleted user can't be in a running
+  auction: the purge waits for it to end and withdraws them from leagues whose auction hasn't started.
+- **Shared mobile layer:**
+  - `account/AccountDeletionRepository`;
+  - `DeleteAccountViewModel` (Loading / CanDelete / Blocked / Error; dialog rule: trimmed input equals `DELETE`);
+  - `AccountNotices` (one-shot D7 and D8, in memory);
+  - `AuthRepository.clearLocalSession()` (no backend calls; the server already revoked everything);
+  - `AuthResult.accountRestored`;
+  - `LeagueDetailViewModel.dismissHandoverNotice()` (optimistic, best-effort).
 
 ## 7. Not verified / open
 

@@ -131,6 +131,17 @@ class LeagueDetailViewModel(
 
     fun clearCompletionNotice() = _state.update { it.copy(completionNotice = null) }
 
+    /**
+     * Design D9. Hidden at once; the server call is best-effort -- if it fails the notice simply
+     * comes back on the next load, which is better than blocking the page on it.
+     */
+    fun dismissHandoverNotice() {
+        val league = _state.value.league ?: return
+        if (!league.showHandoverNotice) return
+        _state.update { it.copy(league = league.copy(showHandoverNotice = false)) }
+        viewModelScope.launch { runCatching { leagueRepository.dismissHandoverNotice(league.id) } }
+    }
+
     fun toggleFollow() {
         val league = _state.value.league ?: return
         if (_state.value.isTogglingFollow) return

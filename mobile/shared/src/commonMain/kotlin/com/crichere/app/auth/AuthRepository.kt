@@ -1,5 +1,6 @@
 package com.crichere.app.auth
 
+import com.crichere.app.account.AccountNotices
 import com.crichere.app.notification.DeviceTokenProvider
 import com.crichere.app.notification.DeviceTokenRepository
 import com.crichere.app.storage.SecureStore
@@ -77,6 +78,12 @@ interface AuthRepository {
     /** Revokes the stored refresh token backend-side (best-effort) and clears local storage regardless. */
     suspend fun logout()
 
+    /**
+     * Clears the local session only, no backend calls: after an account deletion request the
+     * server has already revoked every refresh token and push token (docs/PHASE16.md).
+     */
+    suspend fun clearLocalSession()
+
     /** The signed-in user's own id, read from local storage (no network call) -- `null` if nobody is signed in. See [SecureStorageKeys.USER_ID]. */
     suspend fun getCurrentUserId(): String?
 }
@@ -133,6 +140,8 @@ internal class KtorAuthRepository(
      * `di/AppModule.kt` passes a real client.
      */
     private val backendOtpClient: BackendOtpClient? = null,
+    /** Receives the "deletion cancelled" signal from a sign-in (design D8). `null` in tests that don't care. */
+    private val accountNotices: AccountNotices? = null,
 ) : AuthRepository {
 
     /**
@@ -209,6 +218,7 @@ internal class KtorAuthRepository(
     /** Everything that follows a fresh sign-in, whichever provider proved the phone. */
     private suspend fun onSessionEstablished(result: AuthResult) {
         persistTokens(result)
+        if (result.accountRestored) accountNotices?.deletionWasCancelled()
         // A fresh sign-in -- possibly as a different user than whoever was last signed in on this
         // same app process -- so any bearer token Ktor's Auth plugin already has cached must be
         // dropped, not just SecureStore's copy. See [authenticatedHttpClientProvider]'s doc.
@@ -269,6 +279,13 @@ internal class KtorAuthRepository(
         secureStorage.remove(SecureStorageKeys.USER_ID)
         // See [authenticatedHttpClientProvider]'s doc -- without this, the next sign-in's first
         // request(s) would still carry this session's now-revoked access token.
+        clearCachedBearerToken()
+    }
+
+    override suspend fun clearLocalSession() {
+        secureStorage.remove(SecureStorageKeys.ACCESS_TOKEN)
+        secureStorage.remove(SecureStorageKeys.REFRESH_TOKEN)
+        secureStorage.remove(SecureStorageKeys.USER_ID)
         clearCachedBearerToken()
     }
 

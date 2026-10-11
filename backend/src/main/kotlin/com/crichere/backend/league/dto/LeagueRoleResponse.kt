@@ -10,4 +10,6 @@ data class LeagueRoleResponse(
     /** Resolves the delegate's `ProfileEntity.name` -- may be `null` if they never set one, same as every other roster row in this app. */
     val name: String?,
     val grantedAt: Instant,
+    /** The co-organizer's account was deleted (docs/PHASE16.md); show the neutral avatar. */
+    val deleted: Boolean = false,
 )

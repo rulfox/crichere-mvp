@@ -53,4 +53,6 @@ data class LeagueResponse(
     val auctionStatus: AuctionStatus = AuctionStatus.NOT_STARTED,
     /** Set when the previous organizer deleted their account and the earliest co-organizer took over (docs/PHASE16.md); the league page explains the change. */
     val organizerHandoverAt: Instant? = null,
+    /** `true` only for the current organizer after a handover, until they dismiss it (design D9, `POST .../handover-notice/dismiss`). */
+    val showHandoverNotice: Boolean = false,
 )

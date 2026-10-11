@@ -117,6 +117,7 @@ class ManageRolesViewModelTest {
         override suspend fun exchangeSession(idToken: String) = error("not used")
         override suspend fun refresh(): AuthResult? = error("not used")
         override suspend fun logout() = error("not used")
+        override suspend fun clearLocalSession() = error("not used in this test")
         override suspend fun getCurrentUserId(): String? = userId
     }
 

@@ -144,6 +144,10 @@ class LeagueEntity(
     @Column(name = "organizer_handover_at", insertable = false, updatable = false)
     var organizerHandoverAt: Instant? = null,
 
+    /** When the new organizer dismissed the handover notice; written only by [LeagueRepository.markHandoverNoticeSeen]. */
+    @Column(name = "organizer_handover_seen_at", insertable = false, updatable = false)
+    var organizerHandoverSeenAt: Instant? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 

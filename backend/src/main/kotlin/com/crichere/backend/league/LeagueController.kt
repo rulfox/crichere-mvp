@@ -7,6 +7,7 @@ import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
@@ -82,6 +84,13 @@ class LeagueController(
         @PathVariable id: UUID,
         @AuthenticationPrincipal userId: UUID,
     ): LeagueResponse = leagueService.complete(id, userId)
+
+    @PostMapping("/{id}/handover-notice/dismiss")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun dismissHandoverNotice(
+        @PathVariable id: UUID,
+        @AuthenticationPrincipal userId: UUID,
+    ) = leagueService.dismissHandoverNotice(id, userId)
 
     @PostMapping("/{id}/logo-upload-url")
     fun createLogoUploadUrl(

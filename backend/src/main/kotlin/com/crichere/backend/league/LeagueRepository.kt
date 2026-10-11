@@ -87,7 +87,7 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
-        value = "UPDATE leagues SET organizer_user_id = :newOrganizerUserId, organizer_handover_at = :now, updated_at = :now WHERE id = :leagueId",
+        value = "UPDATE leagues SET organizer_user_id = :newOrganizerUserId, organizer_handover_at = :now, organizer_handover_seen_at = NULL, updated_at = :now WHERE id = :leagueId",
         nativeQuery = true,
     )
     fun handOverOrganizer(
@@ -95,6 +95,14 @@ interface LeagueRepository : JpaRepository<LeagueEntity, UUID> {
         @Param("newOrganizerUserId") newOrganizerUserId: UUID,
         @Param("now") now: Instant,
     ): Int
+
+    /** The new organizer dismissed the handover notice (design D9). Idempotent: keeps the first time. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        value = "UPDATE leagues SET organizer_handover_seen_at = :now WHERE id = :leagueId AND organizer_handover_seen_at IS NULL",
+        nativeQuery = true,
+    )
+    fun markHandoverNoticeSeen(@Param("leagueId") leagueId: UUID, @Param("now") now: Instant): Int
 
     /**
      * Row-level lock for `com.crichere.backend.auction.AuctionService.placeBid` -- two bids

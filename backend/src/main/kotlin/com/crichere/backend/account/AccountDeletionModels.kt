@@ -16,12 +16,29 @@ data class DeletionBlocker(
     val leagueId: UUID,
     val leagueName: String,
     val reason: DeletionBlockReason,
+    val leagueLogoUrl: String? = null,
 )
 
-/** Body of `GET /api/v1/me/deletion`: what (if anything) stands in the way, and how long the grace period is. */
+/** A league the user organizes that passes to [newOrganizerName] when the account is purged (design D3b). */
+data class DeletionHandover(
+    val leagueId: UUID,
+    val leagueName: String,
+    val leagueLogoUrl: String?,
+    val newOrganizerUserId: UUID,
+    /** The successor's profile name; `null` if they never set one. */
+    val newOrganizerName: String?,
+)
+
+/**
+ * Body of `GET /api/v1/me/deletion`: what (if anything) stands in the way, how long the grace
+ * period is, the date the account would be erased if requested now ([erasesOn]; the original date
+ * while a request is already pending), and which leagues would change hands.
+ */
 data class AccountDeletionStatusResponse(
     val blockers: List<DeletionBlocker>,
     val gracePeriodDays: Long,
+    val erasesOn: Instant,
+    val handovers: List<DeletionHandover> = emptyList(),
 )
 
 /** Body of `POST /api/v1/me/deletion`. [confirm] must be exactly `DELETE` -- the typed confirmation from the app's dialog. */

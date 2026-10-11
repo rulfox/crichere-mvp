@@ -514,6 +514,7 @@ class AuctionService(
             soldPrice = requireNotNull(soldPrice),
             photoUrl = profile?.photoUrl,
             playingRole = profile?.playingRole,
+            deleted = profile?.accountDeleted == true,
         )
     }
 }

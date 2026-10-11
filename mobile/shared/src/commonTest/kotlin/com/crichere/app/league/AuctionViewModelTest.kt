@@ -32,6 +32,7 @@ class AuctionViewModelTest {
         override suspend fun exchangeSession(idToken: String) = error("not used in this test")
         override suspend fun refresh(): AuthResult? = error("not used in this test")
         override suspend fun logout() = error("not used in this test")
+        override suspend fun clearLocalSession() = error("not used in this test")
         override suspend fun getCurrentUserId(): String? = currentUserId
     }
 

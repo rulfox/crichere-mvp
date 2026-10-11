@@ -27,7 +27,7 @@ class AccountDeletionServiceTest {
     private val leagueRoleRepository = mockk<LeagueRoleRepository>()
     private val service = AccountDeletionService(
         userRepository, leagueRepository, leagueRoleRepository,
-        mockk(), mockk(), mockk(), AccountDeletionProperties(), Clock.systemUTC(),
+        mockk(), mockk(), mockk(), mockk(), AccountDeletionProperties(), Clock.systemUTC(),
     )
 
     private val organizerId = UUID.randomUUID()

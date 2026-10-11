@@ -39,6 +39,8 @@ data class LeaguePlayerDto(
     val leaveRequestedAt: String? = null,
     /** From the player's profile; `null` if unset (or from a backend older than this field). */
     val playingRole: PlayingRole? = null,
+    /** The player's account was deleted (docs/PHASE16.md): show the neutral "Deleted user" avatar (design D10). */
+    val deleted: Boolean = false,
 )
 
 /** Body of `POST /leagues/{id}/players`. */
@@ -58,6 +60,8 @@ data class LeagueFranchiseDto(
     val joinedAt: String,
     val paymentScreenshotUrl: String? = null,
     val leaveRequestedAt: String? = null,
+    /** The owner's account was deleted (design D10). */
+    val ownerDeleted: Boolean = false,
 )
 
 /** Mirrors the backend's `LeagueRoleResponse` (docs/PHASE7.md) -- one active co-organizer grant. */
@@ -67,6 +71,8 @@ data class LeagueRoleDto(
     val userId: String,
     val name: String? = null,
     val grantedAt: String,
+    /** The co-organizer's account was deleted (design D10). */
+    val deleted: Boolean = false,
 )
 
 /** Mirrors the backend's `RoleLookupResponse` -- who a phone number resolved to, not yet a grant. */
@@ -127,6 +133,10 @@ data class LeagueDto(
     val auctionScheduledAt: String? = null,
     /** Null from an older backend; the league page treats that as "not running" (design update #5, E14). */
     val auctionStatus: AuctionStatus? = null,
+    /** Set when the previous organizer deleted their account and the earliest co-organizer took over (docs/PHASE16.md). */
+    val organizerHandoverAt: String? = null,
+    /** `true` only for the new organizer until they dismiss the notice (design D9). */
+    val showHandoverNotice: Boolean = false,
 )
 
 /**

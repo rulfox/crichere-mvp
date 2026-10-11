@@ -20,4 +20,6 @@ data class LeagueFranchiseResponse(
     val joinedAt: Instant,
     val paymentScreenshotUrl: String?,
     val leaveRequestedAt: Instant?,
+    /** The owner's account was deleted (docs/PHASE16.md); [ownerName] is "Deleted user". */
+    val ownerDeleted: Boolean = false,
 )

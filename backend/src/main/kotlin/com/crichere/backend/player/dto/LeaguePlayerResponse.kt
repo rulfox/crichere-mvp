@@ -21,4 +21,6 @@ data class LeaguePlayerResponse(
     val leaveRequestedAt: Instant?,
     /** The player's profile role, shown on roster rows; `null` if their profile has none yet. */
     val playingRole: PlayingRole? = null,
+    /** The player's account was deleted (docs/PHASE16.md); [name] is "Deleted user", show the neutral avatar. */
+    val deleted: Boolean = false,
 )

@@ -141,6 +141,14 @@ class FakeLeagueRepository(
         unfollowError?.let { throw it }
     }
 
+    val dismissHandoverNoticeCalls = mutableListOf<String>()
+    var dismissHandoverNoticeError: Throwable? = null
+
+    override suspend fun dismissHandoverNotice(id: String) {
+        dismissHandoverNoticeCalls += id
+        dismissHandoverNoticeError?.let { throw it }
+    }
+
     override suspend fun updateAuctionSettings(id: String, request: AuctionSettingsSaveRequestDto): LeagueDto {
         updateAuctionSettingsRequests += request
         updateAuctionSettingsError?.let { throw it }

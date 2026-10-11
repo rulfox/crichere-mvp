@@ -173,6 +173,19 @@ class LeagueService(
     }
 
     /**
+     * `POST /api/v1/leagues/{id}/handover-notice/dismiss` (design D9). Only the league's actual
+     * organizer -- the one the notice is for -- not its co-organizers. Idempotent.
+     *
+     * @throws NotOrganizerException [callerId] is not this league's organizer.
+     */
+    @Transactional
+    fun dismissHandoverNotice(leagueId: UUID, callerId: UUID) {
+        val league = findLeagueOrThrow(leagueId)
+        if (league.organizerUserId != callerId) throw NotOrganizerException()
+        leagueRepository.markHandoverNoticeSeen(leagueId, Instant.now())
+    }
+
+    /**
      * `PUT /api/v1/leagues/{id}/auction-settings`. Organizer-only, full-replace of all 5 fields
      * together (see docs/PHASE4.md's Decisions Made). Editable up until the auction starts --
      * Phase 5's `start` action (`com.crichere.backend.auction.AuctionService.start`) is what locks
@@ -441,15 +454,20 @@ class LeagueService(
             auctionScheduledAt = auctionScheduledAt,
             auctionStatus = auctionStatus,
             organizerHandoverAt = organizerHandoverAt,
+            showHandoverNotice = callerId == organizerUserId && organizerHandoverAt != null && organizerHandoverSeenAt == null,
         )
     }
 
-    private fun LeagueRoleEntity.toResponse() = LeagueRoleResponse(
-        id = requireNotNull(id),
-        userId = userId,
-        name = profileRepository.findById(userId).orElse(null)?.name,
-        grantedAt = grantedAt,
-    )
+    private fun LeagueRoleEntity.toResponse(): LeagueRoleResponse {
+        val profile = profileRepository.findById(userId).orElse(null)
+        return LeagueRoleResponse(
+            id = requireNotNull(id),
+            userId = userId,
+            name = profile?.name,
+            grantedAt = grantedAt,
+            deleted = profile?.accountDeleted == true,
+        )
+    }
 
     private fun LeagueAwardEntity.toResponse() = LeagueAwardResponse(
         id = requireNotNull(id),

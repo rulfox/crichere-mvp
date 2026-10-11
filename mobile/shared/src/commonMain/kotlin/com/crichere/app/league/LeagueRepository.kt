@@ -88,6 +88,9 @@ interface LeagueRepository {
 
     /** Idempotent -- unfollowing when not following is a no-op, not an error. */
     suspend fun unfollow(id: String)
+
+    /** Design D9: the new organizer dismissed the handover notice (stored server-side, so it stays gone on every device). */
+    suspend fun dismissHandoverNotice(id: String)
 }
 
 internal class KtorLeagueRepository(
@@ -210,5 +213,10 @@ internal class KtorLeagueRepository(
     override suspend fun unfollow(id: String) {
         val response = httpClient.delete("/api/v1/leagues/$id/follow")
         if (!response.status.isSuccess()) throw LeagueSaveFailedException("Unfollow failed with status ${response.status}")
+    }
+
+    override suspend fun dismissHandoverNotice(id: String) {
+        val response = httpClient.post("/api/v1/leagues/$id/handover-notice/dismiss")
+        if (!response.status.isSuccess()) throw LeagueSaveFailedException("Handover notice dismiss failed with status ${response.status}")
     }
 }

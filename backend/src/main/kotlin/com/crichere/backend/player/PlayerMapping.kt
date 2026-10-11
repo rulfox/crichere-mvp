@@ -31,5 +31,6 @@ fun PlayerEntity.toResponse(
         paymentScreenshotUrl = if (visible) screenshotSigner.readUrl(paymentScreenshotUrl, leagueId, userId) else null,
         leaveRequestedAt = if (visible) leaveRequestedAt else null,
         playingRole = profile?.playingRole,
+        deleted = profile?.accountDeleted == true,
     )
 }

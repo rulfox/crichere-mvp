@@ -57,4 +57,8 @@ class ProfileEntity(
     @Enumerated(EnumType.STRING)
     @Column(name = "bowling_style")
     var bowlingStyle: BowlingStyle? = null,
+
+    /** Set by the account purge (docs/PHASE16.md); clients show the neutral "Deleted user" avatar from it. */
+    @Column(name = "account_deleted", nullable = false)
+    var accountDeleted: Boolean = false,
 )

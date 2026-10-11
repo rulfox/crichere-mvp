@@ -153,6 +153,7 @@ class AccountPurgeService(
 
         val profile = profileRepository.findById(userId).orElse(null) ?: ProfileEntity(userId = userId)
         profile.name = AccountDeletionService.DELETED_USER_NAME
+        profile.accountDeleted = true
         profile.photoUrl = null
         profile.state = null
         profile.district = null

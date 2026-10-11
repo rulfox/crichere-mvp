@@ -155,6 +155,14 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
         authedPost(organizer.accessToken, "/api/v1/leagues/$auctionedLeagueId/players", emptyMap()).andExpect(status().isOk)
         setAuctionStatus(auctionedLeagueId, AuctionStatus.COMPLETED)
 
+        // The screen shows who gets the league and the erase date before anything is requested.
+        authedGet(organizer.accessToken, "/api/v1/me/deletion")
+            .andExpect(jsonPath("$.blockers").isEmpty)
+            .andExpect(jsonPath("$.erasesOn").exists())
+            .andExpect(jsonPath("$.handovers.length()").value(1))
+            .andExpect(jsonPath("$.handovers[0].leagueId").value(organizedLeagueId))
+            .andExpect(jsonPath("$.handovers[0].newOrganizerUserId").value(coOrganizer.userId.toString()))
+
         authedPost(organizer.accessToken, "/api/v1/me/deletion", mapOf("confirm" to "DELETE")).andExpect(status().isAccepted)
 
         // Not due yet: nothing happens inside the grace period.
@@ -181,6 +189,19 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
         authedGet(coOrganizer.accessToken, "/api/v1/leagues/$organizedLeagueId")
             .andExpect(jsonPath("$.organizerUserId").value(coOrganizer.userId.toString()))
             .andExpect(jsonPath("$.organizerHandoverAt").exists())
+            .andExpect(jsonPath("$.showHandoverNotice").value(true))
+
+        // The notice is the new organizer's alone; once dismissed it stays gone.
+        authedGet(laterCoOrganizer.accessToken, "/api/v1/leagues/$organizedLeagueId")
+            .andExpect(jsonPath("$.showHandoverNotice").value(false))
+        authedPost(laterCoOrganizer.accessToken, "/api/v1/leagues/$organizedLeagueId/handover-notice/dismiss", emptyMap())
+            .andExpect(status().isForbidden)
+        authedPost(coOrganizer.accessToken, "/api/v1/leagues/$organizedLeagueId/handover-notice/dismiss", emptyMap())
+            .andExpect(status().isNoContent)
+        authedPost(coOrganizer.accessToken, "/api/v1/leagues/$organizedLeagueId/handover-notice/dismiss", emptyMap())
+            .andExpect(status().isNoContent)
+        authedGet(coOrganizer.accessToken, "/api/v1/leagues/$organizedLeagueId")
+            .andExpect(jsonPath("$.showHandoverNotice").value(false))
 
         // Open league: withdrawn. Auctioned league: kept, shown as Deleted user.
         val rows = playerRepository.findByUserId(organizer.userId).associateBy { it.leagueId.toString() }
@@ -188,6 +209,7 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
         assertNull(rows.getValue(auctionedLeagueId).removedAt)
         authedGet(otherOrganizer.accessToken, "/api/v1/leagues/$auctionedLeagueId")
             .andExpect(jsonPath("$.players[?(@.userId=='${organizer.userId}')].name").value("Deleted user"))
+            .andExpect(jsonPath("$.players[?(@.userId=='${organizer.userId}')].deleted").value(true))
 
         // The number is free again, as a brand-new account. A second run finds nothing to do.
         val fresh = signIn(organizer.phone)

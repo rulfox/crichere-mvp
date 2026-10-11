@@ -22,10 +22,12 @@ fun FranchiseEntity.toResponse(
     screenshotSigner: PaymentScreenshotUrlSigner,
 ): LeagueFranchiseResponse {
     val visible = callerId != null && (callerId == organizerUserId || callerId == ownerUserId)
+    val owner = profileRepository.findById(ownerUserId).orElse(null)
     return LeagueFranchiseResponse(
         id = requireNotNull(id),
         ownerUserId = ownerUserId,
-        ownerName = profileRepository.findById(ownerUserId).orElse(null)?.name,
+        ownerName = owner?.name,
+        ownerDeleted = owner?.accountDeleted == true,
         name = name,
         logoUrl = logoUrl,
         joinedAt = joinedAt,
