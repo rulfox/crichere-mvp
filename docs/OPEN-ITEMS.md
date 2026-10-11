@@ -53,7 +53,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 
 - Country-code picker (phone entry, co-organizer lookup, backend normaliser).
 - Scripted assertions for the local e2e harness (`backend/e2e`), so it becomes a regression suite.
-- Places API (New) search for the ground map.
+- Places API (New) search for the ground map. API enabled on project `crichere` and added to the `Maps SDK Android (debug)` key's API restrictions (2026-10-11); the app still uses the free Geocoder until `PLACE_SEARCH_PROVIDER=places` is set in `mobile/local.properties` (per-session billing, PHASE2 decisions).
 - iOS Universal Links.
 
 ## 6. Location data (LGD) — decided 2026-10-06
