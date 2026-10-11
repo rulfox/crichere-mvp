@@ -70,6 +70,10 @@ sealed interface AppRoute : NavKey {
 
     @Serializable
     data class ManageRoles(val leagueId: String) : AppRoute
+
+    /** Account deletion (docs/PHASE16.md, design D2–D6), pushed from My Profile. */
+    @Serializable
+    data object DeleteAccount : AppRoute
 }
 
 internal enum class MainTab { DASHBOARD, MY_LEAGUES, MY_PROFILE }

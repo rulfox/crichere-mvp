@@ -3,7 +3,8 @@
 **Last updated:** 2026-10-11
 **Status:** backend and web built and tested (unit, integration, live against the local backend). The Claude Design
 export is in (`Crichere Account Deletion.dc.html`, frames D1–D10). Section 8 covers the API gaps it needed and the
-shared mobile layer, both built. The Android and iOS screens are in progress.
+shared mobile layer, both built. Section 9 covers the Android screens, checked on the emulator, and the iOS screens,
+written but not compiled.
 
 ---
 
@@ -147,9 +148,29 @@ one with no renames and to add only what the screens need.
   - `AuthResult.accountRestored`;
   - `LeagueDetailViewModel.dismissHandoverNotice()` (optimistic, best-effort).
 
+## 9. Mobile screens (2026-10-11)
+
+Built from the Claude Design board `Crichere Account Deletion.dc.html` (light frames D1–D10). Spacing, type and
+colours come from a `getComputedStyle` dump of the board DOM.
+- **Android:**
+  - `DeleteAccountScreen.kt` (D2–D5);
+  - `DeleteAccountConfirmDialog.kt` (D6a–e: JetBrains Mono, `KeyboardCapitalization.Characters`, autocorrect off,
+    no dismiss while submitting);
+  - `AccountDeletionUi.kt` (neutral avatar, dismissible notice, date format);
+  - D1 row in `OwnProfileScreen`, D7 notice on `PhoneEntryScreen`, D8 bar in `MainRoute`, D9 on League detail,
+    D10 on League detail rows and the auction results roster;
+  - eight Material Symbols Rounded icons added as vector drawables.
+- **iOS:** `DeleteAccountView.swift`: the screen, a confirm sheet with the same enable rule, the D7 notice on
+  Phone Entry, the D8 toast in `MainTabView`, D9 and D10 in `LeagueDetailView`. Authored only, never compiled
+  (no Mac), same as earlier phases.
+- **Where the build differs from the board:**
+  - D6e: the board drops the check icon once the field loses focus, so the app shows it only while focused.
+  - D8: the bar disappears after 4 s, or on a tap.
+- **Verified on device:** see DESIGN-REVIEW.md, account deletion follow-up.
+
 ## 7. Not verified / open
 
-- Mobile screens: not built (design prompt written, waiting for the Claude Design export).
+- Mobile: iOS never compiled; Android D2, D3a, D6d and D10b not seen on a device (DESIGN-REVIEW.md follow-up).
 - Real S3 deletes: local has no bucket, so the deleter logged and skipped. Needs the IAM change above, then one
   real purge in production to confirm.
 - Push to the promoted co-organizer: covered by code, not seen on a device (no FCM locally).

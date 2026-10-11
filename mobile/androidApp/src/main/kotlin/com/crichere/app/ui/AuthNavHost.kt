@@ -7,6 +7,16 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +57,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.crichere.app.R
+import com.crichere.app.account.AccountNotices
 import com.crichere.app.auth.AppStartDestination
 import com.crichere.app.auth.AppStartViewModel
 import com.crichere.app.auth.AuthNavigationEvent
@@ -61,6 +72,7 @@ import com.crichere.app.ui.navigation.MainTab
 import com.crichere.app.ui.navigation.backTarget
 import com.crichere.app.ui.navigation.imeBackGuardDecorator
 import com.crichere.app.ui.theme.InstrumentSansFamily
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -104,6 +116,8 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
     // fresh AuthNavHost call -- actually resets this state to the new id.
     var pendingLeagueId by remember(pendingDeepLinkLeagueId) { mutableStateOf(pendingDeepLinkLeagueId) }
     val inMainArea = AppRoute.Main in backStack
+    // One-time account notices (docs/PHASE16.md D7/D8), shared with the ViewModels that raise them.
+    val accountNotices: AccountNotices = koinInject()
 
     LaunchedEffect(pendingLeagueId, inMainArea) {
         val leagueId = pendingLeagueId
@@ -150,7 +164,7 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
             }
 
             entry<AppRoute.PhoneEntry> { route ->
-                PhoneEntryRoute(showLockoutNotice = route.lockedOut) { event ->
+                PhoneEntryRoute(showLockoutNotice = route.lockedOut, accountNotices = accountNotices) { event ->
                     when (event) {
                         is PhoneEntryNavigationEvent.NavigateToOtpVerify -> navigator.navigate(
                             AppRoute.OtpVerify(
@@ -199,6 +213,17 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
                     onNavigateToEditProfile = { navigator.navigate(AppRoute.ProfileSetup(isEditMode = true)) },
                     onNavigateToPhoneEntry = { navigator.replaceAll(AppRoute.PhoneEntry()) },
                     onViewPhoto = { photoUrl -> navigator.navigate(AppRoute.ScreenshotViewer(photoUrl, title = "Profile photo")) },
+                    onDeleteAccount = { navigator.navigate(AppRoute.DeleteAccount) },
+                    accountNotices = accountNotices,
+                )
+            }
+
+            entry<AppRoute.DeleteAccount> {
+                DeleteAccountRoute(
+                    onBack = { navigator.back() },
+                    onOpenLeague = { leagueId -> navigator.navigate(AppRoute.LeagueDetail(leagueId)) },
+                    // D7: the session is gone; Sign in on a fresh stack, with the one-time notice.
+                    onSignedOut = { navigator.replaceAll(AppRoute.PhoneEntry()) },
                 )
             }
 
@@ -349,12 +374,18 @@ private fun AppStartRoute(onResolved: (AppStartDestination) -> Unit) {
 }
 
 @Composable
-private fun PhoneEntryRoute(showLockoutNotice: Boolean, onNavigate: (PhoneEntryNavigationEvent) -> Unit) {
+private fun PhoneEntryRoute(showLockoutNotice: Boolean, accountNotices: AccountNotices, onNavigate: (PhoneEntryNavigationEvent) -> Unit) {
     val viewModel: PhoneEntryViewModel = koinViewModel()
+    val deletionScheduledOn by accountNotices.deletionScheduledOn.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.navigationEvents.collect { event -> onNavigate(event) }
     }
-    PhoneEntryScreen(viewModel, showLockoutNotice = showLockoutNotice)
+    PhoneEntryScreen(
+        viewModel,
+        showLockoutNotice = showLockoutNotice,
+        deletionScheduledOn = deletionScheduledOn?.let(::eraseDate),
+        onDismissDeletionNotice = accountNotices::dismissDeletionScheduled,
+    )
 }
 
 /** [onNavigate]'s second argument: true when the bounce-back is the 5-wrong-attempts lockout, not a voluntary "start over". */
@@ -402,8 +433,18 @@ private fun MainRoute(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToPhoneEntry: () -> Unit,
     onViewPhoto: (String) -> Unit,
+    onDeleteAccount: () -> Unit,
+    accountNotices: AccountNotices,
 ) {
     var tab by rememberSaveable { mutableStateOf(MainTab.DASHBOARD) }
+    // D8: a sign-in that cancelled a pending deletion says so once, on the first screen.
+    val deletionCancelled by accountNotices.deletionCancelled.collectAsStateWithLifecycle()
+    LaunchedEffect(deletionCancelled) {
+        if (deletionCancelled) {
+            delay(4_000)
+            accountNotices.dismissDeletionCancelled()
+        }
+    }
     val backTarget = tab.backTarget()
     BackHandler(enabled = backTarget != null) { backTarget?.let { tab = it } }
 
@@ -427,15 +468,51 @@ private fun MainRoute(
                     onNavigateToEditProfile = onNavigateToEditProfile,
                     onNavigateToPhoneEntry = onNavigateToPhoneEntry,
                     onViewPhoto = onViewPhoto,
+                    onDeleteAccount = onDeleteAccount,
                 )
             }
+            DeletionCancelledSnack(
+                visible = deletionCancelled,
+                onDismiss = accountNotices::dismissDeletionCancelled,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
 
 @Composable
-private fun OwnProfileRoute(onNavigateToEditProfile: () -> Unit, onNavigateToPhoneEntry: () -> Unit, onViewPhoto: (String) -> Unit) {
+private fun OwnProfileRoute(
+    onNavigateToEditProfile: () -> Unit,
+    onNavigateToPhoneEntry: () -> Unit,
+    onViewPhoto: (String) -> Unit,
+    onDeleteAccount: () -> Unit,
+) {
     val viewModel: OwnProfileViewModel = koinViewModel()
     LaunchedEffect(Unit) { viewModel.retry() }
-    OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry, onViewPhoto)
+    OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry, onViewPhoto, onDeleteAccount)
+}
+
+/** D8: dark bar with a green check, 16 dp in from the sides and 15 dp above the tab bar; tap to dismiss. */
+@Composable
+private fun DeletionCancelledSnack(visible: Boolean, onDismiss: () -> Unit, modifier: Modifier) {
+    AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut(), modifier = modifier.padding(start = 16.dp, end = 16.dp, bottom = 15.dp)) {
+        val shadow = Color.Black.copy(alpha = 0.4f)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .shadow(16.dp, RoundedCornerShape(12.dp), ambientColor = shadow, spotColor = shadow)
+                .background(MaterialTheme.colorScheme.onBackground, RoundedCornerShape(12.dp))
+                .clickable(onClick = onDismiss)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(painterResource(R.drawable.ic_check_circle_filled), contentDescription = null, tint = Color(0xFF9CD49A), modifier = Modifier.size(20.dp))
+            Text(
+                "Welcome back. Your account deletion was cancelled.",
+                style = TextStyle(fontFamily = InstrumentSansFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.9.sp),
+                color = Color.White,
+            )
+        }
+    }
 }

@@ -39,6 +39,7 @@ final class OwnProfileViewModelWrapper: ObservableObject {
 struct OwnProfileView: View {
     let onNavigateToEditProfile: () -> Void
     let onNavigateToPhoneEntry: () -> Void
+    let onDeleteAccount: () -> Void
 
     @StateObject private var wrapper = OwnProfileViewModelWrapper()
 
@@ -64,6 +65,8 @@ struct OwnProfileView: View {
 
                     Button("Edit profile") { wrapper.editProfile() }
                     Button("Log out", role: .destructive) { wrapper.logout() }
+                    // Design D1: quieter than Log out, opens DeleteAccountView.
+                    Button("Delete account", action: onDeleteAccount).foregroundColor(Color(hex: 0x8C1D12))
                 }
             }
         }

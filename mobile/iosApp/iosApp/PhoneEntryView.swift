@@ -38,9 +38,23 @@ struct PhoneEntryView: View {
     let onNavigateToOtpVerify: (_ phoneNumber: String, _ verificationId: String, _ resendToken: Any?) -> Void
 
     @StateObject private var wrapper = PhoneEntryViewModelWrapper()
+    @StateObject private var notices = AccountNoticesWrapper()
 
     var body: some View {
         Form {
+            // Design D7: shown once after a deletion request, until dismissed.
+            if let date = notices.deletionScheduledOn {
+                Section {
+                    DismissibleNotice(
+                        systemImage: "clock",
+                        text: "Your account will be deleted on \(eraseDateLabel(date)). Sign in before then to keep it.",
+                        container: NoticeColors.warningContainer,
+                        ink: NoticeColors.onWarning,
+                        onDismiss: notices.dismissScheduled
+                    )
+                    .listRowInsets(EdgeInsets())
+                }
+            }
             Section {
                 Text("Sign in").font(.title2.bold())
                 Text("Enter your phone number to receive a verification code.")

@@ -139,6 +139,7 @@ internal fun LeagueDetailRoute(
             onDismissPlayerLeave = viewModel::dismissPlayerLeave,
             onApproveFranchiseLeave = viewModel::approveFranchiseLeave,
             onDismissFranchiseLeave = viewModel::dismissFranchiseLeave,
+            onDismissHandoverNotice = viewModel::dismissHandoverNotice,
         ),
         notice = notice,
         onNoticeShown = onNoticeShown,
@@ -166,6 +167,7 @@ private class LeagueDetailActions(
     val onDismissPlayerLeave: (String) -> Unit,
     val onApproveFranchiseLeave: (String) -> Unit,
     val onDismissFranchiseLeave: (String) -> Unit,
+    val onDismissHandoverNotice: () -> Unit,
 )
 
 /** What a "Request to leave" confirmation would send, once the user confirms the E2 dialog. */
@@ -392,6 +394,16 @@ private fun LeagueView(
             Column(Modifier.padding(start = 19.dp, end = 19.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (completed) {
                     Text("League completed. Rosters and awards stay visible.", style = body(13.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // Design D9: only the new organizer sees it (the server decides), above their menu.
+                if (league.showHandoverNotice) {
+                    DismissibleNotice(
+                        icon = R.drawable.ic_admin_panel_settings,
+                        text = "The previous organizer deleted their account. You're now the organizer of ${league.name}.",
+                        container = MaterialTheme.colorScheme.primaryContainer,
+                        ink = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onDismiss = actions.onDismissHandoverNotice,
+                    )
                 }
                 // U4 E13: a completed league can't change, so the organizer card goes rather than showing dead rows.
                 if (organizer && !completed) {
@@ -802,6 +814,7 @@ private fun PlayerRow(player: LeaguePlayerDto, league: LeagueDto, isMe: Boolean,
     RosterRow(
         avatarText = initials(player.name ?: "?"),
         avatarUrl = null,
+        deleted = player.deleted,
         title = (player.name ?: "Player") + if (isMe) " (you)" else "",
         subtitle = listOfNotNull(player.playingRole?.label(), paid).joinToString(" · ").ifEmpty { null },
         leaveRequested = player.leaveRequestedAt != null,
@@ -829,6 +842,8 @@ private fun FranchiseRow(franchise: LeagueFranchiseDto, league: LeagueDto, isMe:
 private fun RosterRow(
     avatarText: String,
     avatarUrl: String?,
+    /** Design D10: a deleted user's row gets the neutral avatar and a muted name. */
+    deleted: Boolean = false,
     title: String,
     subtitle: String?,
     leaveRequested: Boolean,
@@ -837,15 +852,25 @@ private fun RosterRow(
 ) {
     val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp)) {
-        Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE3E8DD)), contentAlignment = Alignment.Center) {
-            Text(avatarText, style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 11.5.sp), color = colors.primary)
-            if (avatarUrl != null) {
-                AsyncImage(model = avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        if (deleted) {
+            DeletedUserAvatar(size = 32.dp, iconSize = 18.dp)
+        } else {
+            Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE3E8DD)), contentAlignment = Alignment.Center) {
+                Text(avatarText, style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 11.5.sp), color = colors.primary)
+                if (avatarUrl != null) {
+                    AsyncImage(model = avatarUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
             }
         }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = body(13.5.sp, FontWeight.SemiBold, 14.85.sp), color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                style = body(13.5.sp, FontWeight.SemiBold, 14.85.sp),
+                color = if (deleted) DeletedUserName else colors.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (subtitle != null) {
                 Spacer(Modifier.height(3.dp))
                 Text(subtitle, style = body(11.5.sp, lineHeight = 13.8.sp), color = colors.onSurfaceVariant)

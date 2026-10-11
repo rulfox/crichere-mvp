@@ -1,5 +1,8 @@
 package com.crichere.app.di
 
+import com.crichere.app.account.AccountNotices
+import com.crichere.app.account.DeleteAccountViewModel
+
 import com.crichere.app.auth.AppStartViewModel
 import com.crichere.app.auth.OtpVerifyViewModel
 import com.crichere.app.auth.PhoneEntryViewModel
@@ -107,4 +110,11 @@ class KoinHelper : KoinComponent {
 
     fun manageRolesViewModel(leagueId: String): ManageRolesViewModel =
         get { parametersOf(leagueId) }
+
+    // Phase 16 -- account deletion (docs/PHASE16.md).
+    val deleteAccountViewModel: DeleteAccountViewModel
+        get() = get()
+
+    val accountNotices: AccountNotices
+        get() = get()
 }

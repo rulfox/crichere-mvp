@@ -92,6 +92,7 @@ fun OwnProfileScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToPhoneEntry: () -> Unit,
     onViewPhoto: (String) -> Unit,
+    onDeleteAccount: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -133,6 +134,7 @@ fun OwnProfileScreen(
             onPhotoTap = { if (state.photoUrl != null) showPhotoSheet = true else launchPicker() },
             onEdit = viewModel::editProfile,
             onLogout = { showLogoutConfirm = true },
+            onDeleteAccount = onDeleteAccount,
         )
     }
 
@@ -203,7 +205,14 @@ fun OwnProfileScreen(
 }
 
 @Composable
-private fun Profile(state: OwnProfileState, localPhoto: ImageBitmap?, onPhotoTap: () -> Unit, onEdit: () -> Unit, onLogout: () -> Unit) {
+private fun Profile(
+    state: OwnProfileState,
+    localPhoto: ImageBitmap?,
+    onPhotoTap: () -> Unit,
+    onEdit: () -> Unit,
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     val name = state.name.orEmpty()
     Column(
@@ -304,6 +313,12 @@ private fun Profile(state: OwnProfileState, localPhoto: ImageBitmap?, onPhotoTap
             Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).border(1.dp, colors.outline, RoundedCornerShape(24.dp)).clickable(onClick = onLogout),
             contentAlignment = Alignment.Center,
         ) { Text("Log out", style = pText(14.5.sp, FontWeight.SemiBold, 14.5.sp), color = CrichereErrorStrong) }
+        // Design D1: a plain 48 dp text row, quieter than Log out.
+        Spacer(Modifier.height(24.dp))
+        Box(
+            Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDeleteAccount),
+            contentAlignment = Alignment.Center,
+        ) { Text("Delete account", style = pText(14.sp, FontWeight.SemiBold, 14.sp), color = CrichereErrorStrong) }
     }
 }
 

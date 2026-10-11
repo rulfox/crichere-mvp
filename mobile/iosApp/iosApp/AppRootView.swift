@@ -154,6 +154,7 @@ private enum MainDestination: Hashable {
     case auctionSettings(String)
     case auctionLive(String)
     case manageRoles(String)
+    case deleteAccount
 }
 
 /// The 3-tab bottom-nav shell (Dashboard, My Leagues, My Profile) hosting everything reachable
@@ -180,6 +181,7 @@ struct MainTabView: View {
     /// One-off messages for a league page to show when it is next on screen (design update #4 K10: a
     /// co-organizer removing themselves pops back to the league). Mirrors `AuthNavHost.kt`'s `leagueNotices`.
     @State private var leagueNotices: [String: String] = [:]
+    @StateObject private var notices = AccountNoticesWrapper()
 
     init(
         initialTab: MainTab,
@@ -208,11 +210,31 @@ struct MainTabView: View {
                     .tabItem { Label("My Leagues", systemImage: "person.2") }
                     .tag(MainTab.myLeagues)
 
-                OwnProfileView(onNavigateToEditProfile: onNavigateToEditProfile, onNavigateToPhoneEntry: onNavigateToPhoneEntry)
+                OwnProfileView(
+                    onNavigateToEditProfile: onNavigateToEditProfile,
+                    onNavigateToPhoneEntry: onNavigateToPhoneEntry,
+                    onDeleteAccount: { path.append(MainDestination.deleteAccount) }
+                )
                     .tabItem { Label("My Profile", systemImage: "person.crop.circle") }
                     .tag(MainTab.myProfile)
             }
             .navigationDestination(for: MainDestination.self) { mainDestinationView($0) }
+        }
+        // D8: a sign-in that cancelled a pending deletion says so once (a toast on iOS).
+        .overlay(alignment: .bottom) {
+            if notices.deletionCancelled {
+                Label("Welcome back. Your account deletion was cancelled.", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16).padding(.vertical, 14)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Brand.ink))
+                    .padding(.horizontal, 16).padding(.bottom, 64)
+                    .onTapGesture { notices.dismissCancelled() }
+                    .task {
+                        try? await Task.sleep(nanoseconds: 4_000_000_000)
+                        notices.dismissCancelled()
+                    }
+            }
         }
         .onAppear { consumePendingLeagueIdIfAny() }
         // A deep link can also arrive *after* this view already appeared (the app was already in
@@ -230,6 +252,13 @@ struct MainTabView: View {
     @ViewBuilder
     private func mainDestinationView(_ destination: MainDestination) -> some View {
         switch destination {
+        case .deleteAccount:
+            DeleteAccountView(
+                onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
+                // D7: the session is gone; back to Sign in, which shows the one-time notice.
+                onSignedOut: onNavigateToPhoneEntry
+            )
+
         case .leagueDetail(let leagueId):
             LeagueDetailView(
                 leagueId: leagueId,

@@ -25,7 +25,7 @@ class OwnProfileScreenTest {
         val viewModel = OwnProfileViewModel(profileRepository, authRepository)
         viewModel.retry()
 
-        composeRule.setContent { OwnProfileScreen(viewModel, onNavigateToEditProfile = {}, onNavigateToPhoneEntry = {}, onViewPhoto = {}) }
+        composeRule.setContent { OwnProfileScreen(viewModel, onNavigateToEditProfile = {}, onNavigateToPhoneEntry = {}, onViewPhoto = {}, onDeleteAccount = {}) }
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Rahul Sharma").assertExists()

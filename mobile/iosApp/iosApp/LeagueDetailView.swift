@@ -25,6 +25,7 @@ final class LeagueDetailViewModelWrapper: ObservableObject {
     func retry() { viewModel.retry() }
     func markCompleted() { viewModel.markCompleted() }
     func clearCompletionNotice() { viewModel.clearCompletionNotice() }
+    func dismissHandoverNotice() { viewModel.dismissHandoverNotice() }
     func toggleFollow() { viewModel.toggleFollow() }
     func removePlayer(playerId: String) { viewModel.removePlayer(playerId: playerId) }
     func removeFranchise(franchiseId: String) { viewModel.removeFranchise(franchiseId: franchiseId) }
@@ -179,6 +180,20 @@ struct LeagueDetailView: View {
                 .textCase(nil)
                 .listRowInsets(EdgeInsets())
                 .padding(.bottom, 4)
+            }
+
+            // Design D9: only the new organizer sees it (the server decides).
+            if league.showHandoverNotice {
+                Section {
+                    DismissibleNotice(
+                        systemImage: "person.badge.shield.checkmark",
+                        text: "The previous organizer deleted their account. You're now the organizer of \(league.name).",
+                        container: NoticeColors.greenContainer,
+                        ink: NoticeColors.onGreenContainer,
+                        onDismiss: wrapper.dismissHandoverNotice
+                    )
+                    .listRowInsets(EdgeInsets())
+                }
             }
 
             if !organizer {
@@ -360,8 +375,10 @@ struct LeagueDetailView: View {
             if tappable { playerActions = player }
         } label: {
             personRow(
-                avatar: AnyView(initialsAvatar(name)),
+                // Design D10: a deleted user gets the neutral avatar and a muted name.
+                avatar: player.deleted ? AnyView(DeletedUserAvatar(size: 36)) : AnyView(initialsAvatar(name)),
                 name: name,
+                muted: player.deleted,
                 detail: player.leaveRequestedAt != nil && editable
                     ? Text("Leave requested").foregroundColor(Brand.error)
                     : Text(playerDetail(player)),
@@ -389,6 +406,7 @@ struct LeagueDetailView: View {
             personRow(
                 avatar: AnyView(FranchiseBadge(name: franchise.name, size: 36, radius: 10, fontSize: 12)),
                 name: franchise.name,
+                muted: false,
                 detail: franchise.leaveRequestedAt != nil && editable
                     ? Text("Leave requested").foregroundColor(Brand.error)
                     : Text("Owner: \(franchise.ownerName ?? "Unknown")"),
@@ -408,11 +426,11 @@ struct LeagueDetailView: View {
     }
 
     /// Min 60, avatar 36, name 17/22, detail 15/20 ink-muted.
-    private func personRow(avatar: AnyView, name: String, detail: Text, chevron: Bool, busy: Bool) -> some View {
+    private func personRow(avatar: AnyView, name: String, muted: Bool, detail: Text, chevron: Bool, busy: Bool) -> some View {
         HStack(spacing: 12) {
             avatar
             VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.system(size: 17)).foregroundColor(Brand.ink).lineLimit(1)
+                Text(name).font(.system(size: 17)).foregroundColor(muted ? Brand.inkMuted : Brand.ink).lineLimit(1)
                 detail.font(.system(size: 15)).foregroundColor(Brand.inkMuted).lineLimit(1)
             }
             Spacer(minLength: 8)

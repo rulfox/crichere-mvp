@@ -579,11 +579,28 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
-- [ ] **Account deletion screens** (2026-10-11, [PHASE16.md](PHASE16.md)). Backend and web are done; the app has no
-  Delete account entry yet. Claude Design prompt written (`docs/design-prompts/ACCOUNT-DELETION-PROMPT.md`, D1-D10:
-  profile entry, blockers, typed-DELETE confirm, signed-out and restored notices, handover banner, "Deleted user"
-  rows). Build after the export. **Not verified:** everything on mobile; "Deleted user" already appears in rosters
-  from the backend, not checked on a device.
+- [ ] **Account deletion screens** (2026-10-11, [PHASE16.md](PHASE16.md) section 9, board
+  `Crichere Account Deletion.dc.html`). Built on Android and iOS (Swift never compiled); numbers taken from the board
+  DOM. **Verified** on the Pixel_9_Pro emulator against the local backend:
+  - D1 profile row;
+  - D3b with a handover;
+  - D4 with both reasons; a row opens its league (E);
+  - D5 with the backend stopped, from "Check again";
+  - D6b ("delete"), D6c, D6e (backend stopped);
+  - D7 after a real request (DB: `deletion_requested_at` set, 0 live refresh tokens);
+  - D8 after signing in again;
+  - D9 after a real purge: dismiss hides it, and it stays hidden after a relaunch (`organizer_handover_seen_at`
+    set);
+  - D10a player rows.
+
+  **Not verified:**
+  - D2 (the check returns too fast to capture);
+  - D3a (no handovers) on screen;
+  - D6d spinner state;
+  - D10b auction-results roster with a deleted winner;
+  - the franchise owner line (it is plain text from the server);
+  - a phone at 412 dp: the AVD is ~427 dp, so the D4 heading fits on one line where the board wraps to two;
+  - iOS entirely.
 
 - [ ] **Design update #6 (2026-10-06): no City, ground required, Edit profile back.** Built on backend (V21),
   shared, Android, web and iOS (Swift never compiled). See "Design update #6" in Decisions below.

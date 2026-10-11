@@ -72,7 +72,13 @@ import com.crichere.app.ui.theme.JetBrainsMonoFamily
  * [showLockoutNotice] is the design's B6: the user was bounced here after 5 wrong OTP attempts.
  */
 @Composable
-fun PhoneEntryScreen(viewModel: PhoneEntryViewModel, showLockoutNotice: Boolean = false) {
+fun PhoneEntryScreen(
+    viewModel: PhoneEntryViewModel,
+    showLockoutNotice: Boolean = false,
+    /** Design D7: the account was just scheduled for deletion ("25 Oct 2026"). Shown until dismissed. */
+    deletionScheduledOn: String? = null,
+    onDismissDeletionNotice: () -> Unit = {},
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -99,6 +105,16 @@ fun PhoneEntryScreen(viewModel: PhoneEntryViewModel, showLockoutNotice: Boolean 
         ) {
             if (!showHero) {
                 CrichereWordmark()
+                Spacer(Modifier.height(14.dp))
+            }
+            if (deletionScheduledOn != null) {
+                DismissibleNotice(
+                    icon = R.drawable.ic_schedule,
+                    text = "Your account will be deleted on $deletionScheduledOn. Sign in before then to keep it.",
+                    container = LocalCrichereExtraColors.current.warningContainer,
+                    ink = LocalCrichereExtraColors.current.onWarning,
+                    onDismiss = onDismissDeletionNotice,
+                )
                 Spacer(Modifier.height(14.dp))
             }
             if (showLockoutNotice) {

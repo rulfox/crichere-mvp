@@ -813,9 +813,27 @@ private fun ResultCard(result: FranchiseAuctionResultDto, franchises: List<Leagu
                 shown.forEach { player ->
                     Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
                         val name = player.playerName ?: "Unnamed player"
-                        PlayerPhoto(player.photoUrl, name, size = 28.dp, radius = 8.dp, initialsSize = 10.sp)
+                        // Design D10b: a deleted user gets the neutral tile and a muted name.
+                        if (player.deleted) {
+                            DeletedUserAvatar(
+                                size = 28.dp,
+                                iconSize = 16.dp,
+                                background = DeletedAvatarBackgroundDark,
+                                tint = DeletedUserNameDark,
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                        } else {
+                            PlayerPhoto(player.photoUrl, name, size = 28.dp, radius = 8.dp, initialsSize = 10.sp)
+                        }
                         Spacer(Modifier.width(10.dp))
-                        Text(name, style = text(13.sp, FontWeight.Medium, 13.sp), color = TextSoft, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            name,
+                            style = text(13.sp, FontWeight.Medium, 13.sp),
+                            color = if (player.deleted) DeletedUserNameDark else TextSoft,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         Text(rupees(player.soldPrice), style = mono(12.5.sp, FontWeight.SemiBold), color = Color.White)
                     }
                 }
