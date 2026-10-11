@@ -262,7 +262,7 @@ function NotStarted({ league }: { league: League }) {
         <ul className={styles.franchiseList}>
           {league.franchises.map((franchise, index) => (
             <li key={franchise.id} className={styles.franchiseItem}>
-              <FranchiseBadge name={franchise.name} index={index} size={26} fontSize={10} />
+              <FranchiseBadge name={franchise.name} index={index} size={26} fontSize={10} logoUrl={franchise.logoUrl} />
               {franchise.name}
             </li>
           ))}
@@ -317,7 +317,24 @@ function franchiseOrder(league: League): Map<string, number> {
   return new Map(league.franchises.map((franchise, index) => [franchise.id, index]));
 }
 
-function FranchiseBadge({ name, index, size, fontSize }: { name: string | null; index: number | undefined; size: number; fontSize: number }) {
+/** The franchise's logo from the league already loaded -- the stream carries ids, not image URLs (docs/PHASE17.md). */
+function logoOf(league: League, franchiseId: string | null | undefined): string | null {
+  return league.franchises.find((franchise) => franchise.id === franchiseId)?.logoUrl ?? null;
+}
+
+function FranchiseBadge({
+  name,
+  index,
+  size,
+  fontSize,
+  logoUrl,
+}: {
+  name: string | null;
+  index: number | undefined;
+  size: number;
+  fontSize: number;
+  logoUrl?: string | null;
+}) {
   const known = index !== undefined && name;
   return (
     <span
@@ -326,6 +343,9 @@ function FranchiseBadge({ name, index, size, fontSize }: { name: string | null; 
       style={{ width: size, height: size, fontSize, background: known ? franchiseColor(index) : "rgba(255,255,255,.12)" }}
     >
       {name ? initials(name) : "—"}
+      {/* Over the initials, which show while it loads; a broken image hides itself. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- franchise logo on our S3 host; plain <img> keeps next/image's remotePatterns closed */}
+      {logoUrl && <img src={logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" onError={(event) => (event.currentTarget.style.display = "none")} />}
     </span>
   );
 }
@@ -514,7 +534,7 @@ function PlayerCard({ league, auction, outcome, order }: { league: League; aucti
           <span className={styles.label}>Leading franchise</span>
           <div className={styles.leaderSlot}>
             <div ref={leaderRef} className={styles.leader}>
-              <FranchiseBadge name={leaderName} index={leaderId ? order.get(leaderId) : undefined} size={32} fontSize={11} />
+              <FranchiseBadge name={leaderName} index={leaderId ? order.get(leaderId) : undefined} size={32} fontSize={11} logoUrl={logoOf(league, leaderId)} />
               <span className={styles.leaderName}>{leaderName ?? "No bids yet"}</span>
             </div>
           </div>
@@ -593,7 +613,7 @@ function BidTicker({ league, auction, order }: { league: League; auction: Auctio
         <ol ref={listRef} className={styles.tickerList}>
           {rows.map((bid, index) => (
             <li key={`${bid.franchiseId}-${bid.placedAt}`} className={`${styles.tickerRow} ${index === 0 ? styles.tickerTop : ""}`}>
-              <FranchiseBadge name={bid.franchiseName} index={order.get(bid.franchiseId)} size={28} fontSize={10} />
+              <FranchiseBadge name={bid.franchiseName} index={order.get(bid.franchiseId)} size={28} fontSize={10} logoUrl={logoOf(league, bid.franchiseId)} />
               <span className={styles.tickerName}>{bid.franchiseName ?? "Unknown franchise"}</span>
               <span className={styles.tickerAmount}>{formatInr(bid.amount)}</span>
               <span className={styles.tickerAgo}>{formatAgo(bid.placedAt, now)}</span>
@@ -637,6 +657,7 @@ function Standings({
           key={franchise.franchiseId}
           franchise={franchise}
           index={order.get(franchise.franchiseId)}
+          logoUrl={logoOf(league, franchise.franchiseId)}
           leading={franchise.franchiseId === leadingId}
           won={outcome?.sold === true && franchise.franchiseId === leadingId}
           squadMin={squadMin}
@@ -651,6 +672,7 @@ function Standings({
 function StandingRow({
   franchise,
   index,
+  logoUrl,
   leading,
   won,
   squadMin,
@@ -659,6 +681,7 @@ function StandingRow({
 }: {
   franchise: FranchiseResult;
   index: number | undefined;
+  logoUrl: string | null;
   leading: boolean;
   won: boolean;
   squadMin: number | null;
@@ -673,7 +696,7 @@ function StandingRow({
   return (
     <div className={`${styles.standing} ${leading ? styles.standingLead : ""}`}>
       <div className={styles.standingTop}>
-        <FranchiseBadge name={franchise.franchiseName} index={index} size={28} fontSize={10} />
+        <FranchiseBadge name={franchise.franchiseName} index={index} size={28} fontSize={10} logoUrl={logoUrl} />
         <span className={styles.standingName}>{franchise.franchiseName}</span>
         {leading && <span className={styles.tag}>{won ? "WON" : "LEADING"}</span>}
         <span className={styles.squad}>
@@ -849,7 +872,7 @@ function Completed({ league, auction, results }: { league: League; auction: Auct
           return (
             <article key={franchise.franchiseId} className={`${styles.resultCard} ${franchise.belowSquadMin ? styles.resultBelow : ""}`}>
               <div className={styles.resultHead}>
-                <FranchiseBadge name={franchise.franchiseName} index={order.get(franchise.franchiseId)} size={40} fontSize={12} />
+                <FranchiseBadge name={franchise.franchiseName} index={order.get(franchise.franchiseId)} size={40} fontSize={12} logoUrl={logoOf(league, franchise.franchiseId)} />
                 <span className={styles.stack} style={{ flex: 1, minWidth: 0 }}>
                   <h3 className={styles.resultName}>{franchise.franchiseName}</h3>
                   <span className={styles.summaryLabel}>

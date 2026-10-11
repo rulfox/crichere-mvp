@@ -41,6 +41,8 @@ data class LeaguePlayerDto(
     val playingRole: PlayingRole? = null,
     /** The player's account was deleted (docs/PHASE16.md): show the neutral "Deleted user" avatar (design D10). */
     val deleted: Boolean = false,
+    /** Profile photo for the roster row (docs/PHASE17.md); `null` falls back to initials. */
+    val photoUrl: String? = null,
 )
 
 /** Body of `POST /leagues/{id}/players`. */
@@ -73,6 +75,8 @@ data class LeagueRoleDto(
     val grantedAt: String,
     /** The co-organizer's account was deleted (design D10). */
     val deleted: Boolean = false,
+    /** Profile photo (docs/PHASE17.md); `null` falls back to initials. */
+    val photoUrl: String? = null,
 )
 
 /** Mirrors the backend's `RoleLookupResponse` -- who a phone number resolved to, not yet a grant. */

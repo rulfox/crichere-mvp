@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -277,7 +278,7 @@ private fun CoOrganizerList(roles: List<LeagueRoleDto>, currentUserId: String?, 
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val name = role.name ?: "Unnamed user"
-                Avatar(name, size = 34.dp, fontSize = 12.sp, background = RowAvatar)
+                Avatar(name, size = 34.dp, fontSize = 12.sp, background = RowAvatar, photoUrl = role.photoUrl)
                 Spacer(Modifier.width(12.dp))
                 val isMe = role.userId == currentUserId
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -325,13 +326,17 @@ private fun CoOrganizerList(roles: List<LeagueRoleDto>, currentUserId: String?, 
 }
 
 @Composable
-private fun Avatar(name: String, size: Dp, fontSize: TextUnit, background: Color) {
-    Box(Modifier.size(size).background(background, CircleShape), contentAlignment = Alignment.Center) {
+private fun Avatar(name: String, size: Dp, fontSize: TextUnit, background: Color, photoUrl: String? = null) {
+    // Initials underneath: they show while the photo loads and if it fails (docs/PHASE17.md).
+    Box(Modifier.size(size).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
         Text(
             initials(name),
             style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = fontSize, lineHeight = fontSize),
             color = MaterialTheme.colorScheme.primary,
         )
+        if (photoUrl != null) {
+            coil3.compose.AsyncImage(model = photoUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
     }
 }
 

@@ -23,4 +23,6 @@ data class LeaguePlayerResponse(
     val playingRole: PlayingRole? = null,
     /** The player's account was deleted (docs/PHASE16.md); [name] is "Deleted user", show the neutral avatar. */
     val deleted: Boolean = false,
+    /** The player's profile photo for roster rows (docs/PHASE17.md); always `null` for a deleted user. */
+    val photoUrl: String? = null,
 )

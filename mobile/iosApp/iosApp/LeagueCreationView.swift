@@ -213,12 +213,14 @@ struct LeagueCreationView: View {
             if let leagueId { onDone(leagueId) }
         }
         .task(id: logoPickerItem) {
-            if let item = logoPickerItem, let data = try? await item.loadTransferable(type: Data.self) {
+            if let item = logoPickerItem, let picked = try? await item.loadTransferable(type: Data.self),
+               let data = downscaledJpeg(picked, maxSide: UploadImageSize.photo) {
                 wrapper.onLogoPicked(bytes: toKotlinByteArray(data), contentType: "image/jpeg")
             }
         }
         .task(id: bannerPickerItem) {
-            if let item = bannerPickerItem, let data = try? await item.loadTransferable(type: Data.self) {
+            if let item = bannerPickerItem, let picked = try? await item.loadTransferable(type: Data.self),
+               let data = downscaledJpeg(picked, maxSide: UploadImageSize.banner, quality: 0.85) {
                 wrapper.onBannerPicked(bytes: toKotlinByteArray(data), contentType: "image/jpeg")
             }
         }

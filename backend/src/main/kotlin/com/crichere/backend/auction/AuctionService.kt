@@ -512,7 +512,7 @@ class AuctionService(
             userId = userId,
             playerName = profile?.name,
             soldPrice = requireNotNull(soldPrice),
-            photoUrl = profile?.photoUrl,
+            photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
             playingRole = profile?.playingRole,
             deleted = profile?.accountDeleted == true,
         )

@@ -579,6 +579,17 @@ above.
 
 Open items found while implementing the redesign, not yet scheduled.
 
+- [ ] **Photos and logos in lists** (2026-10-11, [PHASE17.md](PHASE17.md)). Existing avatar and logo slots now show
+  the image over the initials. **Verified** on the Pixel_9_Pro emulator: League detail player photos and franchise
+  logo, broken logo URL falls back to initials, photos still shown after a cold start with the image host down
+  (disk cache), auction results photos.
+
+  **Not verified:**
+  - the Manage co-organizers photo on a device;
+  - web logos in a real browser (vitest only);
+  - iOS entirely;
+  - a real 1024px S3 upload.
+
 - [ ] **Account deletion screens** (2026-10-11, [PHASE16.md](PHASE16.md) section 9, board
   `Crichere Account Deletion.dc.html`). Built on Android and iOS (Swift never compiled); numbers taken from the board
   DOM. **Verified** on the Pixel_9_Pro emulator against the local backend:

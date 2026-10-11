@@ -466,6 +466,7 @@ class LeagueService(
             name = profile?.name,
             grantedAt = grantedAt,
             deleted = profile?.accountDeleted == true,
+            photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
         )
     }
 

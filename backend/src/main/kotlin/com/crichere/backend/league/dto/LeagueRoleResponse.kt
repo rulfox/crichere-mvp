@@ -12,4 +12,6 @@ data class LeagueRoleResponse(
     val grantedAt: Instant,
     /** The co-organizer's account was deleted (docs/PHASE16.md); show the neutral avatar. */
     val deleted: Boolean = false,
+    /** The co-organizer's profile photo (docs/PHASE17.md); always `null` for a deleted user. */
+    val photoUrl: String? = null,
 )

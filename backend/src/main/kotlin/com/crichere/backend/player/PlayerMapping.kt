@@ -32,5 +32,6 @@ fun PlayerEntity.toResponse(
         leaveRequestedAt = if (visible) leaveRequestedAt else null,
         playingRole = profile?.playingRole,
         deleted = profile?.accountDeleted == true,
+        photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
     )
 }

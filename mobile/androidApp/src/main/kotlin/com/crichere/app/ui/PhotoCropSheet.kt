@@ -83,7 +83,8 @@ data class CropSquare(val left: Float, val top: Float, val side: Float)
 data class CropBanner(val left: Float, val top: Float, val width: Float, val height: Float)
 
 private const val MaxDecodeDimension = 2048
-private const val OutputSize = 512
+// Photos and logos: 1024px leaves headroom over the largest use today (auction tile ~330px) -- docs/PHASE17.md.
+private const val OutputSize = 1024
 private const val MaxZoom = 5f
 private val CropCircle = 230.dp
 private val CropSquareSide = 220.dp
@@ -118,13 +119,14 @@ fun decodePickedPhoto(context: Context, uri: Uri): PickedPhoto? = runCatching {
     PickedPhoto(bitmap, name)
 }.getOrNull()
 
-/** Crops [square] out of [bitmap] and encodes it as a [OutputSize]px JPEG. */
+/** Crops [square] out of [bitmap] and encodes it as a JPEG of at most [OutputSize]px (a smaller crop is never upscaled). */
 fun encodeCrop(bitmap: Bitmap, square: CropSquare): ByteArray {
     val left = square.left.roundToInt().coerceIn(0, bitmap.width - 1)
     val top = square.top.roundToInt().coerceIn(0, bitmap.height - 1)
     val side = square.side.roundToInt().coerceAtMost(min(bitmap.width - left, bitmap.height - top)).coerceAtLeast(1)
     val cropped = Bitmap.createBitmap(bitmap, left, top, side, side)
-    val scaled = Bitmap.createScaledBitmap(cropped, OutputSize, OutputSize, true)
+    val outSide = min(side, OutputSize)
+    val scaled = Bitmap.createScaledBitmap(cropped, outSide, outSide, true)
     return ByteArrayOutputStream().use { out ->
         scaled.compress(Bitmap.CompressFormat.JPEG, 88, out)
         out.toByteArray()

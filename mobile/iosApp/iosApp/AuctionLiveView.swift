@@ -59,6 +59,11 @@ struct AuctionLiveView: View {
     }
 
     private var state: AuctionState { wrapper.state }
+
+    /// The franchise's logo from the league already loaded -- the stream carries ids, not image URLs (docs/PHASE17.md).
+    private func logoUrl(_ franchiseId: String?) -> String? {
+        state.league?.franchises.first { $0.id == franchiseId }?.logoUrl
+    }
     private var offline: Bool { state.connectionPhase == .reconnecting || state.connectionPhase == .lost }
 
     var body: some View {
@@ -311,7 +316,7 @@ struct AuctionLiveView: View {
                     Spacer(minLength: 0)
                     if let leader = auction.currentLeadingFranchiseName {
                         HStack(spacing: 7) {
-                            FranchiseBadge(name: leader, size: 20, radius: 6, fontSize: 7)
+                            FranchiseBadge(name: leader, size: 20, radius: 6, fontSize: 7, logoUrl: logoUrl(auction.currentLeadingFranchiseId))
                             Text(leader).font(.system(size: 13, weight: .semibold)).foregroundColor(AuctionPalette.soft).lineLimit(1)
                         }
                     }
@@ -431,7 +436,7 @@ struct AuctionLiveView: View {
                 let over = remaining.map { $0 < 0 } ?? false
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 10) {
-                        FranchiseBadge(name: franchise.franchiseName, size: 28, radius: 8, fontSize: 10)
+                        FranchiseBadge(name: franchise.franchiseName, size: 28, radius: 8, fontSize: 10, logoUrl: logoUrl(franchise.franchiseId))
                         Text(franchise.franchiseName).font(.system(size: 15, weight: .semibold)).foregroundColor(.white)
                     }
                     let players = "\(franchise.playersWon.count) \(franchise.playersWon.count == 1 ? "player" : "players") · \(rupees(franchise.purseSpent)) spent"
@@ -541,7 +546,7 @@ struct AuctionLiveView: View {
         let left = context.purseLeft?.doubleValue
         let squad = context.squadMax.map { " · \(context.playersWon)/\($0)" } ?? ""
         HStack(alignment: .top, spacing: 8) {
-            FranchiseBadge(name: context.franchiseName, size: 20, radius: 6, fontSize: 7)
+            FranchiseBadge(name: context.franchiseName, size: 20, radius: 6, fontSize: 7, logoUrl: logoUrl(context.franchiseId))
             Group {
                 if let left, left < 0 {
                     // U4 A1: never a negative number -- the amount over goes in coral.
@@ -817,12 +822,15 @@ struct AuctionLiveView: View {
     }
 }
 
-/// Initials badge in a stable colour per franchise name (same idea as Android's `FranchiseBadge`).
+/// Initials badge in a stable colour per franchise name (same idea as Android's `FranchiseBadge`),
+/// with the franchise's logo on top when it has one. The initials stay underneath, so they show
+/// while the logo loads and if it fails (docs/PHASE17.md).
 struct FranchiseBadge: View {
     let name: String
     let size: CGFloat
     let radius: CGFloat
     let fontSize: CGFloat
+    var logoUrl: String? = nil
 
     private static let palette: [UInt32] = [0xB5462B, 0x6B4FA8, 0x2F6FA8, 0x2E7D4F, 0xA8742F, 0x8A3D6B]
 
@@ -834,6 +842,8 @@ struct FranchiseBadge: View {
             .foregroundColor(.white)
             .frame(width: size, height: size)
             .background(RoundedRectangle(cornerRadius: radius).fill(Color(hex: Self.palette[index])))
+            .overlay { RemoteImage(url: logoUrl) }
+            .clipShape(RoundedRectangle(cornerRadius: radius))
             .accessibilityHidden(true)
     }
 }

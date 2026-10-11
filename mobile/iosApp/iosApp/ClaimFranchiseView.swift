@@ -95,7 +95,8 @@ struct ClaimFranchiseView: View {
         .onAppear { wrapper.retry() }
         .onChange(of: wrapper.state.claimed) { _, claimed in if claimed { onDone() } }
         .task(id: logoPickerItem) {
-            if let item = logoPickerItem, let data = try? await item.loadTransferable(type: Data.self) {
+            if let item = logoPickerItem, let picked = try? await item.loadTransferable(type: Data.self),
+               let data = downscaledJpeg(picked, maxSide: UploadImageSize.photo) {
                 wrapper.uploadLogo(data: data)
             }
         }

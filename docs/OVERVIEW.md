@@ -72,6 +72,7 @@ Every `PHASEn.md` follows this structure, in order:
 - [Phase 13](PHASE13.md) — branded link sharing on crichere.com: per-league Open Graph share card (Claude Design), default Crichere card, https Share link, Android App Links (iOS Universal Links deferred). **Status: implemented (web + Android), tested locally; not yet deployed or verified on-device.**
 - [Phase 14](PHASE14.md) — Railway cost cuts: backend JVM right-sized (256 MB heap, Serial GC, virtual threads, smaller DB pool, API docs off in production) and all services moved to Singapore (new database, verified restore). **Status: done; old US-West database kept as rollback.**
 - [Phase 16](PHASE16.md) — account deletion (Play/App Store/DPDP): 14-day grace with restore-on-sign-in, daily purge to an anonymised tombstone ("Deleted user"), league handover to the earliest co-organizer, `/delete-account` web page, Privacy/Terms draft text on the web. **Status: backend, web and Android done and tested (emulator walk-through); iOS authored, not compiled.**
+- [Phase 17](PHASE17.md) — player photos and franchise logos in every list slot; uploads at 1024px (iOS now shrinks and strips EXIF before upload), bigger iOS image cache, lazy web logos. **Status: backend, web and Android done and tested; iOS authored, not compiled.**
 
 ## Open Questions
 

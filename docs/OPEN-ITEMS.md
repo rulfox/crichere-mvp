@@ -1,6 +1,6 @@
 # Open items
 
-**Last updated:** 2026-10-11 (account deletion built: backend + web, PHASE16)
+**Last updated:** 2026-10-11 (photos and logos in lists, PHASE17)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
@@ -32,7 +32,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 | Stale refresh token → 401 after reinstall | Seen once (2026-10-01); cause unconfirmed. Consider a short reuse grace window. | DESIGN-REVIEW |
 | Orphaned test uploads in S3 | Delete, or clean up never-referenced uploads. | DESIGN-REVIEW |
 | `JwtServiceTest` "accepted one second before it expires" is flaky | Passes alone; sits on a one-second boundary. Make the test use a fixed clock. | backend tests |
-| Swift code never compiled | Every iOS file, including the update #4 port, needs a first Xcode build (expect fixes). | PHASE15 7.5, iosApp/README |
+| Swift code never compiled | Every iOS file, including the update #4 port and PHASE17's image upload shrink + cache, needs a first Xcode build (expect fixes). | PHASE15 7.5, PHASE17 7, iosApp/README |
 | Backend deploy carries new auction fields + own-lead rule + heartbeat | Watch the first live auction on Railway after the pushes of 2026-10-04. | PHASE15 6, 7.1 |
 
 ## 4. Not yet verified
@@ -56,6 +56,9 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 - Scripted assertions for the local e2e harness (`backend/e2e`), so it becomes a regression suite.
 - Places API (New) search for the ground map. API enabled on project `crichere` and added to the `Maps SDK Android (debug)` key's API restrictions (2026-10-11); `PLACE_SEARCH_PROVIDER=places` set in `mobile/local.properties` and verified on the Pixel_9_Pro AVD 2026-10-11 (autocomplete "Nehru Stadium Kottayam" -> pick -> map flew there, pin at 9.5960, 76.5260). Release builds must set the same property; billing is per session (PHASE2 decisions).
 - iOS Universal Links.
+- CloudFront in front of `crichere-media-prod`, with on-request resizing (e.g. AWS Serverless Image Handler) so list
+  rows fetch ~128px instead of the 1024px upload (PHASE17 3). Deferred 2026-10-11: images are cached forever on
+  devices; it needs AWS setup and a rewrite of stored URLs.
 
 ## 6. Location data (LGD) — decided 2026-10-06
 

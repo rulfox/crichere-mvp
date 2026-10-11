@@ -813,7 +813,7 @@ private fun PlayerRow(player: LeaguePlayerDto, league: LeagueDto, isMe: Boolean,
     val paid = if (player.paymentScreenshotUrl != null) league.playerFee?.let { "paid ${rupees(it)}" } else null
     RosterRow(
         avatarText = initials(player.name ?: "?"),
-        avatarUrl = null,
+        avatarUrl = player.photoUrl,
         deleted = player.deleted,
         title = (player.name ?: "Player") + if (isMe) " (you)" else "",
         subtitle = listOfNotNull(player.playingRole?.label(), paid).joinToString(" · ").ifEmpty { null },

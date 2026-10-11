@@ -10,6 +10,8 @@ import com.crichere.backend.league.LeagueRoleRepository
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.profile.ProfileRepository
 import io.mockk.every
+import org.hamcrest.Matchers.contains
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
@@ -154,6 +156,9 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
         authedPost(organizer.accessToken, "/api/v1/leagues/$openLeagueId/players", emptyMap()).andExpect(status().isOk)
         authedPost(organizer.accessToken, "/api/v1/leagues/$auctionedLeagueId/players", emptyMap()).andExpect(status().isOk)
         setAuctionStatus(auctionedLeagueId, AuctionStatus.COMPLETED)
+        // Roster rows carry the profile photo (docs/PHASE17.md).
+        authedGet(otherOrganizer.accessToken, "/api/v1/leagues/$auctionedLeagueId")
+            .andExpect(jsonPath("$.players[?(@.userId=='${organizer.userId}')].photoUrl", contains("https://example.com/p.jpg")))
 
         // The screen shows who gets the league and the erase date before anything is requested.
         authedGet(organizer.accessToken, "/api/v1/me/deletion")
@@ -210,6 +215,7 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
         authedGet(otherOrganizer.accessToken, "/api/v1/leagues/$auctionedLeagueId")
             .andExpect(jsonPath("$.players[?(@.userId=='${organizer.userId}')].name").value("Deleted user"))
             .andExpect(jsonPath("$.players[?(@.userId=='${organizer.userId}')].deleted").value(true))
+            .andExpect(jsonPath("$.players[?(@.userId=='${organizer.userId}')].photoUrl", contains(nullValue())))
 
         // The number is free again, as a brand-new account. A second run finds nothing to do.
         val fresh = signIn(organizer.phone)

@@ -150,6 +150,19 @@ describe("LiveAuction", () => {
     await waitFor(() => expect(within(screen.getByLabelText("Franchise standings")).getByText("LEADING")).toBeInTheDocument());
   });
 
+  it("live: franchise badges show the league's logo over the initials, lazily (docs/PHASE17.md)", async () => {
+    const withLogo = { ...league, franchises: [league.franchises[0], { id: "f2", name: "Victory CC", logoUrl: "https://media.example/f2.jpg" }] };
+    const { container } = render(<LiveAuction league={withLogo} />);
+    source().emit("auction-state", openLot);
+
+    await screen.findByRole("heading", { name: "Aswin Sudarsanan" });
+    const logos = [...container.querySelectorAll<HTMLImageElement>('img[src="https://media.example/f2.jpg"]')];
+    // Leader slot and the ticker row at least; Spartanz (no logo) keeps its initials only.
+    expect(logos.length).toBeGreaterThanOrEqual(2);
+    logos.forEach((img) => expect(img.getAttribute("loading")).toBe("lazy"));
+    expect(container.querySelector('img[src=""]')).toBeNull();
+  });
+
   it("live: hides the batting/bowling chips the profile doesn't have, keeps the role", async () => {
     render(<LiveAuction league={league} />);
     source().emit("auction-state", openLot);

@@ -116,7 +116,11 @@ class JwtServiceTest {
     @Test
     fun `a tampered signature is rejected`() {
         val issued = service.issueAccessToken(UUID.randomUUID())
-        val flipped = issued.token.dropLast(1) + if (issued.token.last() == 'A') 'B' else 'A'
+        // Change the signature's first character: the last one also carries base64 padding bits, so
+        // flipping it (A <-> B) can leave the decoded signature unchanged.
+        val signatureStart = issued.token.lastIndexOf('.') + 1
+        val swapped = if (issued.token[signatureStart] == 'A') 'B' else 'A'
+        val flipped = issued.token.substring(0, signatureStart) + swapped + issued.token.substring(signatureStart + 1)
 
         assertThrows<InvalidAccessTokenException> { service.parseAccessToken(flipped) }
     }

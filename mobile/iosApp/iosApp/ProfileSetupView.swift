@@ -204,7 +204,8 @@ struct ProfileSetupView: View {
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
             Task {
-                guard let newItem, let data = try? await newItem.loadTransferable(type: Data.self) else { return }
+                guard let newItem, let picked = try? await newItem.loadTransferable(type: Data.self),
+                      let data = downscaledJpeg(picked, maxSide: UploadImageSize.photo) else { return }
                 let bytes = KotlinByteArray(size: Int32(data.count))
                 data.withUnsafeBytes { rawBuffer in
                     let pointer = rawBuffer.bindMemory(to: UInt8.self)

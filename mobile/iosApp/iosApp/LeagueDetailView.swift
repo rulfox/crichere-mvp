@@ -376,7 +376,7 @@ struct LeagueDetailView: View {
         } label: {
             personRow(
                 // Design D10: a deleted user gets the neutral avatar and a muted name.
-                avatar: player.deleted ? AnyView(DeletedUserAvatar(size: 36)) : AnyView(initialsAvatar(name)),
+                avatar: player.deleted ? AnyView(DeletedUserAvatar(size: 36)) : AnyView(initialsAvatar(name, photoUrl: player.photoUrl)),
                 name: name,
                 muted: player.deleted,
                 detail: player.leaveRequestedAt != nil && editable
@@ -404,7 +404,7 @@ struct LeagueDetailView: View {
             if tappable { franchiseActions = franchise }
         } label: {
             personRow(
-                avatar: AnyView(FranchiseBadge(name: franchise.name, size: 36, radius: 10, fontSize: 12)),
+                avatar: AnyView(FranchiseBadge(name: franchise.name, size: 36, radius: 10, fontSize: 12, logoUrl: franchise.logoUrl)),
                 name: franchise.name,
                 muted: false,
                 detail: franchise.leaveRequestedAt != nil && editable
@@ -444,13 +444,15 @@ struct LeagueDetailView: View {
         .padding(.vertical, 8)
     }
 
-    private func initialsAvatar(_ name: String) -> some View {
+    private func initialsAvatar(_ name: String, photoUrl: String?) -> some View {
         let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
         return Text(initials.isEmpty ? "?" : initials)
             .font(BrandFont.archivo(12, .bold))
             .foregroundColor(Brand.primary)
             .frame(width: 36, height: 36)
             .background(Circle().fill(Brand.avatar))
+            .overlay { RemoteImage(url: photoUrl) }
+            .clipShape(Circle())
             .accessibilityHidden(true)
     }
 
