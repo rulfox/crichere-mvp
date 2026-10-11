@@ -12,7 +12,6 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
-import java.util.Optional
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -256,7 +255,7 @@ class AuthServiceTest {
         val successor = storedRefreshToken("successor")
         val rotated = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(30); replacedById = successor.id }
         every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns rotated
-        every { refreshTokenRepository.findById(successor.id!!) } returns Optional.of(successor)
+        every { refreshTokenRepository.findByIdForUpdate(successor.id!!) } returns successor
 
         val result = authService.refresh(raw)
 
@@ -273,7 +272,7 @@ class AuthServiceTest {
         val successor = storedRefreshToken("successor")
         val rotated = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(61); replacedById = successor.id }
         every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns rotated
-        every { refreshTokenRepository.findById(successor.id!!) } returns Optional.of(successor)
+        every { refreshTokenRepository.findByIdForUpdate(successor.id!!) } returns successor
         every { refreshTokenRepository.revokeAllForUser(USER_ID, now) } returns 2
 
         assertThrows<InvalidRefreshTokenException> { authService.refresh(raw) }
@@ -286,7 +285,7 @@ class AuthServiceTest {
         val used = storedRefreshToken("successor").apply { revokedAt = now.minusSeconds(5) }
         val rotated = storedRefreshToken(raw).apply { revokedAt = now.minusSeconds(20); replacedById = used.id }
         every { refreshTokenRepository.findByTokenHashForUpdate(any()) } returns rotated
-        every { refreshTokenRepository.findById(used.id!!) } returns Optional.of(used)
+        every { refreshTokenRepository.findByIdForUpdate(used.id!!) } returns used
         every { refreshTokenRepository.revokeAllForUser(USER_ID, now) } returns 2
 
         assertThrows<InvalidRefreshTokenException> { authService.refresh(raw) }

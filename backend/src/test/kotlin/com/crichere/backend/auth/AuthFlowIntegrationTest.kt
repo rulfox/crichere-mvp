@@ -455,6 +455,34 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
             VerifiedFirebaseToken(uid = "firebase-uid-$phoneNumber", phoneNumber = phoneNumber)
     }
 
+    @Test
+    fun `a thief refreshing with the successor while the owner retries the old token can't both win`() {
+        repeat(5) {
+            givenFirebaseAccepts(phone)
+            val session = signIn()
+            val userId = UUID.fromString(session["userId"] as String)
+            val old = session["refreshToken"] as String
+            val successor = refresh(old)["refreshToken"] as String
+            val start = java.util.concurrent.CountDownLatch(1)
+            val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+            val statuses = try {
+                listOf(successor, old).map { token ->
+                    pool.submit<Int> {
+                        start.await()
+                        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to token)).andReturn().response.status
+                    }
+                }.also { start.countDown() }.map { it.get() }
+            } finally {
+                pool.shutdown()
+            }
+
+            // Whichever runs second sees the other's work and treats it as theft: one 200, one 401,
+            // and every session of the user is gone.
+            assertEquals(listOf(200, 401), statuses.sorted())
+            assertTrue(refreshTokenRepository.findAll().filter { it.userId == userId }.all { it.revokedAt != null })
+        }
+    }
+
     private fun refresh(token: String): Map<String, Any?> =
         postJson("/api/v1/auth/refresh", mapOf("refreshToken" to token))
             .andExpect(status().isOk)

@@ -124,7 +124,9 @@ class AuthService(
 
         val rotatedAt = existing.revokedAt
         if (rotatedAt != null) {
-            val successor = existing.replacedById?.let { refreshTokenRepository.findById(it).orElse(null) }
+            // Locked: a refresh with the successor running at the same time must either finish first
+            // (then the successor is spent and this is theft) or see it revoked here (then it is theft).
+            val successor = existing.replacedById?.let { refreshTokenRepository.findByIdForUpdate(it) }
             val lostReply = successor != null && successor.revokedAt == null &&
                 !now.isAfter(rotatedAt.plus(jwtService.refreshReuseGrace))
             if (!lostReply) {

@@ -25,6 +25,14 @@ interface RefreshTokenRepository : JpaRepository<RefreshTokenEntity, UUID> {
     @Query("select t from RefreshTokenEntity t where t.tokenHash = :tokenHash")
     fun findByTokenHashForUpdate(@Param("tokenHash") tokenHash: String): RefreshTokenEntity?
 
+    /**
+     * The successor check in the refresh grace path: locked too, so a concurrent refresh *with* the
+     * successor (the thief) and a retry of the old token (the owner) can't both win.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from RefreshTokenEntity t where t.id = :id")
+    fun findByIdForUpdate(@Param("id") id: UUID): RefreshTokenEntity?
+
     /** Ends every session a user has -- an account deletion request (docs/PHASE16.md). */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update RefreshTokenEntity t set t.revokedAt = :now where t.userId = :userId and t.revokedAt is null")

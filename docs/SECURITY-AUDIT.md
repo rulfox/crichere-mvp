@@ -185,6 +185,10 @@ address. Phase 17 put photos into roster rows, which widened this. Found by the 
 **Fix (owner decision: recover a lost reply, detect theft):**
 - The refresh path locks the token row (`findByTokenHashForUpdate`), so the second call sees the first one's
   rotation. A two-thread integration test fails without the lock.
+- The grace path also locks the successor row (`findByIdForUpdate`). Without that, a thief refreshing with the
+  successor while the owner retried the old token could both win and the theft went unseen (commit review,
+  same day). Now whichever runs second sees it as theft: one 200, one 401, every session revoked. The
+  integration test runs it 5 times and fails without the lock.
 - Each rotated token points at its successor (`V24`, `refresh_tokens.replaced_by_id`).
 - The old token coming back **within 60 s with its successor unused** is a lost reply. It gets a fresh pair,
   and the unused successor is revoked, so one token stays live. The window starts at the first rotation
