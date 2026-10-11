@@ -10,7 +10,7 @@ were answered by update #5 (PHASE15 8).
 
 | Item | Why it matters | Where |
 |---|---|---|
-| Privacy and Terms text | Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
+| Privacy and Terms text | Drafts written 2026-10-11 in `docs/legal/` (PRIVACY-POLICY.md, TERMS-OF-SERVICE.md; copies in Downloads). Fill the [placeholders] (legal name, address, grievance officer, jurisdiction), lawyer review, then load into /privacy and /terms. Play also needs an account-deletion path (in-app + web URL), not built yet. Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
 | Old bucket `crichere-media-dev` still serves a payment screenshot publicly | Prod bucket fixed 2026-10-05. Owner approved deleting it (2026-10-05); `crichere-claude` lacks delete rights, so delete it in the S3 console (empty, then delete). Also remove the temporary `crichere-media-move-temp` IAM policy. | SECURITY-AUDIT 1 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 
@@ -53,7 +53,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 
 - Country-code picker (phone entry, co-organizer lookup, backend normaliser).
 - Scripted assertions for the local e2e harness (`backend/e2e`), so it becomes a regression suite.
-- Places API (New) search for the ground map. API enabled on project `crichere` and added to the `Maps SDK Android (debug)` key's API restrictions (2026-10-11); the app still uses the free Geocoder until `PLACE_SEARCH_PROVIDER=places` is set in `mobile/local.properties` (per-session billing, PHASE2 decisions).
+- Places API (New) search for the ground map. API enabled on project `crichere` and added to the `Maps SDK Android (debug)` key's API restrictions (2026-10-11); `PLACE_SEARCH_PROVIDER=places` set in `mobile/local.properties` and verified on the Pixel_9_Pro AVD 2026-10-11 (autocomplete "Nehru Stadium Kottayam" -> pick -> map flew there, pin at 9.5960, 76.5260). Release builds must set the same property; billing is per session (PHASE2 decisions).
 - iOS Universal Links.
 
 ## 6. Location data (LGD) — decided 2026-10-06
