@@ -35,6 +35,12 @@ import com.crichere.app.league.MyLeaguesRepository
 import com.crichere.app.league.MyLeaguesViewModel
 import com.crichere.app.league.PlayerRepository
 import com.crichere.app.league.RoleRepository
+import com.crichere.app.moderation.BlockViewModel
+import com.crichere.app.moderation.BlockedPeopleViewModel
+import com.crichere.app.moderation.KtorModerationRepository
+import com.crichere.app.moderation.ModerationNoticesViewModel
+import com.crichere.app.moderation.ModerationRepository
+import com.crichere.app.moderation.ReportViewModel
 import com.crichere.app.network.HttpClientFactory
 import com.crichere.app.notification.DeviceTokenRepository
 import com.crichere.app.notification.KtorDeviceTokenRepository
@@ -86,6 +92,7 @@ val sharedModule: Module = module {
         HttpClientFactory.create(
             loadTokens = { get<AuthTokenProvider>().loadTokens() },
             refreshTokens = { get<AuthTokenProvider>().refreshTokens() },
+            onAccountSuspended = { get<AuthRepository>().handleSuspended() },
         )
     }
 
@@ -107,6 +114,12 @@ val sharedModule: Module = module {
     }
 
     single { AccountNotices() }
+
+    single<ModerationRepository> { KtorModerationRepository(httpClient = get()) }
+    factory { ReportViewModel(get()) }
+    factory { BlockViewModel(get()) }
+    factory { BlockedPeopleViewModel(get()) }
+    factory { ModerationNoticesViewModel(get()) }
 
     single<AccountDeletionRepository> { KtorAccountDeletionRepository(httpClient = get()) }
 

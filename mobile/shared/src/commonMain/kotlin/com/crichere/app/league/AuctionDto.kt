@@ -28,6 +28,8 @@ data class AuctionStateDto(
     /** Last 8 bids on the current player, newest first (docs/PHASE6.md); empty between players. */
     val recentBids: List<AuctionBidTickerDto> = emptyList(),
     val currentPlayerPhotoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val currentPlayerPhotoRemoved: Boolean = false,
     val currentPlayerRole: PlayingRole? = null,
     val playersTotal: Int = 0,
     val playersSold: Int = 0,
@@ -87,6 +89,8 @@ data class PlayerAuctionResultDto(
     val playerName: String? = null,
     val soldPrice: Double,
     val photoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
     /** The player's account was deleted (design D10). */
     val deleted: Boolean = false,
 )

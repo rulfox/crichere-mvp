@@ -1,5 +1,6 @@
 package com.crichere.app.auth
 
+import com.crichere.app.network.ACCOUNT_SUSPENDED
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
@@ -62,7 +63,8 @@ internal class BackendOtpClient(private val httpClient: HttpClient) {
         call {
             val response = httpClient.post("/api/v1/auth/otp/verify") {
                 contentType(ContentType.Application.Json)
-                setBody(VerifyBody(challengeId, code))
+                // Reaching this point means the sign-in checkbox was ticked: Send code is disabled without it.
+                setBody(VerifyBody(challengeId, code, termsAccepted = true))
             }
             if (response.status.isSuccess()) {
                 Result.success(json.decodeFromString<AuthResult>(response.bodyAsText()))
@@ -107,6 +109,7 @@ internal class BackendOtpClient(private val httpClient: HttpClient) {
         val problem = runCatching { json.decodeFromString<ProblemBody>(response.bodyAsText()) }.getOrNull()
         return when (problem?.code) {
             "INVALID_OTP" -> InvalidOtpCodeException(attemptsRemaining = problem.attemptsRemaining)
+            ACCOUNT_SUSPENDED -> AccountSuspendedException()
             "OTP_EXPIRED" -> OtpExpiredException()
             "INVALID_PHONE_NUMBER" -> OtpRequestFailedException("Enter a valid Indian mobile number.")
             "OTP_RESEND_LIMIT" -> OtpRequestFailedException("No more resends available. Please request a new code.")
@@ -140,7 +143,7 @@ internal class BackendOtpClient(private val httpClient: HttpClient) {
     private data class ResendBody(val challengeId: String)
 
     @Serializable
-    private data class VerifyBody(val challengeId: String, val code: String)
+    private data class VerifyBody(val challengeId: String, val code: String, val termsAccepted: Boolean)
 
     @Serializable
     private data class ChallengeBody(val challengeId: String)

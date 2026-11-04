@@ -31,6 +31,7 @@ class PhoneEntryViewModelTest {
         val viewModel = PhoneEntryViewModel(repository)
 
         viewModel.onPhoneNumberChanged("9876543210")
+        viewModel.onTermsAcceptedChanged(true)
         viewModel.requestCode()
         advanceUntilIdle()
 
@@ -49,6 +50,7 @@ class PhoneEntryViewModelTest {
         val viewModel = PhoneEntryViewModel(repository)
 
         viewModel.onPhoneNumberChanged("not-a-phone-number")
+        viewModel.onTermsAcceptedChanged(true)
         viewModel.requestCode()
         advanceUntilIdle()
 
@@ -65,6 +67,7 @@ class PhoneEntryViewModelTest {
         val viewModel = PhoneEntryViewModel(repository)
 
         viewModel.onPhoneNumberChanged("9876543210")
+        viewModel.onTermsAcceptedChanged(true)
         viewModel.requestCode()
         advanceUntilIdle()
 
@@ -80,6 +83,7 @@ class PhoneEntryViewModelTest {
         val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
         val viewModel = PhoneEntryViewModel(repository)
         viewModel.onPhoneNumberChanged("9876543210")
+        viewModel.onTermsAcceptedChanged(true)
         viewModel.requestCode()
         advanceUntilIdle()
         assertTrue(viewModel.state.value.errorMessage != null)
@@ -97,6 +101,7 @@ class PhoneEntryViewModelTest {
 
         viewModel.onPhoneNumberChanged("98765 43210")
         assertEquals("9876543210", viewModel.state.value.phoneNumber, "the field holds the national digits only")
+        viewModel.onTermsAcceptedChanged(true)
         viewModel.requestCode()
         advanceUntilIdle()
 
@@ -123,10 +128,25 @@ class PhoneEntryViewModelTest {
 
         listOf("987654321", "5876543210", "").forEach { typed ->
             viewModel.onPhoneNumberChanged(typed)
+            viewModel.onTermsAcceptedChanged(true)
             viewModel.requestCode()
             advanceUntilIdle()
             assertEquals("Enter a valid 10-digit mobile number.", viewModel.state.value.errorMessage, "typed: '$typed'")
         }
         assertEquals(0, phoneAuthClient.sendCallCount)
+    }
+
+    @Test
+    fun `send code does nothing until the terms box is ticked`() = viewModelTest {
+        val phoneAuthClient = FakePhoneAuthClient()
+        val repository = KtorAuthRepository(unusedHttpClient(), phoneAuthClient, FakeSecureStorage(), authenticatedHttpClientProvider = { unusedHttpClient() })
+        val viewModel = PhoneEntryViewModel(repository)
+
+        viewModel.onPhoneNumberChanged("9876543210")
+        viewModel.requestCode()
+        advanceUntilIdle()
+
+        assertTrue(!viewModel.state.value.canSend)
+        assertNull(viewModel.state.value.errorMessage)
     }
 }

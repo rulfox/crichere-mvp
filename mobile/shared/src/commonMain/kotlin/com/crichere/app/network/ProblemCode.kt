@@ -6,6 +6,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+/** The account is suspended (docs/PHASE18.md). */
+const val ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED"
+
 private val lenientJson = Json { ignoreUnknownKeys = true }
 
 /**

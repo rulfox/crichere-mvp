@@ -13,6 +13,8 @@ data class LeagueSummaryDto(
     val groundName: String,
     val startsOn: String,
     val status: LeagueStatus,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
 )
 
 /** Mirrors the backend's `MyLeaguesResponse` -- body of `GET /api/v1/me/leagues`. */

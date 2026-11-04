@@ -62,6 +62,7 @@ class AuthServiceTest {
         every { profileCompletionLookup.isComplete(any()) } returns false
         every { suspendedPhoneHashRepository.existsById(any()) } returns false
         every { userRepository.recordTermsAcceptance(any(), any(), any()) } returns 1
+        every { userRepository.existsByIdAndSuspendedAtIsNotNull(any()) } returns false
         every { refreshTokenRepository.save(any()) } answers { firstArg<RefreshTokenEntity>().also { if (it.id == null) it.id = UUID.randomUUID() } }
         every { userRepository.findByIdForUpdate(any()) } answers { UserEntity(id = firstArg(), phoneLookupHash = "h", phoneEncrypted = "e") }
     }

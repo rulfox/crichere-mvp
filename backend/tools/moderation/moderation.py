@@ -113,6 +113,15 @@ def cmd_remove_image(args):
         if url is None:
             sys.exit("It has no image.")
         cur.execute(f"update {table} set {url_col} = null, {removed_col} = true where {id_col} = %s", (args.id,))
+        # A league can point at an image another row uses, so never delete an object something still needs.
+        cur.execute(
+            """select count(*) from (
+                   select photo_url u from profiles union all select logo_url from leagues
+                   union all select banner_url from leagues union all select logo_url from league_franchises
+               ) refs where u = %s""",
+            (url,),
+        )
+        still_used = cur.fetchone()[0] > 0
         cur.execute(
             "insert into moderation_notices (id, user_id, kind, subject_name) values (%s, %s, %s, %s)",
             (uuid.uuid4(), owner, notice_kind, subject),
@@ -120,6 +129,9 @@ def cmd_remove_image(args):
         audit(cur, "REMOVE_IMAGE", report=args.report, user=owner, note=f"{args.kind} {url}")
     # After the commit: the image must disappear from the app even if S3 fails, and this says so.
     key = object_key(url)
+    if still_used:
+        print(f"Removed from this row. Another row uses the same image, so check it; S3 object kept: {url}")
+        return
     if key is None or args.no_s3:
         print(f"Removed from the app. S3 object NOT deleted: {url}")
         return

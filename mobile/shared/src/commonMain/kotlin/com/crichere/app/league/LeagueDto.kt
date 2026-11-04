@@ -43,6 +43,8 @@ data class LeaguePlayerDto(
     val deleted: Boolean = false,
     /** Profile photo for the roster row (docs/PHASE17.md); `null` falls back to initials. */
     val photoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
 )
 
 /** Body of `POST /leagues/{id}/players`. */
@@ -64,6 +66,8 @@ data class LeagueFranchiseDto(
     val leaveRequestedAt: String? = null,
     /** The owner's account was deleted (design D10). */
     val ownerDeleted: Boolean = false,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
 )
 
 /** Mirrors the backend's `LeagueRoleResponse` (docs/PHASE7.md) -- one active co-organizer grant. */
@@ -77,6 +81,8 @@ data class LeagueRoleDto(
     val deleted: Boolean = false,
     /** Profile photo (docs/PHASE17.md); `null` falls back to initials. */
     val photoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
 )
 
 /** Mirrors the backend's `RoleLookupResponse` -- who a phone number resolved to, not yet a grant. */
@@ -108,6 +114,9 @@ data class LeagueDto(
     val description: String? = null,
     val logoUrl: String? = null,
     val bannerUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
+    val bannerRemoved: Boolean = false,
     val country: String = "IN",
     val state: String,
     val district: String,

@@ -133,6 +133,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
         val session = postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true))
             .andReturn().body()
         suspendUser()
+        refreshTokenRepository.findAll().filter { it.revokedAt == null }.forEach { it.revokedAt = Instant.now(); refreshTokenRepository.save(it) }
 
         postJson("/api/v1/auth/refresh", mapOf("refreshToken" to session["refreshToken"]))
             .andExpect(status().isForbidden)

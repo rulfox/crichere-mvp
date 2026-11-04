@@ -129,6 +129,8 @@ class AuthService(
     fun refresh(rawRefreshToken: String): AuthResult {
         val existing = refreshTokenRepository.findByTokenHashForUpdate(jwtService.hashRefreshToken(rawRefreshToken))
             ?: throw InvalidRefreshTokenException()
+        // First: suspending revokes every token, and this user needs the suspended answer, not a plain 401.
+        if (userRepository.existsByIdAndSuspendedAtIsNotNull(existing.userId)) throw AccountSuspendedException()
 
         val now = clock.instant()
         // One flat failure for "revoked", "expired" and "unknown" alike -- see

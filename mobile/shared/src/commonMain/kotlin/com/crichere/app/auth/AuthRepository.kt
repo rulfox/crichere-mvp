@@ -1,6 +1,8 @@
 package com.crichere.app.auth
 
 import com.crichere.app.account.AccountNotices
+import com.crichere.app.network.ACCOUNT_SUSPENDED
+import com.crichere.app.network.problemCode
 import com.crichere.app.notification.DeviceTokenProvider
 import com.crichere.app.notification.DeviceTokenRepository
 import com.crichere.app.storage.SecureStore
@@ -78,6 +80,9 @@ interface AuthRepository {
     /** Revokes the stored refresh token backend-side (best-effort) and clears local storage regardless. */
     suspend fun logout()
 
+    /** The backend said `ACCOUNT_SUSPENDED` (docs/PHASE18.md): drop the session and show the suspended screen. */
+    suspend fun handleSuspended() = Unit
+
     /**
      * Clears the local session only, no backend calls: after an account deletion request the
      * server has already revoked every refresh token and push token (docs/PHASE16.md).
@@ -89,7 +94,7 @@ interface AuthRepository {
 }
 
 @Serializable
-private data class SessionRequestBody(val idToken: String)
+private data class SessionRequestBody(val idToken: String, val termsAccepted: Boolean)
 
 @Serializable
 private data class RefreshRequestBody(val refreshToken: String)
@@ -154,7 +159,10 @@ internal class KtorAuthRepository(
         authenticatedHttpClientProvider().authProvider<BearerAuthProvider>()?.clearToken()
     }
 
+    private var lastTypedPhone: String? = null
+
     override suspend fun sendOtp(phoneNumber: String, resendToken: Any?): Result<PhoneVerificationHandle> {
+        lastTypedPhone = phoneNumber
         val backend = backendOtpClient
         if (backend == null) {
             activeProvider = OtpProvider.FIREBASE
@@ -197,15 +205,40 @@ internal class KtorAuthRepository(
                             Result.failure(OtpRequestFailedException(OtpVerifyViewModel.SIGN_IN_FAILED_MESSAGE))
                         }
                     },
-                    onFailure = { Result.failure(it) },
+                    onFailure = {
+                        if (it is AccountSuspendedException) suspendWithTypedPhone()
+                        Result.failure(it)
+                    },
                 )
         }
+    }
+
+    /** Board R13a: the number was just typed, so it can be shown back, masked. */
+    private suspend fun suspendWithTypedPhone() {
+        clearTokens()
+        accountNotices?.accountSuspended(lastTypedPhone?.let(::maskPhone))
+    }
+
+    override suspend fun handleSuspended() {
+        clearTokens()
+        accountNotices?.accountSuspended()
+    }
+
+    private suspend fun clearTokens() {
+        secureStorage.remove(SecureStorageKeys.ACCESS_TOKEN)
+        secureStorage.remove(SecureStorageKeys.REFRESH_TOKEN)
+        clearCachedBearerToken()
     }
 
     override suspend fun exchangeSession(idToken: String): AuthResult {
         val response = authHttpClient.post("/api/v1/auth/session") {
             contentType(ContentType.Application.Json)
-            setBody(SessionRequestBody(idToken))
+            // Reaching this point means the sign-in checkbox was ticked: Send code is disabled without it.
+            setBody(SessionRequestBody(idToken, termsAccepted = true))
+        }
+        if (response.problemCode() == ACCOUNT_SUSPENDED) {
+            suspendWithTypedPhone()
+            throw SessionExchangeFailedException("Account suspended")
         }
         if (!response.status.isSuccess()) {
             throw SessionExchangeFailedException("Session exchange failed with status ${response.status}")
@@ -236,6 +269,10 @@ internal class KtorAuthRepository(
             setBody(RefreshRequestBody(storedRefreshToken))
         }
 
+        if (response.status == HttpStatusCode.Forbidden && response.problemCode() == ACCOUNT_SUSPENDED) {
+            handleSuspended()
+            return null
+        }
         if (response.status == HttpStatusCode.Unauthorized) {
             // The stored refresh token itself is invalid (unknown/revoked/expired) -- clear it
             // (and any now-orphaned access token) rather than leave a dead token sitting in
@@ -308,3 +345,6 @@ private object NoopDeviceTokenRepository : DeviceTokenRepository {
     override suspend fun register(token: String, platform: String): Boolean = false
     override suspend fun unregister(token: String): Boolean = false
 }
+
+/** "+91 ••••• •4471" (board R13a). */
+internal fun maskPhone(e164: String): String = "+91 ••••• •" + e164.takeLast(4)

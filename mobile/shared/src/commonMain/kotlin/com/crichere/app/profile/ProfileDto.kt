@@ -51,6 +51,8 @@ data class ProfileDto(
     val userId: String,
     val name: String? = null,
     val photoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
     val country: String? = null,
     val state: String? = null,
     val district: String? = null,
