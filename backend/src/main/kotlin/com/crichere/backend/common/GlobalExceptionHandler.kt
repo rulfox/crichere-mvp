@@ -27,6 +27,9 @@ import com.crichere.backend.auth.OtpUnavailableException
 import com.crichere.backend.auth.RateLimitExceededException
 import com.crichere.backend.auth.TermsNotAcceptedException
 import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
+import com.crichere.backend.moderation.InvalidReportException
+import com.crichere.backend.moderation.ModerationTargetNotFoundException
+import com.crichere.backend.moderation.ReportAlreadyOpenException
 import com.crichere.backend.franchise.NoLeaveRequestPendingException as FranchiseNoLeaveRequestPendingException
 import com.crichere.backend.franchise.NotFranchiseOwnerException
 import com.crichere.backend.league.CannotGrantRoleToOrganizerException
@@ -206,6 +209,39 @@ class GlobalExceptionHandler {
             title = "Terms not accepted",
             code = "TERMS_NOT_ACCEPTED",
             detail = "Accept the Terms and Privacy Policy to create an account.",
+            instance = request.requestURI,
+        )
+
+    @ExceptionHandler(ModerationTargetNotFoundException::class)
+    fun handleModerationTargetNotFound(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.NOT_FOUND,
+            slug = "target-not-found",
+            title = "Not found",
+            code = "TARGET_NOT_FOUND",
+            detail = "This person or league can't be reported or blocked.",
+            instance = request.requestURI,
+        )
+
+    @ExceptionHandler(ReportAlreadyOpenException::class)
+    fun handleReportAlreadyOpen(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.CONFLICT,
+            slug = "report-already-open",
+            title = "Already reported",
+            code = "REPORT_ALREADY_OPEN",
+            detail = "You have already reported this.",
+            instance = request.requestURI,
+        )
+
+    @ExceptionHandler(InvalidReportException::class)
+    fun handleInvalidReport(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "invalid-report",
+            title = "Invalid report",
+            code = "INVALID_REPORT",
+            detail = "This report is missing something it needs.",
             instance = request.requestURI,
         )
 

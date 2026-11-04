@@ -16,13 +16,14 @@ import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.LeagueRoleResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
+import com.crichere.backend.moderation.BlockService
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.player.toResponse
 import com.crichere.backend.profile.ProfileRepository
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class LeagueService(
@@ -39,6 +40,7 @@ class LeagueService(
     private val leagueRoleRepository: LeagueRoleRepository,
     private val screenshotSigner: PaymentScreenshotUrlSigner,
     private val mediaUrlPolicy: MediaUrlPolicy,
+    private val blockService: BlockService,
 ) {
 
     /**
@@ -57,7 +59,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun listByArea(state: String?, district: String?, callerId: UUID?): List<LeagueResponse> =
-        leagueRepository.findByAreaFilters(state, district).map { it.toResponse(callerId) }
+        blockService.visibleTo(callerId, leagueRepository.findByAreaFilters(state, district)).map { it.toResponse(callerId) }
 
     /**
      * `GET /api/v1/leagues?near=lat,lng`, ordered by distance to each league's ground (every
@@ -65,7 +67,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun listNearest(latitude: Double, longitude: Double, callerId: UUID?): List<LeagueResponse> =
-        leagueRepository.findNearest(latitude, longitude).map { it.toResponse(callerId) }
+        blockService.visibleTo(callerId, leagueRepository.findNearest(latitude, longitude)).map { it.toResponse(callerId) }
 
     /**
      * `POST /api/v1/leagues`. Rate-limited per caller (see [ContentRateLimiter]) -- an open,

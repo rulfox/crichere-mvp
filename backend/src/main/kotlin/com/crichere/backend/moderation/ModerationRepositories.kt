@@ -40,6 +40,9 @@ interface ReportRepository : JpaRepository<ReportEntity, UUID> {
 interface ModerationNoticeRepository : JpaRepository<ModerationNoticeEntity, UUID> {
 
     fun findByUserIdAndDismissedAtIsNullOrderByCreatedAt(userId: UUID): List<ModerationNoticeEntity>
+
+    /** Account purge. */
+    fun deleteByUserId(userId: UUID)
 }
 
 interface SuspendedPhoneHashRepository : JpaRepository<SuspendedPhoneHashEntity, String>

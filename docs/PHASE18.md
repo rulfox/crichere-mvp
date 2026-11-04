@@ -114,7 +114,8 @@ Separate commit per step. Backend tests with each backend step, shared and web u
 **Step 3: blocks and reports.**
 - `GET /blocks`, `PUT /blocks/{userId}`, `DELETE /blocks/{userId}`.
 - `POST /reports`: ids, reason and text only; server snapshots evidence; 409 `REPORT_ALREADY_OPEN`.
-- New rate-limit caps. `listByArea` and `listNearest` filter by caller. Follower pushes muted while blocked.
+- New rate-limit caps. `listByArea` and `listNearest` filter by caller. No follower pushes exist today (only players,
+  owners and organizers get them), so D6's mute needs no code; add it if follower pushes are ever built.
 - `MediaSweep` skips keys in open reports. `AccountPurgeService` deletes blocks, removes the reporter from reports,
   and moves a suspended user's phone hash to `suspended_phone_hashes`.
 
