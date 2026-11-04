@@ -18,12 +18,13 @@ were answered by update #5 (PHASE15 8).
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 | Report and block (Google Play User Generated Content policy) | Not built; launch blocker. Design ready: Crichere - V2 boards `P11 Report & Block` and `P12 Play Compliance` (P12 section 0 overrides P11: rupee amounts, real organizer menu, no Approve). | design-prompts |
 | Terms acceptance and auction money note | Designed on P12 (T1a, T1b, T2, V1, V2), not built. Owner decided 2026-11-04: required checkbox at sign in; money note copy approved. Owner confirmed 2026-11-04: franchises pay no money based on auction amounts, so purses and bids are a virtual budget shown in rupees. Terms updated; review notes in `docs/legal/PLAY-REVIEW-NOTES.md`. | P12 |
+| MSG91 before launch | Check the production widget: keep one demo number for the Play reviewer (non-obvious OTP if possible, plain sample account), remove the others. Rotate the Auth Key and widget token. Test real SMS on Jio, Airtel and Vi. | PHASE12 6, PHASE18 |
 
 ## 2a. Decided (2026-11-04)
 
 - Blocking hides the blocked user's photo and uploads from the blocker and drops leagues they organize from the
   blocker's dashboard. Their name stays in shared rosters and auctions. It does not stop anyone joining a league.
-- Reports go to the Crichere team only (stored in the backend, emailed to hello@crichere.com); organizers don't see
+- Reports go to the Crichere team only (stored in the backend and checked daily; email alerts via Amazon SES are future scope, decided 2026-11-04); organizers don't see
   them. The team can remove an image or suspend an account.
 
 ## 2. Decided (2026-10-04)
