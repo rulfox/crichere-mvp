@@ -36,6 +36,17 @@ object ProblemDetails {
 
     private const val TYPE_BASE = "https://api.crichere.app/problems/"
 
+    /** Shared by the advice and [com.crichere.backend.auth.SuspensionFilter], which runs outside it. */
+    fun accountSuspended(instance: String?): ProblemDetail =
+        of(
+            status = HttpStatus.FORBIDDEN,
+            slug = "account-suspended",
+            title = "Account suspended",
+            code = "ACCOUNT_SUSPENDED",
+            detail = "This account is suspended.",
+            instance = instance,
+        )
+
     /**
      * @param slug the trailing segment of the `type` URI, e.g. `invalid-credentials`.
      * @param code the stable machine-readable code, e.g. `INVALID_CREDENTIALS`.

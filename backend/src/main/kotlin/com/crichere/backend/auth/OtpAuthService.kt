@@ -103,7 +103,7 @@ class OtpAuthService(
     }
 
     /** Checks a code and, if right, signs the challenge's phone in. */
-    fun verifyOtp(challengeId: UUID, code: String): AuthResult {
+    fun verifyOtp(challengeId: UUID, code: String, termsAccepted: Boolean): AuthResult {
         requireEnabled()
         val now = clock.instant()
         val challenge = openChallenge(challengeId, now)
@@ -129,7 +129,7 @@ class OtpAuthService(
 
         val phone = phoneCryptoService.decryptFromString(challenge.phoneEncrypted)
         log.info("OTP verified for challenge {}", challengeId)
-        return authService.signInVerifiedPhone(challenge.phoneLookupHash, phone)
+        return authService.signInVerifiedPhone(challenge.phoneLookupHash, phone, termsAccepted)
     }
 
     private fun openChallenge(challengeId: UUID, now: Instant): OtpChallengeEntity {

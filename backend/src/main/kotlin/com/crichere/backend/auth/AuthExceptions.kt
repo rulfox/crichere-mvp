@@ -33,6 +33,12 @@ typealias InvalidAccessTokenException = AuthenticationFailedException.InvalidAcc
 class RateLimitExceededException(val retryAfter: Duration) :
     RuntimeException("Too many authentication attempts")
 
+/** The team suspended this account (docs/PHASE18.md). Not an auth failure: the app shows the suspended screen, not sign-in. */
+class AccountSuspendedException : RuntimeException("Account suspended")
+
+/** A new account needs the sign-in terms checkbox (docs/PHASE18.md). */
+class TermsNotAcceptedException : RuntimeException("Terms not accepted")
+
 /** The backend-driven OTP flow is not the active provider (`crichere.otp.provider`), so the `/auth/otp` endpoints do not exist. */
 class OtpDisabledException : RuntimeException("OTP provider is not enabled")
 

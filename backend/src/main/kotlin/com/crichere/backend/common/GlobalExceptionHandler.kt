@@ -17,6 +17,7 @@ import com.crichere.backend.auction.PurseExceededException
 import com.crichere.backend.auction.SquadFullException
 import com.crichere.backend.auth.AppCheckFailedException
 import com.crichere.backend.auth.AuthenticationFailedException
+import com.crichere.backend.auth.AccountSuspendedException
 import com.crichere.backend.auth.InvalidPhoneNumberException
 import com.crichere.backend.auth.OtpChallengeExpiredException
 import com.crichere.backend.auth.OtpDisabledException
@@ -24,6 +25,7 @@ import com.crichere.backend.auth.OtpInvalidCodeException
 import com.crichere.backend.auth.OtpResendLimitReachedException
 import com.crichere.backend.auth.OtpUnavailableException
 import com.crichere.backend.auth.RateLimitExceededException
+import com.crichere.backend.auth.TermsNotAcceptedException
 import com.crichere.backend.franchise.LeagueFranchiseNotFoundException
 import com.crichere.backend.franchise.NoLeaveRequestPendingException as FranchiseNoLeaveRequestPendingException
 import com.crichere.backend.franchise.NotFranchiseOwnerException
@@ -192,6 +194,21 @@ class GlobalExceptionHandler {
         )
 
     /** Not an Indian mobile number. The input is never echoed back. */
+    @ExceptionHandler(AccountSuspendedException::class)
+    fun handleAccountSuspended(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.accountSuspended(request.requestURI)
+
+    @ExceptionHandler(TermsNotAcceptedException::class)
+    fun handleTermsNotAccepted(request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "terms-not-accepted",
+            title = "Terms not accepted",
+            code = "TERMS_NOT_ACCEPTED",
+            detail = "Accept the Terms and Privacy Policy to create an account.",
+            instance = request.requestURI,
+        )
+
     @ExceptionHandler(InvalidPhoneNumberException::class)
     fun handleInvalidPhoneNumber(request: HttpServletRequest): ProblemDetail =
         ProblemDetails.of(

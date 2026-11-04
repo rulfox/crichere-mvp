@@ -29,7 +29,7 @@ class AuthController(private val authService: AuthService) {
      */
     @PostMapping("/session")
     fun createSession(@Valid @RequestBody request: SessionRequest): AuthResponse =
-        AuthResponse.from(authService.verifySession(request.idToken))
+        AuthResponse.from(authService.verifySession(request.idToken, request.termsAccepted))
 
     /**
      * Exchanges a refresh token for a fresh pair. The presented token is revoked as part of

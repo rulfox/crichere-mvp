@@ -18,6 +18,8 @@ import java.util.UUID
 interface UserRepository : JpaRepository<UserEntity, UUID> {
     fun findByPhoneLookupHash(phoneLookupHash: String): UserEntity?
 
+    fun existsByIdAndSuspendedAtIsNotNull(id: UUID): Boolean
+
     /**
      * Row lock taken by both a deletion request and a token refresh, so they serialize: a refresh
      * already in flight when deletion is requested either finishes first (and its new token is
@@ -36,6 +38,12 @@ interface UserRepository : JpaRepository<UserEntity, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update UserEntity u set u.deletionRequestedAt = null where u.id = :userId and u.deletionRequestedAt is not null and u.deletedAt is null")
     fun cancelPendingDeletion(@Param("userId") userId: UUID): Int
+
+    /** Stamps the sign-in terms checkbox (docs/PHASE18.md). A plain update, so it can't overwrite a concurrent change to the row. */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update UserEntity u set u.termsAcceptedAt = :at, u.termsVersion = :version where u.id = :userId")
+    fun recordTermsAcceptance(@Param("userId") userId: UUID, @Param("at") at: Instant, @Param("version") version: String): Int
 
     /** Accounts whose grace period ran out at or before [cutoff], oldest first -- the purge job's work list. */
     @Query("select u.id from UserEntity u where u.deletionRequestedAt <= :cutoff and u.deletedAt is null order by u.deletionRequestedAt")

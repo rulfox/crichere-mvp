@@ -28,6 +28,8 @@ data class OtpVerifyRequest(
     @field:NotBlank(message = "code is required")
     @field:Pattern(regexp = "^[0-9]{4,8}$", message = "code must be 4 to 8 digits")
     val code: String,
+    /** The sign-in checkbox (docs/PHASE18.md). A new account is refused without it. */
+    val termsAccepted: Boolean = false,
 )
 
 /** Response of send and resend. [challengeId] is the client's only handle; the provider's request id never leaves the backend. */

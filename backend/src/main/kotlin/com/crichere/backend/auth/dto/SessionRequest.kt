@@ -16,4 +16,6 @@ data class SessionRequest(
     // guard so an oversized body is rejected before any verification work is attempted.
     @field:Size(max = 4096, message = "idToken is too long")
     val idToken: String,
+    /** The sign-in checkbox (docs/PHASE18.md). A new account is refused without it. */
+    val termsAccepted: Boolean = false,
 )

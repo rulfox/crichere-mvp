@@ -168,7 +168,7 @@ class OtpFlowIntegrationTest : AbstractWebIntegrationTest() {
         // A different number smuggled into the body must not change who gets signed in.
         postJson(
             "/api/v1/auth/otp/verify",
-            mapOf("challengeId" to challengeId, "code" to "123456", "phoneNumber" to "+919000000000"),
+            mapOf("challengeId" to challengeId, "code" to "123456", "termsAccepted" to true, "phoneNumber" to "+919000000000"),
         ).andExpect(status().isOk)
 
         assertNotNull(userRepository.findByPhoneLookupHash(phoneCryptoService.hmacLookupHash(e164)))
@@ -198,7 +198,7 @@ class OtpFlowIntegrationTest : AbstractWebIntegrationTest() {
     private fun resend(challengeId: String) = postJson("/api/v1/auth/otp/resend", mapOf("challengeId" to challengeId))
 
     private fun verify(challengeId: String, code: String) =
-        postJson("/api/v1/auth/otp/verify", mapOf("challengeId" to challengeId, "code" to code))
+        postJson("/api/v1/auth/otp/verify", mapOf("challengeId" to challengeId, "code" to code, "termsAccepted" to true))
 
     private fun postJson(path: String, body: Map<String, Any?>): ResultActions =
         mockMvc.perform(

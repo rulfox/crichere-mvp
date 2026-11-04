@@ -26,7 +26,7 @@ class MeFlowIntegrationTest : AbstractWebIntegrationTest {
     private fun signInNewUser(): String {
         val phone = uniquePhone()
         every { firebaseTokenVerifier.verify(any()) } returns VerifiedFirebaseToken(uid = "fb-$phone", phoneNumber = phone)
-        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
             .andExpect(status().isOk)
             .andReturn()
             .body()
