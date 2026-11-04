@@ -51,6 +51,7 @@ class ProfileService(
         if (request.photoUrl != profile.photoUrl) mediaUrlPolicy.requireProfilePhoto(request.photoUrl, userId)
         profile.name = request.name
         profile.photoUrl = request.photoUrl
+        if (request.photoUrl != null) profile.photoRemoved = false
         profile.state = request.state
         profile.district = request.district
         profile.playingRole = request.playingRole
@@ -79,6 +80,7 @@ class ProfileService(
             userId = userId,
             name = profile?.name,
             photoUrl = profile?.photoUrl,
+            photoRemoved = profile?.photoRemoved == true,
             country = profile?.country,
             state = profile?.state,
             district = profile?.district,

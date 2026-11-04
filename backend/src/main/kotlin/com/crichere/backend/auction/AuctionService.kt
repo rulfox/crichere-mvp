@@ -427,6 +427,7 @@ class AuctionService(
             allowExceedPurse = auctionAllowExceedPurse,
             recentBids = recentBids,
             currentPlayerPhotoUrl = currentProfile?.photoUrl,
+            currentPlayerPhotoRemoved = currentProfile?.photoRemoved == true,
             currentPlayerRole = currentProfile?.playingRole,
             playersTotal = playerRepository.countByLeagueIdAndRemovedAtIsNull(leagueId).toInt(),
             playersSold = playerRepository.countByLeagueIdAndAuctionOutcome(leagueId, AuctionOutcome.SOLD).toInt(),
@@ -513,6 +514,7 @@ class AuctionService(
             playerName = profile?.name,
             soldPrice = requireNotNull(soldPrice),
             photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
+            photoRemoved = profile?.photoRemoved == true,
             playingRole = profile?.playingRole,
             deleted = profile?.accountDeleted == true,
         )

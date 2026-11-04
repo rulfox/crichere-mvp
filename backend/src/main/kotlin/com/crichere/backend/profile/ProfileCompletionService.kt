@@ -46,7 +46,8 @@ class ProfileCompletionService(
      */
     fun isComplete(profile: ProfileEntity): Boolean {
         if (profile.name.isNullOrBlank()) return false
-        if (profile.photoUrl.isNullOrBlank()) return false
+        // A photo the team removed doesn't undo a finished profile (docs/PHASE18.md).
+        if (profile.photoUrl.isNullOrBlank() && !profile.photoRemoved) return false
         if (profile.state.isNullOrBlank()) return false
         if (profile.district.isNullOrBlank()) return false
         if (profile.battingStyle == null) return false

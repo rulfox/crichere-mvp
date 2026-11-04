@@ -27,6 +27,8 @@ data class AuctionStateResponse(
     val recentBids: List<AuctionBidTickerResponse>,
     /** The current player's profile photo and role (screen L, 2026-10-02) -- public like the name. */
     val currentPlayerPhotoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val currentPlayerPhotoRemoved: Boolean = false,
     val currentPlayerRole: PlayingRole? = null,
     /** Active (not removed) players in the league, and how many are sold -- "Player 12 of 58". */
     val playersTotal: Int = 0,

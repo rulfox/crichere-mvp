@@ -126,7 +126,12 @@ class AccountPurgeService(
         val currentPhoto = profileRepository.findById(userId).orElse(null)?.photoUrl
             ?.substringAfter(".amazonaws.com/", "")?.substringBefore('?')
             ?.takeIf { it.startsWith("users/$userId/") }
-        return listOfNotNull(currentPhoto, "users/$userId/profile.jpg").distinct() +
+        // Deleting an account must not destroy evidence: a photo in an open report stays until the
+        // report closes, then the media sweep removes it (docs/PHASE18.md).
+        val evidence = reportRepository.findOpenEvidenceUrls()
+            .map { it.substringAfter(".amazonaws.com/", "").substringBefore('?') }
+            .toSet()
+        return listOfNotNull(currentPhoto, "users/$userId/profile.jpg").distinct().filter { it !in evidence } +
             leagueIds.distinct().map { PhotoUploadService.paymentScreenshotKey(it, userId) }
     }
 

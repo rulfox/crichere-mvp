@@ -369,6 +369,8 @@ class LeagueService(
         league.description = request.description
         league.logoUrl = request.logoUrl
         league.bannerUrl = request.bannerUrl
+        if (request.logoUrl != null) league.logoRemoved = false
+        if (request.bannerUrl != null) league.bannerRemoved = false
         league.state = request.state
         league.district = request.district
         league.groundId = requireNotNull(request.groundId)
@@ -440,6 +442,8 @@ class LeagueService(
             description = description,
             logoUrl = logoUrl,
             bannerUrl = bannerUrl,
+            logoRemoved = logoRemoved,
+            bannerRemoved = bannerRemoved,
             country = country,
             state = state,
             district = district,
@@ -480,6 +484,7 @@ class LeagueService(
             grantedAt = grantedAt,
             deleted = profile?.accountDeleted == true,
             photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
+            photoRemoved = profile?.photoRemoved == true,
         )
     }
 

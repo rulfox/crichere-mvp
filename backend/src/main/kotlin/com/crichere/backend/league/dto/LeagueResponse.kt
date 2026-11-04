@@ -17,6 +17,9 @@ data class LeagueResponse(
     val description: String?,
     val logoUrl: String?,
     val bannerUrl: String?,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
+    val bannerRemoved: Boolean = false,
     val country: String,
     val state: String,
     val district: String,

@@ -1,5 +1,6 @@
 package com.crichere.backend.common
 
+import com.crichere.backend.moderation.OPEN_REPORT_IMAGE_URLS
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -135,7 +136,7 @@ class MediaSweepService(
             union select logo_url from leagues where logo_url is not null
             union select banner_url from leagues where banner_url is not null
             union select logo_url from league_franchises where logo_url is not null
-            union select (regexp_matches(snapshot, 'https://[^"]+', 'g'))[1] from reports where status = 'OPEN'
+            union $OPEN_REPORT_IMAGE_URLS
         """
     }
 }

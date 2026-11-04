@@ -15,4 +15,6 @@ data class LeagueSummaryResponse(
     val groundName: String,
     val startsOn: LocalDate,
     val status: LeagueStatus,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
 )

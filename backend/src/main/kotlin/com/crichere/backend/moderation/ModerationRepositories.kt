@@ -23,6 +23,22 @@ interface UserBlockRepository : JpaRepository<UserBlockEntity, UserBlockId> {
     fun deleteAllInvolving(@Param("userId") userId: UUID)
 }
 
+/**
+ * Image URLs held as evidence by open reports. Reads the snapshot's image fields only, never free text
+ * like a league description, so a user can't pin someone's object by typing its URL.
+ */
+const val OPEN_REPORT_IMAGE_URLS = """
+    select image.url from reports r
+    cross join lateral (
+        select cast(r.snapshot as jsonb) ->> 'photoUrl' as url
+        union all select cast(r.snapshot as jsonb) ->> 'logoUrl'
+        union all select cast(r.snapshot as jsonb) ->> 'bannerUrl'
+        union all select franchise ->> 'logoUrl'
+            from jsonb_array_elements(coalesce(cast(r.snapshot as jsonb) -> 'franchises', cast('[]' as jsonb))) franchise
+    ) image
+    where r.status = 'OPEN' and image.url is not null
+"""
+
 interface ReportRepository : JpaRepository<ReportEntity, UUID> {
 
     fun existsByReporterIdAndTargetUserIdAndStatus(reporterId: UUID, targetUserId: UUID, status: ReportStatus): Boolean
@@ -30,6 +46,9 @@ interface ReportRepository : JpaRepository<ReportEntity, UUID> {
     fun existsByReporterIdAndTargetLeagueIdAndStatus(reporterId: UUID, targetLeagueId: UUID, status: ReportStatus): Boolean
 
     fun findByStatus(status: ReportStatus): List<ReportEntity>
+
+    @Query(value = OPEN_REPORT_IMAGE_URLS, nativeQuery = true)
+    fun findOpenEvidenceUrls(): List<String>
 
     /** Account purge: the evidence stays for its retention period, the reporter doesn't. */
     @Modifying

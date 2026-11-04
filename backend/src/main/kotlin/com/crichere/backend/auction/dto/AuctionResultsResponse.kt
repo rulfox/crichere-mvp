@@ -28,6 +28,8 @@ data class PlayerAuctionResultResponse(
     val playerName: String?,
     val soldPrice: BigDecimal,
     val photoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
     /** The player's profile role -- shown on the web viewer's final squad lists (docs/PHASE11.md D1). */
     val playingRole: PlayingRole? = null,
     /** The player's account was deleted (docs/PHASE16.md); [playerName] is "Deleted user". */

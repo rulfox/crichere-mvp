@@ -5,9 +5,14 @@ import com.crichere.backend.account.PurgeOutcome
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.auth.VerifiedFirebaseToken
 import com.crichere.backend.common.AbstractWebIntegrationTest
+import com.crichere.backend.common.ObjectDeleter
 import io.mockk.every
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MvcResult
@@ -26,11 +31,26 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/** What the purge asked S3 to delete. */
+class RecordedDeletes(val keys: MutableList<String> = mutableListOf())
+
+@TestConfiguration
+class RecordingDeleterConfiguration {
+    @Bean
+    fun recordedDeletes() = RecordedDeletes()
+
+    @Bean
+    @Primary
+    fun recordingDeleter(recorded: RecordedDeletes): ObjectDeleter = ObjectDeleter { recorded.keys += it }
+}
+
 /** Reports and blocks over real HTTP and a real database (docs/PHASE18.md). */
+@Import(RecordingDeleterConfiguration::class)
 class ModerationFlowIntegrationTest : AbstractWebIntegrationTest {
 
     constructor() : super()
 
+    @Autowired private lateinit var deletedObjects: RecordedDeletes
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var reportRepository: ReportRepository
     @Autowired private lateinit var blockRepository: UserBlockRepository
@@ -38,6 +58,8 @@ class ModerationFlowIntegrationTest : AbstractWebIntegrationTest {
     @Autowired private lateinit var userRepository: UserRepository
     @Autowired private lateinit var accountPurgeService: AccountPurgeService
     @Autowired private lateinit var jdbcTemplate: org.springframework.jdbc.core.JdbcTemplate
+    @Autowired private lateinit var noticeRepository: ModerationNoticeRepository
+    @Autowired private lateinit var profileRepository: com.crichere.backend.profile.ProfileRepository
 
     private data class Caller(val token: String, val userId: String, val phone: String)
 
@@ -182,26 +204,74 @@ class ModerationFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
-    fun `the media sweep's query finds image urls in open reports`() {
+    fun `evidence urls come from image fields only, so typed text can't pin an object`() {
         val me = signInNewUser()
-        val url = "https://bucket.s3.ap-south-1.amazonaws.com/users/${UUID.randomUUID()}/profile"
+        val photo = "https://bucket.s3.ap-south-1.amazonaws.com/users/${UUID.randomUUID()}/profile"
+        val logo = "https://bucket.s3.ap-south-1.amazonaws.com/leagues/${UUID.randomUUID()}/franchise-logos/x"
+        val typed = "https://bucket.s3.ap-south-1.amazonaws.com/users/${UUID.randomUUID()}/typed"
         reportRepository.saveAndFlush(
             ReportEntity(
                 reporterId = UUID.fromString(me.userId),
                 targetType = ReportTargetType.USER,
                 reason = ReportReason.HATE_OR_HARASSMENT,
-                snapshot = objectMapper.writeValueAsString(mapOf("photoUrl" to url)),
+                snapshot = objectMapper.writeValueAsString(
+                    mapOf("photoUrl" to photo, "description" to typed, "franchises" to listOf(mapOf("logoUrl" to logo))),
+                ),
             ),
         )
 
-        val urls = jdbcTemplate.queryForList(
-            """
-            select photo_url from profiles where photo_url is not null
-            union select (regexp_matches(snapshot, 'https://[^"]+', 'g'))[1] from reports where status = 'OPEN'
-            """,
+        val urls = reportRepository.findOpenEvidenceUrls()
+        assertTrue(photo in urls)
+        assertTrue(logo in urls)
+        assertFalse(typed in urls)
+        // The same text as the media sweep's union.
+        val swept = jdbcTemplate.queryForList(
+            "select photo_url from profiles where photo_url is not null union $OPEN_REPORT_IMAGE_URLS",
             String::class.java,
         )
-        assertTrue(url in urls)
+        assertTrue(photo in swept)
+    }
+
+    // ---------------------------------------------------------------- removed images and notices
+
+    @Test
+    fun `a removed photo keeps the profile complete and shows as removed, and a new upload clears it`() {
+        val me = signInNewUser()
+        val id = UUID.fromString(me.userId)
+        val profile = com.crichere.backend.profile.ProfileEntity(
+            userId = id,
+            name = "Asha",
+            photoUrl = null,
+            state = "Kerala",
+            district = "Ernakulam",
+            playingRole = com.crichere.backend.profile.PlayingRole.BATSMAN,
+            battingStyle = com.crichere.backend.profile.BattingStyle.RIGHT_HAND,
+            photoRemoved = true,
+        )
+        profileRepository.save(profile)
+
+        authedGet(me.token, "/api/v1/profiles/me")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.photoRemoved").value(true))
+            .andExpect(jsonPath("$.profileComplete").value(true))
+    }
+
+    @Test
+    fun `a notice shows until dismissed, and only its owner can dismiss it`() {
+        val me = signInNewUser()
+        val other = signInNewUser()
+        val notice = noticeRepository.save(
+            ModerationNoticeEntity(userId = UUID.fromString(me.userId), kind = ModerationNoticeKind.PHOTO),
+        )
+
+        authedPostEmpty(other.token, "/api/v1/me/moderation-notices/${notice.id}/dismiss").andExpect(status().isNoContent)
+        authedGet(me.token, "/api/v1/me/moderation-notices")
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].kind").value("PHOTO"))
+        authedGet(other.token, "/api/v1/me/moderation-notices").andExpect(jsonPath("$.length()").value(0))
+
+        authedPostEmpty(me.token, "/api/v1/me/moderation-notices/${notice.id}/dismiss").andExpect(status().isNoContent)
+        authedGet(me.token, "/api/v1/me/moderation-notices").andExpect(jsonPath("$.length()").value(0))
     }
 
     // ---------------------------------------------------------------- purge
@@ -233,6 +303,30 @@ class ModerationFlowIntegrationTest : AbstractWebIntegrationTest {
         val report = reportRepository.findByStatus(ReportStatus.OPEN).single { it.targetUserId == UUID.fromString(other.userId) }
         assertNull(report.reporterId)
         assertNotNull(suspendedPhoneHashRepository.findById(hash).orElse(null))
+    }
+
+    @Test
+    fun `deleting an account doesn't destroy a photo held as evidence`() {
+        val reporter = signInNewUser()
+        val target = signInNewUser()
+        val targetId = UUID.fromString(target.userId)
+        val key = "users/$targetId/profile-${UUID.randomUUID()}"
+        profileRepository.save(
+            com.crichere.backend.profile.ProfileEntity(userId = targetId, name = "Asha", photoUrl = "https://b.s3.x.amazonaws.com/$key"),
+        )
+        authedPost(
+            reporter.token,
+            "/api/v1/reports",
+            mapOf("targetType" to "USER", "targetUserId" to target.userId, "reason" to "INAPPROPRIATE_IMAGE"),
+        ).andExpect(status().isCreated)
+        val user = userRepository.findById(targetId).get()
+        user.deletionRequestedAt = Instant.now().minusSeconds(60L * 60 * 24 * 30)
+        userRepository.save(user)
+
+        assertEquals(PurgeOutcome.PURGED, accountPurgeService.purgeDue(Instant.now())[targetId])
+
+        assertTrue(deletedObjects.keys.any { it.startsWith("users/$targetId/") })
+        assertFalse(key in deletedObjects.keys)
     }
 
     // ---------------------------------------------------------------- helpers
@@ -274,6 +368,9 @@ class ModerationFlowIntegrationTest : AbstractWebIntegrationTest {
 
     private fun authedPut(token: String, path: String) =
         mockMvc.perform(put(path).header(HttpHeaders.AUTHORIZATION, "Bearer $token"))
+
+    private fun authedPostEmpty(token: String, path: String) =
+        mockMvc.perform(post(path).header(HttpHeaders.AUTHORIZATION, "Bearer $token"))
 
     private fun authedDelete(token: String, path: String) =
         mockMvc.perform(delete(path).header(HttpHeaders.AUTHORIZATION, "Bearer $token"))

@@ -29,6 +29,8 @@ class InvalidReportException : RuntimeException("Invalid report")
 
 data class BlockedPersonResponse(val userId: UUID, val name: String?, val blockedAt: Instant)
 
+data class ModerationNoticeResponse(val id: UUID, val kind: ModerationNoticeKind, val subjectName: String?)
+
 /** Ids, a reason and text only: the server builds the evidence, so no URL is ever taken from a client. */
 data class ReportRequest(
     @field:NotNull(message = "targetType is required")
@@ -209,5 +211,25 @@ class ReportService(
             ReportReason.FAKE_OR_SCAM_LEAGUE,
             ReportReason.SOMETHING_ELSE,
         )
+    }
+}
+
+/** One-time notices about a removed image (boards R12b to R12e). Dismissal is stored here, so it shows once across devices. */
+@Service
+class ModerationNoticeService(
+    private val noticeRepository: ModerationNoticeRepository,
+    private val clock: Clock,
+) {
+
+    @Transactional(readOnly = true)
+    fun pending(userId: UUID): List<ModerationNoticeResponse> =
+        noticeRepository.findByUserIdAndDismissedAtIsNullOrderByCreatedAt(userId)
+            .map { ModerationNoticeResponse(it.id, it.kind, it.subjectName) }
+
+    /** A no-op for someone else's notice or an unknown id, so ids can't be probed. */
+    @Transactional
+    fun dismiss(userId: UUID, noticeId: UUID) {
+        val notice = noticeRepository.findById(noticeId).orElse(null) ?: return
+        if (notice.userId == userId && notice.dismissedAt == null) notice.dismissedAt = clock.instant()
     }
 }
