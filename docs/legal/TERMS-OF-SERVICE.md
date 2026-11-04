@@ -7,7 +7,7 @@ These Terms are a contract between you and [Legal name of the owner / company], 
 
 ## 1. What Crichere is
 
-Crichere is software for amateur cricket leagues. Organisers create leagues, run a live player auction and manage franchises; players create profiles, join leagues and are bid for; franchise owners bid for players with a virtual purse. **Auction purses, bids and "prices" are virtual points used to run the auction. They are not real money and have no cash value.**
+Crichere is software for amateur cricket leagues. Organisers create leagues, run a live player auction and manage franchises; players create profiles, join leagues and are bid for; franchise owners bid for players with a virtual purse. **Auction purses, bids and "prices" are shown in rupees, but they are a virtual budget used only to run the auction. They are not payments: nothing is charged, paid or transferred because of a bid or sale, and they have no cash value.**
 
 ## 2. Eligibility and account
 
