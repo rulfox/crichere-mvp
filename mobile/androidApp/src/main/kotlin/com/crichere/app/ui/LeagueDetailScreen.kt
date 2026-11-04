@@ -1,5 +1,10 @@
 package com.crichere.app.ui
 
+import com.crichere.app.moderation.BlockTarget
+import com.crichere.app.moderation.BlockViewModel
+import com.crichere.app.moderation.ReportSubject
+import com.crichere.app.moderation.ReportTargetType
+import com.crichere.app.moderation.ReportViewModel
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -109,15 +114,34 @@ internal fun LeagueDetailRoute(
     notice: String? = null,
     onNoticeShown: () -> Unit = {},
     viewModel: LeagueDetailViewModel = koinViewModel(key = "league-detail:$leagueId") { parametersOf(leagueId) },
+    reportViewModel: ReportViewModel = koinViewModel(key = "report:$leagueId"),
+    blockViewModel: BlockViewModel = koinViewModel(key = "block:$leagueId"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val blocked by blockViewModel.blockedIds.collectAsStateWithLifecycle()
 
     // The ViewModel survives leaving and re-entering this screen for the same leagueId (see its
     // doc), so a fresh fetch on every visit is what makes an edit just saved actually show up.
     LaunchedEffect(Unit) { viewModel.retry() }
 
+    ReportSheet(reportViewModel)
+    BlockDialog(blockViewModel) { userId -> state.league?.coOrganizers.orEmpty().any { it.userId == userId } }
+
     LeagueDetailScreen(
         state = state,
+        moderation = LeagueModeration(
+            blocked = blocked,
+            onReportPerson = { userId, name, role ->
+                val league = state.league
+                reportViewModel.open(ReportSubject(ReportTargetType.USER, userId, name, "$role in ${league?.name.orEmpty()}", league?.id))
+            },
+            onReportLeague = {
+                state.league?.let { reportViewModel.open(ReportSubject(ReportTargetType.LEAGUE, it.id, it.name, "Name, logo, banner and description")) }
+            },
+            onBlock = { userId, name -> blockViewModel.askToBlock(BlockTarget(userId, name)) },
+            onUnblock = { userId, name -> blockViewModel.unblock(BlockTarget(userId, name)) },
+            snackbar = { modifier -> BlockSnackbar(blockViewModel, modifier) },
+        ),
         actions = LeagueDetailActions(
             onBack = onBack,
             onRetry = viewModel::retry,
@@ -182,7 +206,7 @@ private sealed interface LeaveTarget {
  * Approve/Dismiss. Rendered above `MainRoute`'s tab `Scaffold`, so it owns its own insets.
  */
 @Composable
-private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailActions, notice: String?, onNoticeShown: () -> Unit) {
+private fun LeagueDetailScreen(state: LeagueDetailState, moderation: LeagueModeration, actions: LeagueDetailActions, notice: String?, onNoticeShown: () -> Unit) {
     val context = LocalContext.current
     var leaveTarget by remember { mutableStateOf<LeaveTarget?>(null) }
     var showCompleteDialog by remember { mutableStateOf(false) }
@@ -275,9 +299,25 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
                 CompactHeader(title = null, onBack = actions.onBack)
                 LoadError(onRetry = actions.onRetry)
             }
+            league.organizerUserId in moderation.blocked && !state.isOrganizer &&
+                league.players.none { it.userId == state.currentUserId } &&
+                league.franchises.none { it.ownerUserId == state.currentUserId } -> Column(Modifier.fillMaxSize()) {
+                CompactHeader(title = null, onBack = actions.onBack)
+                BlockedOrganizerNotice(
+                    organizerName = organizerName(league),
+                    onUnblock = { moderation.onUnblock(league.organizerUserId, organizerName(league)) },
+                    onHome = actions.onBack,
+                )
+            }
             else -> LeagueView(
-                league = league,
+                // Board R9b: a member keeps the league, without the organizer's uploads.
+                league = if (league.organizerUserId in moderation.blocked) {
+                    league.copy(logoUrl = null, bannerUrl = null, description = null)
+                } else {
+                    league
+                },
                 state = state,
+                moderation = moderation,
                 actions = actions,
                 onShare = { share(league) },
                 onCopyLink = { copyWatchLink(league) },
@@ -287,6 +327,7 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
         }
 
         SnackHost(snack, onDismiss = { snack = null }, modifier = Modifier.align(Alignment.BottomCenter))
+        moderation.snackbar(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp))
     }
 
     val league = state.league
@@ -329,6 +370,7 @@ private fun LeagueDetailScreen(state: LeagueDetailState, actions: LeagueDetailAc
 private fun LeagueView(
     league: LeagueDto,
     state: LeagueDetailState,
+    moderation: LeagueModeration,
     actions: LeagueDetailActions,
     onShare: () -> Unit,
     onCopyLink: () -> Unit,
@@ -358,6 +400,15 @@ private fun LeagueView(
                 )
                 Spacer(Modifier.height(4.dp))
                 LeagueFacts(league)
+            }
+        }
+        if (league.organizerUserId in moderation.blocked) {
+            item {
+                BlockedOrganizerBanner(
+                    organizerName(league),
+                    onUnblock = { moderation.onUnblock(league.organizerUserId, organizerName(league)) },
+                    modifier = Modifier.padding(start = 19.dp, end = 19.dp, top = 12.dp),
+                )
             }
         }
         if (leaveRequested) {
@@ -454,7 +505,7 @@ private fun LeagueView(
                             league.players.forEachIndexed { i, p ->
                                 if (i > 0) RowDivider()
                                 PlayerRow(
-                                    p, league, isMe = false,
+                                    p, league, isMe = p.userId == me, moderation = moderation, signedIn = me != null,
                                     organizer = OrganizerRowActions(
                                         readOnly = completed,
                                         isRemoving = p.id in state.removingIds,
@@ -480,7 +531,7 @@ private fun LeagueView(
                             league.franchises.forEachIndexed { i, f ->
                                 if (i > 0) RowDivider()
                                 FranchiseRow(
-                                    f, league, isMe = false,
+                                    f, league, isMe = f.ownerUserId == me, moderation = moderation, signedIn = me != null,
                                     organizer = OrganizerRowActions(
                                         readOnly = completed,
                                         isRemoving = f.id in state.removingIds,
@@ -503,7 +554,7 @@ private fun LeagueView(
                     RosterCard(Modifier.padding(horizontal = 19.dp)) {
                         league.franchises.forEachIndexed { i, f ->
                             if (i > 0) RowDivider()
-                            FranchiseRow(f, league, isMe = f.ownerUserId == me, organizer = null)
+                            FranchiseRow(f, league, isMe = f.ownerUserId == me, moderation = moderation, signedIn = me != null, organizer = null)
                         }
                     }
                 }
@@ -514,12 +565,13 @@ private fun LeagueView(
                     RosterCard(Modifier.padding(horizontal = 19.dp)) {
                         league.players.forEachIndexed { i, p ->
                             if (i > 0) RowDivider()
-                            PlayerRow(p, league, isMe = p.userId == me, organizer = null)
+                            PlayerRow(p, league, isMe = p.userId == me, moderation = moderation, signedIn = me != null, organizer = null)
                         }
                     }
                 }
             }
         }
+        if (!organizer && me != null) item { ReportLeagueLink(moderation.onReportLeague) }
     }
 }
 
@@ -809,14 +861,21 @@ private fun EmptyRosterText(text: String) {
 }
 
 @Composable
-private fun PlayerRow(player: LeaguePlayerDto, league: LeagueDto, isMe: Boolean, organizer: OrganizerRowActions?) {
+private fun PlayerRow(player: LeaguePlayerDto, league: LeagueDto, isMe: Boolean, moderation: LeagueModeration, signedIn: Boolean, organizer: OrganizerRowActions?) {
     val paid = if (player.paymentScreenshotUrl != null) league.playerFee?.let { "paid ${rupees(it)}" } else null
+    val blocked = player.userId in moderation.blocked
     RosterRow(
         avatarText = initials(player.name ?: "?"),
         avatarUrl = player.photoUrl,
         deleted = player.deleted,
+        neutral = blocked || player.photoRemoved,
         title = (player.name ?: "Player") + if (isMe) " (you)" else "",
-        subtitle = listOfNotNull(player.playingRole?.label(), paid).joinToString(" · ").ifEmpty { null },
+        subtitle = listOfNotNull(player.playingRole?.label(), paid, "Blocked".takeIf { blocked }).joinToString(" · ").ifEmpty { null },
+        trailing = if (signedIn && !isMe && !player.deleted) {
+            { moderation.RowMenu(player.userId, player.name ?: "Player", "Player") }
+        } else {
+            null
+        },
         leaveRequested = player.leaveRequestedAt != null,
         screenshotUrl = player.paymentScreenshotUrl,
         organizer = organizer,
@@ -824,14 +883,21 @@ private fun PlayerRow(player: LeaguePlayerDto, league: LeagueDto, isMe: Boolean,
 }
 
 @Composable
-private fun FranchiseRow(franchise: LeagueFranchiseDto, league: LeagueDto, isMe: Boolean, organizer: OrganizerRowActions?) {
+private fun FranchiseRow(franchise: LeagueFranchiseDto, league: LeagueDto, isMe: Boolean, moderation: LeagueModeration, signedIn: Boolean, organizer: OrganizerRowActions?) {
     val paid = if (franchise.paymentScreenshotUrl != null) league.franchiseFee?.let { "paid ${rupees(it)}" } else null
     val owner = "Owner: ${franchise.ownerName ?: "Unknown"}" + if (isMe) " (you)" else ""
+    val blocked = franchise.ownerUserId in moderation.blocked
     RosterRow(
         avatarText = initials(franchise.name),
         avatarUrl = franchise.logoUrl,
+        neutral = blocked || franchise.logoRemoved,
         title = franchise.name,
-        subtitle = listOfNotNull(owner, paid).joinToString(" · "),
+        subtitle = listOfNotNull(owner, paid, "Blocked".takeIf { blocked }).joinToString(" · "),
+        trailing = if (signedIn && !isMe && !franchise.ownerDeleted) {
+            { moderation.RowMenu(franchise.ownerUserId, franchise.ownerName ?: franchise.name, "Franchise owner") }
+        } else {
+            null
+        },
         leaveRequested = franchise.leaveRequestedAt != null,
         screenshotUrl = franchise.paymentScreenshotUrl,
         organizer = organizer,
@@ -844,16 +910,20 @@ private fun RosterRow(
     avatarUrl: String?,
     /** Design D10: a deleted user's row gets the neutral avatar and a muted name. */
     deleted: Boolean = false,
+    /** Board R8a: blocked or removed. The neutral avatar, with the name left as it is. */
+    neutral: Boolean = false,
     title: String,
     subtitle: String?,
     leaveRequested: Boolean,
     screenshotUrl: String?,
     organizer: OrganizerRowActions?,
+    /** Board R1: the ⋮ on someone else's row. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp)) {
-        if (deleted) {
-            DeletedUserAvatar(size = 32.dp, iconSize = 18.dp)
+        if (deleted || neutral) {
+            DeletedUserAvatar(size = 32.dp, iconSize = 18.dp, description = null)
         } else {
             Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE3E8DD)), contentAlignment = Alignment.Center) {
                 Text(avatarText, style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 11.5.sp), color = colors.primary)
@@ -907,6 +977,7 @@ private fun RosterRow(
                 }
             }
         }
+        trailing?.invoke()
     }
 }
 
@@ -1101,3 +1172,30 @@ private fun statusLabel(league: LeagueDto) = if (league.status == LeagueStatus.C
 
 private fun body(size: androidx.compose.ui.unit.TextUnit, weight: FontWeight = FontWeight.Normal, lineHeight: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified) =
     TextStyle(fontFamily = InstrumentSansFamily, fontWeight = weight, fontSize = size, lineHeight = lineHeight)
+
+/** What League Detail needs for boards R1 to R9, kept out of [LeagueDetailActions] so that stays about the league. */
+internal class LeagueModeration(
+    val blocked: Set<String> = emptySet(),
+    val onReportPerson: (userId: String, name: String, role: String) -> Unit = { _, _, _ -> },
+    val onReportLeague: () -> Unit = {},
+    val onBlock: (userId: String, name: String) -> Unit = { _, _ -> },
+    val onUnblock: (userId: String, name: String) -> Unit = { _, _ -> },
+    val snackbar: @Composable (Modifier) -> Unit = {},
+) {
+    @Composable
+    fun RowMenu(userId: String, name: String, role: String) {
+        ModerationRowMenu(
+            name = name,
+            blocked = userId in blocked,
+            onReport = { onReportPerson(userId, name, role) },
+            onBlock = { onBlock(userId, name) },
+            onUnblock = { onUnblock(userId, name) },
+        )
+    }
+}
+
+/** The list responses carry no organizer name: it's known only if they also play or own a franchise. */
+private fun organizerName(league: LeagueDto): String =
+    league.players.firstOrNull { it.userId == league.organizerUserId }?.name
+        ?: league.franchises.firstOrNull { it.ownerUserId == league.organizerUserId }?.ownerName
+        ?: "this organizer"

@@ -1,5 +1,10 @@
 package com.crichere.app.ui
 
+import com.crichere.app.league.LeaguePlayerDto
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import com.crichere.app.moderation.ModerationRepository
+import org.koin.compose.koinInject
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -138,13 +143,20 @@ internal fun AuctionLiveRoute(
     leagueId: String,
     onBack: () -> Unit,
     viewModel: AuctionViewModel = koinViewModel(key = "auction-live:$leagueId") { parametersOf(leagueId) },
+    moderation: ModerationRepository = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val blocked by moderation.blockedIds.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.retry() }
 
-    AuctionLiveScreen(state = state, viewModel = viewModel, onBack = onBack)
+    // The stream is the same for every viewer, so blocked people are hidden here (docs/PHASE18.md).
+    CompositionLocalProvider(LocalBlockedIds provides blocked) {
+        AuctionLiveScreen(state = state, viewModel = viewModel, onBack = onBack)
+    }
 }
+
+private val LocalBlockedIds = compositionLocalOf<Set<String>> { emptySet() }
 
 /**
  * The live auction (see docs/PHASE5.md), board L1-L10: status chip and progress, the player on
@@ -215,7 +227,7 @@ private fun LoadedAuction(state: AuctionState, auction: AuctionStateDto, viewMod
                         Spacer(Modifier.height(12.dp))
                         when {
                             auction.currentPlayerId != null -> {
-                                BlockCard(auction, state.minimumNextBid, league?.franchises.orEmpty())
+                                BlockCard(auction, state.minimumNextBid, league?.franchises.orEmpty(), league?.players.orEmpty())
                                 Spacer(Modifier.height(15.dp))
                                 RecentBids(auction.recentBids, league?.franchises.orEmpty())
                             }
@@ -230,6 +242,9 @@ private fun LoadedAuction(state: AuctionState, auction: AuctionStateDto, viewMod
                         Results(state.results?.franchises.orEmpty(), league?.franchises.orEmpty(), league?.auctionPurse)
                     }
                 }
+                // Board V2: quiet, at the end of the auction content.
+                Spacer(Modifier.height(16.dp))
+                Text(AUCTION_MONEY_NOTE, style = text(12.sp, FontWeight.Normal, 18.sp), color = CrichereAuctionMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
         // U5 L21: inverse I12 bar 12 dp above the dock. Retry reopens the dialog rather than resending.
@@ -452,7 +467,7 @@ private fun ConnectionPill(phase: ConnectionPhase, onRetry: () -> Unit) {
  * 40 dp bid row, so the card no longer comes out ~10 dp taller than the board.
  */
 @Composable
-private fun BlockCard(auction: AuctionStateDto, minimumNextBid: Double?, franchises: List<LeagueFranchiseDto>) {
+private fun BlockCard(auction: AuctionStateDto, minimumNextBid: Double?, franchises: List<LeagueFranchiseDto>, leaguePlayers: List<LeaguePlayerDto>) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -462,7 +477,12 @@ private fun BlockCard(auction: AuctionStateDto, minimumNextBid: Double?, franchi
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val name = auction.currentPlayerName ?: "Unnamed player"
-            PlayerPhoto(auction.currentPlayerPhotoUrl, name, size = 88.dp, radius = 20.dp, initialsSize = 30.sp)
+            val hidden = auction.currentPlayerPhotoRemoved || leaguePlayers.firstOrNull { it.id == auction.currentPlayerId }?.userId in LocalBlockedIds.current
+            if (hidden) {
+                DeletedUserAvatar(size = 88.dp, iconSize = 48.dp, background = DeletedAvatarBackgroundDark, tint = DeletedUserNameDark, shape = RoundedCornerShape(20.dp), description = null)
+            } else {
+                PlayerPhoto(auction.currentPlayerPhotoUrl, name, size = 88.dp, radius = 20.dp, initialsSize = 30.sp)
+            }
             Spacer(Modifier.width(14.dp))
             Column {
                 Text("ON THE BLOCK", style = tight(JetBrainsMonoFamily, 10.sp, FontWeight.SemiBold, 12.sp, letterSpacing = 0.8.sp), color = CrichereAuctionGold)
@@ -814,7 +834,7 @@ private fun ResultCard(result: FranchiseAuctionResultDto, franchises: List<Leagu
                     Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
                         val name = player.playerName ?: "Unnamed player"
                         // Design D10b: a deleted user gets the neutral tile and a muted name.
-                        if (player.deleted) {
+                        if (player.deleted || player.photoRemoved || player.userId in LocalBlockedIds.current) {
                             DeletedUserAvatar(
                                 size = 28.dp,
                                 iconSize = 16.dp,
@@ -1382,7 +1402,12 @@ private fun DockButton(label: String, icon: Int, enabled: Boolean, onClick: () -
 /** A franchise's logo, or its initials on its tile colour. */
 @Composable
 private fun FranchiseTile(id: String, name: String, franchises: List<LeagueFranchiseDto>, size: Dp, radius: Dp, fontSize: TextUnit) {
-    val logo = franchises.firstOrNull { it.id == id }?.logoUrl
+    val franchise = franchises.firstOrNull { it.id == id }
+    if (franchise != null && (franchise.logoRemoved || franchise.ownerUserId in LocalBlockedIds.current)) {
+        DeletedUserAvatar(size = size, iconSize = size * 0.55f, background = DeletedAvatarBackgroundDark, tint = DeletedUserNameDark, shape = RoundedCornerShape(radius), description = null)
+        return
+    }
+    val logo = franchise?.logoUrl
     Box(Modifier.size(size).clip(RoundedCornerShape(radius)).background(tileColor(id)), contentAlignment = Alignment.Center) {
         Text(shortCode(name.ifBlank { "?" }), style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = fontSize, lineHeight = fontSize), color = Color.White)
         if (logo != null) {

@@ -96,6 +96,16 @@ def object_key(url):
     return url.split(marker, 1)[1].split("?", 1)[0] if url and marker in url else None
 
 
+def owned_key_prefix(cur, kind, target_id):
+    """Where this row's own uploads live: an image stored anywhere else belongs to someone else."""
+    if kind == "photo":
+        return f"users/{target_id}/"
+    if kind == "franchise-logo":
+        cur.execute("select league_id from league_franchises where id = %s", (target_id,))
+        return f"leagues/{cur.fetchone()[0]}/franchise-logos/"
+    return f"leagues/{target_id}/"
+
+
 def cmd_remove_image(args):
     require_yes(args)
     table, url_col, removed_col, owner_col, name_col, notice_kind = IMAGE_TARGETS[args.kind]
@@ -118,10 +128,11 @@ def cmd_remove_image(args):
             """select count(*) from (
                    select photo_url u from profiles union all select logo_url from leagues
                    union all select banner_url from leagues union all select logo_url from league_franchises
-               ) refs where u = %s""",
+               ) refs where split_part(u, '?', 1) = split_part(%s, '?', 1)""",
             (url,),
         )
         still_used = cur.fetchone()[0] > 0
+        owned_prefix = owned_key_prefix(cur, args.kind, args.id)
         cur.execute(
             "insert into moderation_notices (id, user_id, kind, subject_name) values (%s, %s, %s, %s)",
             (uuid.uuid4(), owner, notice_kind, subject),
@@ -134,6 +145,9 @@ def cmd_remove_image(args):
         return
     if key is None or args.no_s3:
         print(f"Removed from the app. S3 object NOT deleted: {url}")
+        return
+    if not key.startswith(owned_prefix):
+        print(f"Removed from the app. The image isn't stored under this owner, so it was kept: {key}")
         return
     try:
         import boto3
