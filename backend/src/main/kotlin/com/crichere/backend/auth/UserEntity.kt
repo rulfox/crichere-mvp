@@ -41,4 +41,14 @@ class UserEntity(
 
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null,
+
+    /** Set by the team (docs/PHASE18.md). No sign-in, refresh or authenticated request while this is set. */
+    @Column(name = "suspended_at")
+    var suspendedAt: Instant? = null,
+
+    @Column(name = "terms_accepted_at")
+    var termsAcceptedAt: Instant? = null,
+
+    @Column(name = "terms_version", length = 20)
+    var termsVersion: String? = null,
 )

@@ -37,6 +37,10 @@ class FranchiseEntity(
     @Column(name = "logo_url", columnDefinition = "TEXT")
     var logoUrl: String? = null,
 
+    /** The team removed this logo (docs/PHASE18.md): show the neutral placeholder. */
+    @Column(name = "logo_removed", nullable = false)
+    var logoRemoved: Boolean = false,
+
     @Column(name = "joined_at", nullable = false, updatable = false)
     var joinedAt: Instant = Instant.now(),
 
