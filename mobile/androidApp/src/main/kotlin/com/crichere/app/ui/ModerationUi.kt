@@ -57,6 +57,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -132,6 +133,17 @@ internal fun ModerationRowMenu(name: String, blocked: Boolean, onReport: () -> U
                 )
             }
         }
+    }
+}
+
+/** Board R12a: a removed league or franchise logo. No label, so nobody is publicly flagged. */
+@Composable
+internal fun NeutralLogo(size: Dp, iconSize: Dp, corner: Dp) {
+    Box(
+        Modifier.size(size).clip(RoundedCornerShape(corner)).background(DeletedAvatarBackground),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(R.drawable.ic_shield), contentDescription = null, tint = DeletedAvatarIcon, modifier = Modifier.size(iconSize))
     }
 }
 

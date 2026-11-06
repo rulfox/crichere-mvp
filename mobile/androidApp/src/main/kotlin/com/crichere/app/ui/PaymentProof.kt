@@ -125,9 +125,9 @@ internal fun FlowTopBar(title: String, onClose: () -> Unit) {
 
 /** League tile + name + "Starts 12 Oct · T20" summary at the top of the flows. */
 @Composable
-internal fun LeagueSummaryRow(id: String, name: String, logoUrl: String?, startsOn: String, format: String?) {
+internal fun LeagueSummaryRow(id: String, name: String, logoUrl: String?, startsOn: String, format: String?, logoRemoved: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(tileColor(id)), contentAlignment = Alignment.Center) {
+        if (logoRemoved) NeutralLogo(40.dp, 20.dp, 10.dp) else Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(tileColor(id)), contentAlignment = Alignment.Center) {
             Text(shortCode(name), style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 12.8.sp), color = Color.White)
             if (logoUrl != null) {
                 coil3.compose.AsyncImage(model = logoUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())

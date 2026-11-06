@@ -140,7 +140,7 @@ private fun LeagueRow(league: LeagueSummaryDto, onClick: () -> Unit) {
             .padding(start = 15.dp, end = 15.dp, top = 13.dp, bottom = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(tileColor(league.id)), contentAlignment = Alignment.Center) {
+        if (league.logoRemoved) NeutralLogo(40.dp, 20.dp, 10.dp) else Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(tileColor(league.id)), contentAlignment = Alignment.Center) {
             Text(
                 shortCode(league.name),
                 style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, lineHeight = 11.sp),

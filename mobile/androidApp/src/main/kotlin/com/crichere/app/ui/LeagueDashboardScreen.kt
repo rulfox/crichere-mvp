@@ -435,7 +435,7 @@ private fun LeagueCard(league: LeagueDto, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(13.dp),
     ) {
-        Box(
+        if (league.logoRemoved) NeutralLogo(48.dp, 24.dp, 12.dp) else Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(12.dp))

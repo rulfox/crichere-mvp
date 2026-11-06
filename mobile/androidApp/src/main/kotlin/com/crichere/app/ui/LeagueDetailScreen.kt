@@ -312,7 +312,7 @@ private fun LeagueDetailScreen(state: LeagueDetailState, moderation: LeagueModer
             else -> LeagueView(
                 // Board R9b: a member keeps the league, without the organizer's uploads.
                 league = if (league.organizerUserId in moderation.blocked) {
-                    league.copy(logoUrl = null, bannerUrl = null, description = null)
+                    league.copy(logoUrl = null, bannerUrl = null, description = null, logoRemoved = league.logoRemoved || league.logoUrl != null, bannerRemoved = league.bannerRemoved || league.bannerUrl != null)
                 } else {
                     league
                 },
@@ -388,11 +388,11 @@ private fun LeagueView(
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
-            if (league.bannerUrl != null) BannerHeader(league, onBack = actions.onBack) else CompactHeader(title = null, onBack = actions.onBack)
+            if (league.bannerUrl != null || league.bannerRemoved) BannerHeader(league, onBack = actions.onBack) else CompactHeader(title = null, onBack = actions.onBack)
         }
         item {
             Column(Modifier.padding(horizontal = 19.dp)) {
-                Spacer(Modifier.height(if (league.bannerUrl != null) 8.dp else 2.dp))
+                Spacer(Modifier.height(if (league.bannerUrl != null || league.bannerRemoved) 8.dp else 2.dp))
                 Text(
                     league.name,
                     style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp, lineHeight = 23.1.sp),
@@ -700,13 +700,21 @@ private fun FollowPill(league: LeagueDto, state: LeagueDetailState, registration
 private fun BannerHeader(league: LeagueDto, onBack: () -> Unit) {
     Box {
         Column {
-            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer)) {
-                AsyncImage(
-                    model = league.bannerUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.matchParentSize(),
-                )
+            // Board R12a: a removed banner keeps its slot, with a quiet image glyph, so the page doesn't jump.
+            Box(
+                Modifier.fillMaxWidth().background(if (league.bannerRemoved) DeletedAvatarBackground else MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (league.bannerRemoved) {
+                    Icon(painterResource(R.drawable.ic_image), contentDescription = null, tint = DeletedAvatarIcon, modifier = Modifier.size(28.dp))
+                } else {
+                    AsyncImage(
+                        model = league.bannerUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                }
                 Column {
                     Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(Modifier.height(118.dp))
@@ -734,10 +742,12 @@ private fun BannerHeader(league: LeagueDto, onBack: () -> Unit) {
                 .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
                 .padding(4.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(tileColor(league.id)),
+                .background(if (league.logoRemoved) DeletedAvatarBackground else tileColor(league.id)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(shortCode(league.name), style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 17.9.sp), color = Color.White)
+            if (league.logoRemoved) {
+                Icon(painterResource(R.drawable.ic_shield), contentDescription = null, tint = DeletedAvatarIcon, modifier = Modifier.size(24.dp))
+            } else Text(shortCode(league.name), style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 17.9.sp), color = Color.White)
             if (league.logoUrl != null) {
                 AsyncImage(model = league.logoUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             }
@@ -899,6 +909,7 @@ private fun FranchiseRow(franchise: LeagueFranchiseDto, league: LeagueDto, isMe:
         avatarText = initials(franchise.name),
         avatarUrl = franchise.logoUrl,
         neutral = blocked || franchise.logoRemoved,
+        neutralLogo = true,
         title = franchise.name,
         subtitle = listOfNotNull(owner, paid, "Blocked".takeIf { blocked }).joinToString(" · "),
         trailing = if (signedIn && !isMe && !franchise.ownerDeleted) {
@@ -920,6 +931,8 @@ private fun RosterRow(
     deleted: Boolean = false,
     /** Board R8a: blocked or removed. The neutral avatar, with the name left as it is. */
     neutral: Boolean = false,
+    /** A franchise row: the square shield, not the round person. */
+    neutralLogo: Boolean = false,
     title: String,
     subtitle: String?,
     leaveRequested: Boolean,
@@ -930,7 +943,9 @@ private fun RosterRow(
 ) {
     val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp)) {
-        if (deleted || neutral) {
+        if (neutral && neutralLogo) {
+            NeutralLogo(32.dp, 18.dp, 8.dp)
+        } else if (deleted || neutral) {
             DeletedUserAvatar(size = 32.dp, iconSize = 18.dp, description = null)
         } else {
             Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE3E8DD)), contentAlignment = Alignment.Center) {
