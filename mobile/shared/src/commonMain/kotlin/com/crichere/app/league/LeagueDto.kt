@@ -110,6 +110,9 @@ data class LeagueFranchiseClaimRequestDto(
 data class LeagueDto(
     val id: String,
     val organizerUserId: String,
+    /** Only for signed-in callers (docs/PHASE18.md). */
+    val organizerName: String? = null,
+    val organizerDeleted: Boolean = false,
     val name: String,
     val description: String? = null,
     val logoUrl: String? = null,

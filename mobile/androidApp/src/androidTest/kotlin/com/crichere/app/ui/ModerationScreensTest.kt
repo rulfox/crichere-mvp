@@ -5,6 +5,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.crichere.app.league.LeagueDto
+import com.crichere.app.league.LeagueStatus
 import com.crichere.app.moderation.BlockTarget
 import com.crichere.app.moderation.BlockViewModel
 import com.crichere.app.moderation.BlockedPeopleViewModel
@@ -127,5 +129,38 @@ class ModerationScreensTest {
         composeRule.setContent { BlockedOrganizerNotice("this organizer", onUnblock = {}, onHome = {}) }
 
         composeRule.onNodeWithText("This person organizes this league", substring = true).assertExists()
+    }
+
+    @Test
+    fun blockOrganizerLinkSitsBesideReportLeagueAndTaps() {
+        var blocked = false
+        composeRule.setContent { LeagueEndLinks(onReportLeague = {}, onBlockOrganizer = { blocked = true }) }
+
+        composeRule.onNodeWithText("Report league").assertExists()
+        composeRule.onNodeWithText("Block organizer").performClick()
+        composeRule.waitForIdle()
+        assert(blocked)
+    }
+
+    @Test
+    fun coOrganizerSeesOnlyBlockOrganizer() {
+        composeRule.setContent { LeagueEndLinks(onReportLeague = null, onBlockOrganizer = {}) }
+
+        composeRule.onNodeWithText("Report league").assertDoesNotExist()
+        composeRule.onNodeWithText("Block organizer").assertExists()
+    }
+
+    @Test
+    fun blockOrganizerIsOfferedOnlyWhenItCanWork() {
+        val league = LeagueDto(
+            id = "league-1", organizerUserId = "organizer-1", name = "Riverside", state = "Karnataka",
+            district = "Bengaluru Urban", groundId = "g1", groundName = "Ground", startsOn = "2026-10-04",
+            status = LeagueStatus.ANNOUNCED,
+        )
+
+        assert(canBlockOrganizer(league, "someone", emptySet()))
+        assert(!canBlockOrganizer(league, "organizer-1", emptySet()))
+        assert(!canBlockOrganizer(league, "someone", setOf("organizer-1")))
+        assert(!canBlockOrganizer(league.copy(organizerDeleted = true), "someone", emptySet()))
     }
 }

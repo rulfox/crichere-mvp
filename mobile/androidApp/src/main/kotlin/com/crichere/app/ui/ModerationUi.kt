@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -134,22 +135,29 @@ internal fun ModerationRowMenu(name: String, blocked: Boolean, onReport: () -> U
     }
 }
 
-/** Board R3: a quiet link at the end of the page, never near Share and Follow. */
+/** Boards R3 and R3e to R3g: quiet links at the end of the page, never near Share and Follow. Null hides a link. */
 @Composable
-internal fun ReportLeagueLink(onClick: () -> Unit) {
+internal fun LeagueEndLinks(onReportLeague: (() -> Unit)?, onBlockOrganizer: (() -> Unit)?) {
+    if (onReportLeague == null && onBlockOrganizer == null) return
+    FlowRow(
+        Modifier.fillMaxWidth().padding(top = 28.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+    ) {
+        onReportLeague?.let { QuietLink(R.drawable.ic_flag, "Report league", it) }
+        onBlockOrganizer?.let { QuietLink(R.drawable.ic_block, "Block organizer", it) }
+    }
+}
+
+@Composable
+private fun QuietLink(icon: Int, label: String, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().padding(top = 16.dp),
-        horizontalArrangement = Arrangement.Center,
+        Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(painterResource(R.drawable.ic_flag), contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Report league", style = pText(13.sp), color = colors.onSurfaceVariant)
-        }
+        Icon(painterResource(icon), contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = pText(13.sp, FontWeight.Medium), color = colors.onSurfaceVariant)
     }
 }
 

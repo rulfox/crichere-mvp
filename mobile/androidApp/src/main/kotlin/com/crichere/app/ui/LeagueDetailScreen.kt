@@ -571,7 +571,15 @@ private fun LeagueView(
                 }
             }
         }
-        if (!organizer && me != null) item { ReportLeagueLink(moderation.onReportLeague) }
+        if (me != null) {
+            item {
+                LeagueEndLinks(
+                    onReportLeague = moderation.onReportLeague.takeUnless { organizer },
+                    onBlockOrganizer = { moderation.onBlock(league.organizerUserId, organizerName(league)) }
+                        .takeIf { canBlockOrganizer(league, me, moderation.blocked) },
+                )
+            }
+        }
     }
 }
 
@@ -1194,8 +1202,8 @@ internal class LeagueModeration(
     }
 }
 
-/** The list responses carry no organizer name: it's known only if they also play or own a franchise. */
-private fun organizerName(league: LeagueDto): String =
-    league.players.firstOrNull { it.userId == league.organizerUserId }?.name
-        ?: league.franchises.firstOrNull { it.ownerUserId == league.organizerUserId }?.ownerName
-        ?: "this organizer"
+private fun organizerName(league: LeagueDto): String = league.organizerName ?: "this organizer"
+
+/** Boards R3e to R3g. A co-organizer can block the main organizer, so this doesn't use `isOrganizer`. */
+internal fun canBlockOrganizer(league: LeagueDto, me: String, blocked: Set<String>): Boolean =
+    me != league.organizerUserId && !league.organizerDeleted && league.organizerUserId !in blocked
