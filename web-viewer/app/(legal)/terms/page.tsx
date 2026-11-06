@@ -67,7 +67,11 @@ const SECTIONS: LegalSection[] = [
           <li>collect other users&rsquo; data or use it for anything other than the league it was shown for;</li>
           <li>break any applicable law, including the Information Technology Act, 2000 and its rules.</li>
         </ul>
-        <p>We may remove content, hide a league, and suspend or end accounts that break these Terms or harm others.</p>
+        <p>You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within [24] hours. A report never causes automatic action.</p>
+        <p>
+          We may remove content, hide a league, and suspend or end accounts that break these Terms or harm others. A number linked to a suspended account
+          cannot sign up again. Contact us at hello@crichere.com if you think we made a mistake.
+        </p>
       </>
     ),
   },

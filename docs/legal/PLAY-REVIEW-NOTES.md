@@ -25,11 +25,13 @@ the organizer. Crichere takes no share of it.
 **League awards.** Organizers can list awards for their real-world league. These are decided and given
 by the organizer, not by Crichere, and are not won through anything in the app.
 
-**User content.** Users can report people and leagues, and block people, from league rosters. Our team
-reviews reports and can remove content or suspend accounts. Users must accept the Terms and Privacy
-Policy at sign in. The app is for users aged 18 and over.
+**User content.** Open any league and tap the ⋮ on a player or franchise row to report or block that
+person; "Report league" is at the end of the league page. Blocked people are listed under My Profile >
+Blocked people. Our team reviews reports every day and can remove content or suspend accounts. Users
+must tick their acceptance of the Terms and Privacy Policy before they can sign in. The app is for
+users aged 18 and over.
 
-**How to sign in.** [Reviewer login steps, once built: test phone number and fixed code.]
+**How to sign in.** [MSG91 demo number and its fixed code, set up by the owner.]
 
 **Test data.** [Name of a sample league with players, franchises and a completed auction.]
 

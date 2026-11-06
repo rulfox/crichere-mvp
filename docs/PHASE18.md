@@ -149,3 +149,19 @@ SECURITY-AUDIT entry; unverified scenarios in DESIGN-REVIEW Follow-ups.
 
 **Owner before deploy:** MSG91 tasks, `s3:DeleteObject` and `s3:ListBucket` grants, legal placeholders and lawyer review,
 retention periods, web deploy. Deploy backend first.
+
+## 8. Status (2026-11-06)
+
+Built on branch `play-compliance`, not pushed, not deployed.
+
+| Step | State |
+|---|---|
+| 1 to 5, backend and script | Done, tests pass. Script run on the local database with `--no-s3` |
+| 6, shared | Done, tests pass |
+| 7, Android | Done. Run on Pixel_9_Pro against a local backend; Compose tests added |
+| 8, web | Done. Vitest, lint and Playwright pass |
+| 9, iOS | Written, never compiled |
+| 10, docs | Done. Placeholders in the legal pages stay for the owner |
+
+Unverified scenarios are in DESIGN-REVIEW Follow-ups. Before release: decide how to block an organizer who has no roster
+row, then finish the owner tasks in section 7.

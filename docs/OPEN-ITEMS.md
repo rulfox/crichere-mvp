@@ -1,6 +1,6 @@
 # Open items
 
-**Last updated:** 2026-11-04 (report and block design prompt)
+**Last updated:** 2026-11-06 (Phase 18 built on branch `play-compliance`, not deployed)
 
 One list of everything still open, gathered from DESIGN-REVIEW Follow-ups, the phase docs and the
 design update #4 work. Details live in the linked docs; this file is the index. Design questions are
@@ -16,8 +16,8 @@ were answered by update #5 (PHASE15 8).
 | Account deletion: S3 permission, iOS check | Backend, `/delete-account` and Android done (PHASE16); iOS written, never compiled. Grant the backend IAM user `s3:DeleteObject` on `crichere-media-prod` (`users/`, `leagues/*/payments/`) before deploying, or every production purge fails at the S3 step and retries. Play Console: Data safety deletion URL = https://crichere.com/delete-account. | PHASE16 5, 7 |
 | Image URLs saved before 2026-10-11 | The backend now only accepts our-bucket image URLs (SECURITY-AUDIT Finding 4), but existing rows aren't rechecked. Run once on production: `SELECT 'profile', user_id::text, photo_url FROM profiles WHERE photo_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'league', id::text, logo_url FROM leagues WHERE logo_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'banner', id::text, banner_url FROM leagues WHERE banner_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'franchise', id::text, logo_url FROM league_franchises WHERE logo_url NOT LIKE 'https://crichere-media-prod.s3.%'`, then null out anything found. | SECURITY-AUDIT 4 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
-| Report and block (Google Play User Generated Content policy) | Not built; launch blocker. Design ready: Crichere - V2 boards `P11 Report & Block` and `P12 Play Compliance` (P12 section 0 overrides P11: rupee amounts, real organizer menu, no Approve). | design-prompts |
-| Terms acceptance and auction money note | Designed on P12 (T1a, T1b, T2, V1, V2), not built. Owner decided 2026-11-04: required checkbox at sign in; money note copy approved. Owner confirmed 2026-11-04: franchises pay no money based on auction amounts, so purses and bids are a virtual budget shown in rupees. Terms updated; review notes in `docs/legal/PLAY-REVIEW-NOTES.md`. | P12 |
+| Report and block (Google Play User Generated Content policy) | Built on `play-compliance` (docs/PHASE18.md): backend, shared, Android and web tested; iOS written, never compiled. Not pushed or deployed. **Open decision:** an organizer who neither plays nor owns a franchise has no roster row, so can't be blocked in the app. | PHASE18 |
+| Terms acceptance and auction money note | Built on `play-compliance`. Deploy the backend only with a mobile release: new sign-ups need `termsAccepted`, so older apps can't create accounts. | PHASE18 |
 | MSG91 before launch | Check the production widget: keep one demo number for the Play reviewer (non-obvious OTP if possible, plain sample account), remove the others. Rotate the Auth Key and widget token. Test real SMS on Jio, Airtel and Vi. | PHASE12 6, PHASE18 |
 
 ## 2a. Decided (2026-11-04)

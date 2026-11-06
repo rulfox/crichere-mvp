@@ -276,3 +276,26 @@ Built in Phase 16; the full analysis is [PHASE16.md](PHASE16.md) section 5. Poin
   contained `--`, which strict plist parsers reject. Those were fixed, and the file now parses
   (Python `plistlib`).
 - Both are unverified until the first Xcode build, like the rest of the Swift code.
+
+## Phase 18 review (2026-11-06)
+
+Report, block, suspension and terms acceptance (docs/PHASE18.md, S1 to S14).
+
+**Fixed during the build:**
+- **Evidence scan:** the media sweep found evidence with a regex over the report snapshot. It now reads only the image
+  fields, through a JSON query.
+- **Purge and evidence:** account purge deleted images that open reports still needed. It now keeps them until the
+  report closes.
+- **Moderation script:** `remove-image` compares normalized URLs and checks the owner prefix before it deletes.
+- **Refresh when suspended:** once tokens were revoked, a suspended user got a plain 401. Refresh now checks suspension
+  first, so the app shows the suspended screen.
+
+**Checked on the emulator against a local backend and database (2026-11-06):** suspension during a live auction took
+effect on the next authenticated request inside the 30 second cache, refresh tokens and device tokens were gone, a
+suspended number got the suspended screen at sign in, and the script refused a live organizer without `--during-auction`.
+
+**Open:**
+- A league can reference another league's image (`requireAnyLeagueImage`). Older weakness, not fixed here.
+- The MSG91 demo numbers are a live backdoor (PHASE12). Owner to cut them to one and rotate the Auth Key and widget token.
+- The automated review of commit f2d71d3 did not finish (HTTP 429). It has not been repeated.
+- The real S3 delete in `remove-image` was not run: local tests used `--no-s3`.

@@ -577,6 +577,28 @@ above.
 
 ## Follow-ups (todo)
 
+**Phase 18 report, block, suspended, terms (boards P11, P12).** Checked on Pixel_9_Pro with a local backend, 2026-11-06:
+terms tick, report person and league sheets, duplicate report, block and undo, blocked row, Unblock in the row menu,
+Blocked people, live auction with a blocked player and owner, V2 note, removed photo notice, suspended mid-auction and at
+sign in, dashboard filter, blocked organizer notice (R9a) and banner (R9b).
+
+Not verified:
+- iOS: every Phase 18 screen. Written, never compiled, so SKIE enum case names and flow types may need fixing. iOS uses a
+  long press on a roster row instead of the ⋮, which differs from board R1.
+- Exact CSS: Android screens use app styling, not values measured from the boards. Row menu styling now follows the app's
+  other dropdowns.
+- Physical phone CPH2487, dark theme boards (R1e, R4, R5, R7, R7e, R8), and web layout at phone width for the money note.
+- Terms and Privacy links on sign in and My Profile were not tapped on a device.
+- Report failure and retry, the 500 character limit, Something else (details required), and Also block on the emulator.
+- Refresh path when suspended on app start: backend integration test only.
+- Account deletion with blocks and reports on a device: backend integration test only.
+- Removed league logo, banner and franchise logo on a device: only the photo was tested.
+
+Known differences from the boards:
+- The Android subtitle always includes "Blocked", and a removed league logo shows the old fallback.
+- On Android the suspended screen shows the masked number only at sign in: mid-session the app doesn't hold the number.
+- The API has no organizer name, so a non-playing organizer reads "This person" or "this organizer".
+
 Open items found while implementing the redesign, not yet scheduled.
 
 - [ ] **Photos and logos in lists** (2026-10-11, [PHASE17.md](PHASE17.md)). Existing avatar and logo slots now show
