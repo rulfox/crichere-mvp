@@ -10,6 +10,8 @@ export type LeagueFranchise = {
   id: string;
   name: string;
   logoUrl: string | null;
+  /** The Crichere team removed it: show the neutral placeholder, never the initials (docs/PHASE18.md). */
+  logoRemoved?: boolean;
 };
 
 export type PlayingRole = "BATSMAN" | "BOWLER" | "ALL_ROUNDER" | "WICKETKEEPER";
@@ -36,6 +38,8 @@ export type League = {
   description?: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
+  logoRemoved?: boolean;
+  bannerRemoved?: boolean;
   country: string;
   state: string;
   district: string;

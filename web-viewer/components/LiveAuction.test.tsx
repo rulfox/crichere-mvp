@@ -163,6 +163,25 @@ describe("LiveAuction", () => {
     expect(container.querySelector('img[src=""]')).toBeNull();
   });
 
+  it("live: says no money moves through Crichere, under the bid history (docs/PHASE18.md)", async () => {
+    render(<LiveAuction league={league} />);
+    source().emit("auction-state", openLot);
+
+    await screen.findByRole("heading", { name: "Aswin Sudarsanan" });
+    expect(within(screen.getByLabelText("Recent bids")).getByText("Bids are recorded here only. No money moves through Crichere.")).toBeInTheDocument();
+  });
+
+  it("live: a removed franchise logo shows the neutral badge, not the initials (docs/PHASE18.md)", async () => {
+    const removed = { ...league, franchises: [league.franchises[0], { id: "f2", name: "Victory CC", logoUrl: null, logoRemoved: true }] };
+    render(<LiveAuction league={removed} />);
+    source().emit("auction-state", openLot);
+
+    await screen.findByRole("heading", { name: "Aswin Sudarsanan" });
+    const ticker = within(screen.getByLabelText("Recent bids"));
+    expect(ticker.getByText("Victory CC")).toBeInTheDocument();
+    expect(ticker.queryByText("VC")).not.toBeInTheDocument();
+  });
+
   it("live: hides the batting/bowling chips the profile doesn't have, keeps the role", async () => {
     render(<LiveAuction league={league} />);
     source().emit("auction-state", openLot);

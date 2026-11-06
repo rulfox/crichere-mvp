@@ -156,7 +156,7 @@ function LeagueHeader({ league, view }: { league: League; view: "not-started" | 
     <section className={styles.header}>
       <div className={styles.leagueLogo}>
         {/* eslint-disable-next-line @next/next/no-img-element -- organizer-uploaded image on our S3 host; plain <img> keeps next/image's remotePatterns closed */}
-        {league.logoUrl ? <img src={league.logoUrl} alt="" /> : initials(league.name)}
+        {league.logoUrl ? <img src={league.logoUrl} alt="" /> : league.logoRemoved ? null : initials(league.name)}
       </div>
       <div className={styles.headerText}>
         <div className={styles.titleRow}>
@@ -262,7 +262,7 @@ function NotStarted({ league }: { league: League }) {
         <ul className={styles.franchiseList}>
           {league.franchises.map((franchise, index) => (
             <li key={franchise.id} className={styles.franchiseItem}>
-              <FranchiseBadge name={franchise.name} index={index} size={26} fontSize={10} logoUrl={franchise.logoUrl} />
+              <FranchiseBadge name={franchise.name} index={index} size={26} fontSize={10} logoUrl={franchise.logoUrl} removed={franchise.logoRemoved} />
               {franchise.name}
             </li>
           ))}
@@ -322,27 +322,33 @@ function logoOf(league: League, franchiseId: string | null | undefined): string 
   return league.franchises.find((franchise) => franchise.id === franchiseId)?.logoUrl ?? null;
 }
 
+function logoRemoved(league: League, franchiseId: string | null | undefined): boolean {
+  return league.franchises.find((franchise) => franchise.id === franchiseId)?.logoRemoved === true;
+}
+
 function FranchiseBadge({
   name,
   index,
   size,
   fontSize,
   logoUrl,
+  removed = false,
 }: {
   name: string | null;
   index: number | undefined;
   size: number;
   fontSize: number;
   logoUrl?: string | null;
+  removed?: boolean;
 }) {
-  const known = index !== undefined && name;
+  const known = index !== undefined && name && !removed;
   return (
     <span
       aria-hidden="true"
       className={styles.fBadge}
       style={{ width: size, height: size, fontSize, background: known ? franchiseColor(index) : "rgba(255,255,255,.12)" }}
     >
-      {name ? initials(name) : "—"}
+      {removed ? null : name ? initials(name) : "—"}
       {/* Over the initials, which show while it loads; a broken image hides itself. */}
       {/* eslint-disable-next-line @next/next/no-img-element -- franchise logo on our S3 host; plain <img> keeps next/image's remotePatterns closed */}
       {logoUrl && <img src={logoUrl} alt="" width={size} height={size} loading="lazy" decoding="async" onError={(event) => (event.currentTarget.style.display = "none")} />}
@@ -534,7 +540,7 @@ function PlayerCard({ league, auction, outcome, order }: { league: League; aucti
           <span className={styles.label}>Leading franchise</span>
           <div className={styles.leaderSlot}>
             <div ref={leaderRef} className={styles.leader}>
-              <FranchiseBadge name={leaderName} index={leaderId ? order.get(leaderId) : undefined} size={32} fontSize={11} logoUrl={logoOf(league, leaderId)} />
+              <FranchiseBadge name={leaderName} index={leaderId ? order.get(leaderId) : undefined} size={32} fontSize={11} logoUrl={logoOf(league, leaderId)} removed={logoRemoved(league, leaderId)} />
               <span className={styles.leaderName}>{leaderName ?? "No bids yet"}</span>
             </div>
           </div>
@@ -613,7 +619,7 @@ function BidTicker({ league, auction, order }: { league: League; auction: Auctio
         <ol ref={listRef} className={styles.tickerList}>
           {rows.map((bid, index) => (
             <li key={`${bid.franchiseId}-${bid.placedAt}`} className={`${styles.tickerRow} ${index === 0 ? styles.tickerTop : ""}`}>
-              <FranchiseBadge name={bid.franchiseName} index={order.get(bid.franchiseId)} size={28} fontSize={10} logoUrl={logoOf(league, bid.franchiseId)} />
+              <FranchiseBadge name={bid.franchiseName} index={order.get(bid.franchiseId)} size={28} fontSize={10} logoUrl={logoOf(league, bid.franchiseId)} removed={logoRemoved(league, bid.franchiseId)} />
               <span className={styles.tickerName}>{bid.franchiseName ?? "Unknown franchise"}</span>
               <span className={styles.tickerAmount}>{formatInr(bid.amount)}</span>
               <span className={styles.tickerAgo}>{formatAgo(bid.placedAt, now)}</span>
@@ -621,6 +627,7 @@ function BidTicker({ league, auction, order }: { league: League; auction: Auctio
           ))}
         </ol>
       </div>
+      <p className={styles.tickerNote}>Bids are recorded here only. No money moves through Crichere.</p>
     </section>
   );
 }
@@ -658,6 +665,7 @@ function Standings({
           franchise={franchise}
           index={order.get(franchise.franchiseId)}
           logoUrl={logoOf(league, franchise.franchiseId)}
+          removed={logoRemoved(league, franchise.franchiseId)}
           leading={franchise.franchiseId === leadingId}
           won={outcome?.sold === true && franchise.franchiseId === leadingId}
           squadMin={squadMin}
@@ -673,6 +681,7 @@ function StandingRow({
   franchise,
   index,
   logoUrl,
+  removed,
   leading,
   won,
   squadMin,
@@ -682,6 +691,7 @@ function StandingRow({
   franchise: FranchiseResult;
   index: number | undefined;
   logoUrl: string | null;
+  removed: boolean;
   leading: boolean;
   won: boolean;
   squadMin: number | null;
@@ -696,7 +706,7 @@ function StandingRow({
   return (
     <div className={`${styles.standing} ${leading ? styles.standingLead : ""}`}>
       <div className={styles.standingTop}>
-        <FranchiseBadge name={franchise.franchiseName} index={index} size={28} fontSize={10} logoUrl={logoUrl} />
+        <FranchiseBadge name={franchise.franchiseName} index={index} size={28} fontSize={10} logoUrl={logoUrl} removed={removed} />
         <span className={styles.standingName}>{franchise.franchiseName}</span>
         {leading && <span className={styles.tag}>{won ? "WON" : "LEADING"}</span>}
         <span className={styles.squad}>
@@ -872,7 +882,7 @@ function Completed({ league, auction, results }: { league: League; auction: Auct
           return (
             <article key={franchise.franchiseId} className={`${styles.resultCard} ${franchise.belowSquadMin ? styles.resultBelow : ""}`}>
               <div className={styles.resultHead}>
-                <FranchiseBadge name={franchise.franchiseName} index={order.get(franchise.franchiseId)} size={40} fontSize={12} logoUrl={logoOf(league, franchise.franchiseId)} />
+                <FranchiseBadge name={franchise.franchiseName} index={order.get(franchise.franchiseId)} size={40} fontSize={12} logoUrl={logoOf(league, franchise.franchiseId)} removed={logoRemoved(league, franchise.franchiseId)} />
                 <span className={styles.stack} style={{ flex: 1, minWidth: 0 }}>
                   <h3 className={styles.resultName}>{franchise.franchiseName}</h3>
                   <span className={styles.summaryLabel}>
