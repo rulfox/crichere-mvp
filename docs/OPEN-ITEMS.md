@@ -41,6 +41,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 | Item | Notes | Where |
 |---|---|---|
 | `JwtServiceTest` "accepted one second before it expires" was reported flaky | Could not reproduce on 2026-11-06: 8 forced runs passed, and the test already uses a fixed clock, so no change made. Cause unknown; reopen if it fails again. | backend tests |
+| iOS test target doesn't compile | `:shared:compileTestKotlinIosSimulatorArm64` rejects 53 test names in `commonTest` that contain a comma (Kotlin/Native rule). Android tests and the iOS app are unaffected. Rename them before running iOS tests. | shared tests |
 | Swift code never compiled | Every iOS file, including the update #4 port and PHASE17's image upload shrink + cache, needs a first Xcode build (expect fixes). | PHASE15 7.5, PHASE17 7, iosApp/README |
 | Backend deploy carries new auction fields + own-lead rule + heartbeat | Watch the first live auction on Railway after the pushes of 2026-10-04. | PHASE15 6, 7.1 |
 
