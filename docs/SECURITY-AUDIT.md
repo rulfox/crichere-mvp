@@ -297,5 +297,6 @@ suspended number got the suspended screen at sign in, and the script refused a l
 **Open:**
 - A league can reference another league's image (`requireAnyLeagueImage`). Older weakness, not fixed here.
 - The MSG91 demo numbers are a live backdoor (PHASE12). Owner to cut them to one and rotate the Auth Key and widget token.
-- The automated review of commit f2d71d3 did not finish (HTTP 429). It has not been repeated.
+- The automated review of commit f2d71d3 did not finish (HTTP 429). Replaced on 2026-11-06 by a static review of the whole
+  branch against master: no HIGH or MEDIUM findings. Code reading only, nothing was run.
 - The real S3 delete in `remove-image` was not run: local tests used `--no-s3`.
