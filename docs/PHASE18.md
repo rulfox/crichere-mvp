@@ -148,7 +148,7 @@ SECURITY-AUDIT entry; unverified scenarios in DESIGN-REVIEW Follow-ups.
 **Board corrections to follow in the build:** R13c triggers on the next authenticated request, not the stream.
 
 **Owner before deploy:** MSG91 tasks, `s3:DeleteObject` and `s3:ListBucket` grants, legal placeholders and lawyer review,
-retention periods, web deploy. Deploy backend first.
+retention periods, web deploy. Deploy the backend first, then the mobile release straight after: older apps can't create accounts on the new backend.
 
 ## 8. Status (2026-11-06)
 

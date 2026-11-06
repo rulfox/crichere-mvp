@@ -17,7 +17,7 @@ were answered by update #5 (PHASE15 8).
 | Image URLs saved before 2026-10-11 | The backend now only accepts our-bucket image URLs (SECURITY-AUDIT Finding 4), but existing rows aren't rechecked. Run once on production: `SELECT 'profile', user_id::text, photo_url FROM profiles WHERE photo_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'league', id::text, logo_url FROM leagues WHERE logo_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'banner', id::text, banner_url FROM leagues WHERE banner_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'franchise', id::text, logo_url FROM league_franchises WHERE logo_url NOT LIKE 'https://crichere-media-prod.s3.%'`, then null out anything found. | SECURITY-AUDIT 4 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
 | Report and block (Google Play User Generated Content policy) | Built on `play-compliance` (docs/PHASE18.md): backend, shared, Android and web tested; iOS written, never compiled. Not pushed or deployed. **Open decision:** an organizer who neither plays nor owns a franchise has no roster row, so can't be blocked in the app. | PHASE18 |
-| Terms acceptance and auction money note | Built on `play-compliance`. Deploy the backend only with a mobile release: new sign-ups need `termsAccepted`, so older apps can't create accounts. | PHASE18 |
+| Terms acceptance and auction money note | Built on `play-compliance`. Deploy the backend first, then the mobile release straight after: new sign-ups need `termsAccepted`, so older apps can't create accounts in between. | PHASE18 |
 | MSG91 before launch | Check the production widget: keep one demo number for the Play reviewer (non-obvious OTP if possible, plain sample account), remove the others. Rotate the Auth Key and widget token. Test real SMS on Jio, Airtel and Vi. | PHASE12 6, PHASE18 |
 
 ## 2a. Decided (2026-11-04)
@@ -40,7 +40,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 
 | Item | Notes | Where |
 |---|---|---|
-| `JwtServiceTest` "accepted one second before it expires" is flaky | Passes alone; sits on a one-second boundary. Make the test use a fixed clock. | backend tests |
+| `JwtServiceTest` "accepted one second before it expires" was reported flaky | Could not reproduce on 2026-11-06: 8 forced runs passed, and the test already uses a fixed clock, so no change made. Cause unknown; reopen if it fails again. | backend tests |
 | Swift code never compiled | Every iOS file, including the update #4 port and PHASE17's image upload shrink + cache, needs a first Xcode build (expect fixes). | PHASE15 7.5, PHASE17 7, iosApp/README |
 | Backend deploy carries new auction fields + own-lead rule + heartbeat | Watch the first live auction on Railway after the pushes of 2026-10-04. | PHASE15 6, 7.1 |
 
