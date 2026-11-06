@@ -435,6 +435,7 @@ class LeagueService(
         // tradeoff for awards).
         val groundName = groundRepository.findById(groundId).orElseThrow().name
         val coOrganizers = leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId).map { it.toResponse() }
+        val organizerProfile = profileRepository.findById(organizerUserId).orElse(null)
         return LeagueResponse(
             id = leagueId,
             organizerUserId = organizerUserId,
@@ -472,6 +473,8 @@ class LeagueService(
             auctionStatus = auctionStatus,
             organizerHandoverAt = organizerHandoverAt,
             showHandoverNotice = callerId == organizerUserId && organizerHandoverAt != null && organizerHandoverSeenAt == null,
+            organizerName = organizerProfile?.takeIf { callerId != null && !it.accountDeleted }?.name,
+            organizerDeleted = organizerProfile?.accountDeleted == true,
         )
     }
 

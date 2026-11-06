@@ -58,4 +58,8 @@ data class LeagueResponse(
     val organizerHandoverAt: Instant? = null,
     /** `true` only for the current organizer after a handover, until they dismiss it (design D9, `POST .../handover-notice/dismiss`). */
     val showHandoverNotice: Boolean = false,
+    /** For the Block organizer link (docs/PHASE18.md). Signed-in callers only: nobody else can block, so public responses stay as they were. */
+    val organizerName: String? = null,
+    /** The organizer's account was deleted: they can't be blocked, so the apps hide the link. */
+    val organizerDeleted: Boolean = false,
 )

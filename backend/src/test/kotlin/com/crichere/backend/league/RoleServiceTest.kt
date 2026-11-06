@@ -86,6 +86,7 @@ class RoleServiceTest {
 
     private fun givenLeague() {
         every { leagueRepository.findById(leagueId) } returns Optional.of(league)
+        every { profileRepository.findById(organizerId) } returns Optional.empty()
     }
 
     @Test
