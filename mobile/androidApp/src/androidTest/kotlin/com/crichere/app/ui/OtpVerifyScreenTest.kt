@@ -41,7 +41,8 @@ class OtpVerifyScreenTest {
 
         composeRule.onNodeWithText("6-digit code").performTextInput("123456")
         composeRule.onNodeWithText("Verify").performClick()
-        composeRule.waitForIdle()
+        // The ViewModel works off the main thread, which waitForIdle doesn't cover.
+        composeRule.waitUntil(5_000) { authRepository.verifyOtpCalls.isNotEmpty() }
 
         assert(authRepository.verifyOtpCalls == listOf("verification-1" to "123456")) {
             "expected verifyOtp(verification-1, 123456), got ${authRepository.verifyOtpCalls}"

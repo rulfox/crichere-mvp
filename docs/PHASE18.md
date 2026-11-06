@@ -163,5 +163,9 @@ Built on branch `play-compliance`, not pushed, not deployed.
 | 9, iOS | Written, never compiled |
 | 10, docs | Done. Placeholders in the legal pages stay for the owner |
 
-Unverified scenarios are in DESIGN-REVIEW Follow-ups. Before release: decide how to block an organizer who has no roster
-row, then finish the owner tasks in section 7.
+**Block organizer (decided 2026-11-06, board P13 R3e to R3g).** A quiet link beside Report league closes the gap for an
+organizer with no roster row. Shown to anyone signed in except the main organizer, and hidden once they're blocked or
+their account is deleted. A co-organizer sees it without Report league. `LeagueResponse.organizerName` goes to signed-in
+callers only.
+
+Unverified scenarios are in DESIGN-REVIEW Follow-ups. Before release: first Xcode build, then the owner tasks in section 7.

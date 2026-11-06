@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -234,7 +237,7 @@ private fun ReasonStep(state: ReportState, viewModel: ReportViewModel) {
     Spacer(Modifier.height(4.dp))
     Text(subject.context, style = pText(13.sp), color = colors.onSurfaceVariant)
     Spacer(Modifier.height(16.dp))
-    Text("What's the problem?", style = pText(14.sp, FontWeight.Medium), color = colors.onBackground)
+    Text("What's the problem?", style = pText(16.sp, FontWeight.SemiBold), color = colors.onBackground)
     Spacer(Modifier.height(4.dp))
     state.reasons.forEach { reason ->
         Row(
@@ -374,6 +377,9 @@ private fun ReportOutcome(icon: Int, title: String, body: String, onDone: () -> 
     CricherePrimaryButton(text = "Done", onClick = onDone)
 }
 
+/** Board R7a's confirm button. */
+private val BlockRed = Color(0xFFD64545)
+
 /** Boards R7a to R7e. [coOrganizerOfThisLeague] adds the R7e note. */
 @Composable
 internal fun BlockDialog(viewModel: BlockViewModel, coOrganizerOfThisLeague: (String) -> Boolean) {
@@ -411,15 +417,21 @@ internal fun BlockDialog(viewModel: BlockViewModel, coOrganizerOfThisLeague: (St
             }
         },
         confirmButton = {
-            TextButton(onClick = viewModel::confirm, enabled = !state.isSubmitting) {
+            Button(
+                onClick = viewModel::confirm,
+                enabled = !state.isSubmitting,
+                modifier = Modifier.height(40.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BlockRed, contentColor = Color.White),
+                contentPadding = PaddingValues(horizontal = 20.dp),
+            ) {
                 Text(
                     when {
                         state.isSubmitting -> "Blocking…"
                         state.failed -> "Try again"
                         else -> "Block"
                     },
-                    style = pText(14.sp, FontWeight.SemiBold),
-                    color = CrichereErrorStrong,
+                    style = pText(14.sp, FontWeight.Medium),
                 )
             }
         },

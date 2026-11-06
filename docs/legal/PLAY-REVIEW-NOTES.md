@@ -26,7 +26,7 @@ the organizer. Crichere takes no share of it.
 by the organizer, not by Crichere, and are not won through anything in the app.
 
 **User content.** Open any league and tap the ⋮ on a player or franchise row to report or block that
-person; "Report league" is at the end of the league page. Blocked people are listed under My Profile >
+person; "Report league" and "Block organizer" are at the end of the league page. Blocked people are listed under My Profile >
 Blocked people. Our team reviews reports every day and can remove content or suspend accounts. Users
 must tick their acceptance of the Terms and Privacy Policy before they can sign in. The app is for
 users aged 18 and over.
