@@ -45,6 +45,9 @@ data class ContentRateLimitProperties(
      * without this one account could fill the bucket. A real user uploads a few images an hour.
      */
     val uploadUrlCapacity: Long = 30,
+    /** Reports (docs/PHASE18.md): a real user sends very few, so this only bounds harassment by volume. */
+    val reportCapacity: Long = 10,
+    val blockCapacity: Long = 30,
     /** The refill period every capacity above uses. */
     val window: Duration = Duration.ofHours(1),
     /** Safety valve on each in-memory bucket map -- see [ContentRateLimiter] for what happens then. */
@@ -73,6 +76,8 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
     private val roleLookupBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val accountDeletionBuckets = ConcurrentHashMap<UUID, Bucket>()
     private val uploadUrlBuckets = ConcurrentHashMap<UUID, Bucket>()
+    private val reportBuckets = ConcurrentHashMap<UUID, Bucket>()
+    private val blockBuckets = ConcurrentHashMap<UUID, Bucket>()
 
     /** @return `null` if the attempt is allowed, or how long the caller must wait if it is not. */
     fun tryConsumeForLeagueCreate(userId: UUID): Duration? =
@@ -113,6 +118,16 @@ class ContentRateLimiter(private val properties: ContentRateLimitProperties) {
      */
     fun requireUploadUrlAllowed(userId: UUID) {
         consume(uploadUrlBuckets, userId, properties.uploadUrlCapacity)?.let { throw ContentRateLimitExceededException(it) }
+    }
+
+    /** @throws ContentRateLimitExceededException the caller sent too many reports this hour. */
+    fun requireReportAllowed(userId: UUID) {
+        consume(reportBuckets, userId, properties.reportCapacity)?.let { throw ContentRateLimitExceededException(it) }
+    }
+
+    /** @throws ContentRateLimitExceededException the caller blocked too many people this hour. */
+    fun requireBlockAllowed(userId: UUID) {
+        consume(blockBuckets, userId, properties.blockCapacity)?.let { throw ContentRateLimitExceededException(it) }
     }
 
     // Leave-request/approve/dismiss/remove/follow/unfollow are deliberately NOT rate-limited: a

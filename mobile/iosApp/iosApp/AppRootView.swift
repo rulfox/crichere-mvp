@@ -50,6 +50,7 @@ private enum AuthDestination {
     case otpVerify(phoneNumber: String, verificationId: String, resendToken: Any?)
     case profileSetup(isEditMode: Bool)
     case main(initialTab: MainTab)
+    case suspended
 }
 
 /// Root of the app (see `iosAppApp.swift`). `pendingDeepLinkLeagueId` (a `crichere://leagues/{id}`
@@ -64,12 +65,21 @@ struct AppRootView: View {
     @Binding var pendingDeepLinkLeagueId: String?
 
     @State private var destination: AuthDestination = .starting
+    @StateObject private var accountNotices = AccountNoticesWrapper()
 
     var body: some View {
         Group {
             switch destination {
+            case .suspended:
+                SuspendedView(maskedPhone: accountNotices.suspendedPhone) {
+                    accountNotices.dismissSuspended()
+                    destination = .phoneEntry
+                }
+
             case .starting:
                 AppStartRootView { resolved in
+                    // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
+                    guard !accountNotices.isSuspended else { return }
                     switch resolved {
                     case .phoneEntry: destination = .phoneEntry
                     case .profileSetup: destination = .profileSetup(isEditMode: false)
@@ -109,6 +119,13 @@ struct AppRootView: View {
                     onNavigateToEditProfile: { destination = .profileSetup(isEditMode: true) },
                     onNavigateToPhoneEntry: { destination = .phoneEntry }
                 )
+            }
+        }
+        // Any request can be the one that finds out (docs/PHASE18.md): nothing stale stays on screen.
+        .onChange(of: accountNotices.isSuspended) { _, suspended in
+            if suspended {
+                KoinHelper().moderationRepository.clear()
+                destination = .suspended
             }
         }
     }
@@ -155,6 +172,7 @@ private enum MainDestination: Hashable {
     case auctionLive(String)
     case manageRoles(String)
     case deleteAccount
+    case blockedPeople
 }
 
 /// The 3-tab bottom-nav shell (Dashboard, My Leagues, My Profile) hosting everything reachable
@@ -213,7 +231,8 @@ struct MainTabView: View {
                 OwnProfileView(
                     onNavigateToEditProfile: onNavigateToEditProfile,
                     onNavigateToPhoneEntry: onNavigateToPhoneEntry,
-                    onDeleteAccount: { path.append(MainDestination.deleteAccount) }
+                    onDeleteAccount: { path.append(MainDestination.deleteAccount) },
+                    onBlockedPeople: { path.append(MainDestination.blockedPeople) }
                 )
                     .tabItem { Label("My Profile", systemImage: "person.crop.circle") }
                     .tag(MainTab.myProfile)
@@ -236,6 +255,8 @@ struct MainTabView: View {
                     }
             }
         }
+        // Loads the block list once signed in, and queues removed-image notices (R12b to R12e).
+        .modifier(ModerationNoticeHost())
         .onAppear { consumePendingLeagueIdIfAny() }
         // A deep link can also arrive *after* this view already appeared (the app was already in
         // the foreground on the Main destination) -- `.onAppear` alone would miss that, since it
@@ -252,6 +273,9 @@ struct MainTabView: View {
     @ViewBuilder
     private func mainDestinationView(_ destination: MainDestination) -> some View {
         switch destination {
+        case .blockedPeople:
+            BlockedPeopleView()
+
         case .deleteAccount:
             DeleteAccountView(
                 onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
@@ -270,7 +294,8 @@ struct MainTabView: View {
                 onAuctionLive: { path.append(MainDestination.auctionLive($0)) },
                 onManageRoles: { path.append(MainDestination.manageRoles($0)) },
                 notice: leagueNotices[leagueId],
-                onNoticeShown: { leagueNotices[leagueId] = nil }
+                onNoticeShown: { leagueNotices[leagueId] = nil },
+                onHome: { if !path.isEmpty { path.removeLast() } }
             )
 
         case .leagueCreation(let editingLeagueId):

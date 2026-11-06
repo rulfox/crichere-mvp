@@ -14,4 +14,6 @@ data class LeagueRoleResponse(
     val deleted: Boolean = false,
     /** The co-organizer's profile photo (docs/PHASE17.md); always `null` for a deleted user. */
     val photoUrl: String? = null,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
 )

@@ -20,8 +20,9 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         Crichere is software for amateur cricket leagues. Organisers create leagues, run a live player auction and manage franchises; players create
-        profiles, join leagues and are bid for; franchise owners bid for players with a virtual purse. Auction purses, bids and prices are virtual
-        points used to run the auction. They are not real money and have no cash value.
+        profiles, join leagues and are bid for; franchise owners bid for players with a virtual purse. Auction purses, bids and prices are shown
+        in rupees, but they are a virtual budget used only to run the auction. They are not payments: nothing is charged, paid or transferred because
+        of a bid or sale, and they have no cash value.
       </p>
     ),
   },
@@ -66,7 +67,11 @@ const SECTIONS: LegalSection[] = [
           <li>collect other users&rsquo; data or use it for anything other than the league it was shown for;</li>
           <li>break any applicable law, including the Information Technology Act, 2000 and its rules.</li>
         </ul>
-        <p>We may remove content, hide a league, and suspend or end accounts that break these Terms or harm others.</p>
+        <p>You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within [24] hours. A report never causes automatic action.</p>
+        <p>
+          We may remove content, hide a league, and suspend or end accounts that break these Terms or harm others. A number linked to a suspended account
+          cannot sign up again. Contact us at hello@crichere.com if you think we made a mistake.
+        </p>
       </>
     ),
   },

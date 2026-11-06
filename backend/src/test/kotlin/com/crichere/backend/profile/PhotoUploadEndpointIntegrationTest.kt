@@ -66,7 +66,7 @@ class PhotoUploadEndpointIntegrationTest : AbstractWebIntegrationTest {
         val session = mockMvc.perform(
             post("/api/v1/auth/session")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token"))),
+                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))),
         )
             .andExpect(status().isOk)
             .andReturn()
@@ -96,7 +96,7 @@ class PhotoUploadEndpointIntegrationTest : AbstractWebIntegrationTest {
         val session = mockMvc.perform(
             post("/api/v1/auth/session")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token"))),
+                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))),
         ).andExpect(status().isOk).andReturn()
         @Suppress("UNCHECKED_CAST")
         val body = objectMapper.readValue(session.response.contentAsString, Map::class.java) as Map<String, Any?>
@@ -127,7 +127,7 @@ class PhotoUploadEndpointIntegrationTest : AbstractWebIntegrationTest {
         val session = mockMvc.perform(
             post("/api/v1/auth/session")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token"))),
+                .content(objectMapper.writeValueAsString(mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))),
         ).andExpect(status().isOk).andReturn()
         @Suppress("UNCHECKED_CAST")
         val accessToken = (objectMapper.readValue(session.response.contentAsString, Map::class.java) as Map<String, Any?>)["accessToken"] as String

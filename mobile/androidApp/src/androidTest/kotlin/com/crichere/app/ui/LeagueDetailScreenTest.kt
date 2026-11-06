@@ -57,7 +57,7 @@ class LeagueDetailScreenTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Riverside Premier League").assertExists()
-        composeRule.onNodeWithText("Bengaluru, Bengaluru Urban, Karnataka").assertExists()
+        composeRule.onNodeWithText("Bengaluru Urban, Karnataka").assertExists()
         composeRule.onNodeWithContentDescription("Back").performClick()
 
         assert(backTapped)

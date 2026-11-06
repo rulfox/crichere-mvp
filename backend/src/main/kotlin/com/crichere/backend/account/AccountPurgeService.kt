@@ -4,6 +4,11 @@ import com.crichere.backend.auth.OtpChallengeRepository
 import com.crichere.backend.auth.RefreshTokenRepository
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.ObjectDeleter
+import com.crichere.backend.moderation.ModerationNoticeRepository
+import com.crichere.backend.moderation.ReportRepository
+import com.crichere.backend.moderation.SuspendedPhoneHashEntity
+import com.crichere.backend.moderation.SuspendedPhoneHashRepository
+import com.crichere.backend.moderation.UserBlockRepository
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.league.AuctionStatus
@@ -60,6 +65,10 @@ class AccountPurgeService(
     private val deviceTokenRepository: DeviceTokenRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val otpChallengeRepository: OtpChallengeRepository,
+    private val userBlockRepository: UserBlockRepository,
+    private val reportRepository: ReportRepository,
+    private val moderationNoticeRepository: ModerationNoticeRepository,
+    private val suspendedPhoneHashRepository: SuspendedPhoneHashRepository,
     private val accountDeletionService: AccountDeletionService,
     private val objectDeleter: ObjectDeleter,
     private val fcmSender: FcmSender,
@@ -117,7 +126,12 @@ class AccountPurgeService(
         val currentPhoto = profileRepository.findById(userId).orElse(null)?.photoUrl
             ?.substringAfter(".amazonaws.com/", "")?.substringBefore('?')
             ?.takeIf { it.startsWith("users/$userId/") }
-        return listOfNotNull(currentPhoto, "users/$userId/profile.jpg").distinct() +
+        // Deleting an account must not destroy evidence: a photo in an open report stays until the
+        // report closes, then the media sweep removes it (docs/PHASE18.md).
+        val evidence = reportRepository.findOpenEvidenceUrls()
+            .map { it.substringAfter(".amazonaws.com/", "").substringBefore('?') }
+            .toSet()
+        return listOfNotNull(currentPhoto, "users/$userId/profile.jpg").distinct().filter { it !in evidence } +
             leagueIds.distinct().map { PhotoUploadService.paymentScreenshotKey(it, userId) }
     }
 
@@ -171,6 +185,13 @@ class AccountPurgeService(
         profileRepository.save(profile)
 
         leagueFollowRepository.deleteByUserId(userId)
+        userBlockRepository.deleteAllInvolving(userId)
+        reportRepository.clearReporter(userId)
+        moderationNoticeRepository.deleteByUserId(userId)
+        // The number is freed below, so a suspended account leaves its hash behind (docs/PHASE18.md).
+        if (user.suspendedAt != null) {
+            user.phoneLookupHash?.let { suspendedPhoneHashRepository.save(SuspendedPhoneHashEntity(it, now)) }
+        }
         deviceTokenRepository.deleteByUserId(userId)
         refreshTokenRepository.deleteByUserId(userId)
         user.phoneLookupHash?.let { otpChallengeRepository.deleteByPhoneLookupHash(it) }

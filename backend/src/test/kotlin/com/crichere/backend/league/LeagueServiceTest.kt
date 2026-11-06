@@ -10,6 +10,7 @@ import com.crichere.backend.ground.GroundRepository
 import com.crichere.backend.league.dto.AuctionSettingsSaveRequest
 import com.crichere.backend.league.dto.LeagueSaveRequest
 import com.crichere.backend.player.PlayerRepository
+import com.crichere.backend.profile.ProfileEntity
 import com.crichere.backend.profile.ProfileRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -76,6 +77,7 @@ class LeagueServiceTest {
         leagueRoleRepository,
         com.crichere.backend.common.PaymentScreenshotUrlSigner { url, _, _ -> url },
         com.crichere.backend.common.MediaUrlPolicy(com.crichere.backend.common.AwsProperties()),
+        io.mockk.mockk<com.crichere.backend.moderation.BlockService>().also { b -> io.mockk.every { b.visibleTo(any(), any()) } answers { secondArg() } },
     )
 
     private val organizerId: UUID = UUID.randomUUID()
@@ -87,6 +89,7 @@ class LeagueServiceTest {
     init {
         // Every league has a ground since V21; any id resolves to a ground unless a test says otherwise.
         every { groundRepository.existsById(any()) } returns true
+        every { profileRepository.findById(any()) } returns Optional.empty()
         every { groundRepository.findById(any()) } answers {
             Optional.of(
                 GroundEntity(
@@ -213,6 +216,39 @@ class LeagueServiceTest {
         assertFailsWith<LeagueNotFoundException> {
             service.getLeague(leagueId, null)
         }
+    }
+
+    // ---------------------------------------------------------------- organizer name (docs/PHASE18.md)
+
+    @Test
+    fun `a signed-in caller gets the organizer's name, for the Block organizer link`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { profileRepository.findById(organizerId) } returns Optional.of(ProfileEntity(userId = organizerId, name = "Anil Thomas"))
+
+        val response = service.getLeague(leagueId, UUID.randomUUID())
+
+        assertEquals("Anil Thomas", response.organizerName)
+        assertEquals(false, response.organizerDeleted)
+    }
+
+    @Test
+    fun `an anonymous caller doesn't get the organizer's name`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { profileRepository.findById(organizerId) } returns Optional.of(ProfileEntity(userId = organizerId, name = "Anil Thomas"))
+
+        assertNull(service.getLeague(leagueId, null).organizerName)
+    }
+
+    @Test
+    fun `a deleted organizer is flagged and has no name`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        every { profileRepository.findById(organizerId) } returns
+            Optional.of(ProfileEntity(userId = organizerId, name = "Deleted user", accountDeleted = true))
+
+        val response = service.getLeague(leagueId, UUID.randomUUID())
+
+        assertNull(response.organizerName)
+        assertEquals(true, response.organizerDeleted)
     }
 
     // ---------------------------------------------------------------- edit (full replace) + status

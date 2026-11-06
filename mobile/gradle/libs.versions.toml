@@ -24,6 +24,7 @@ androidxDatastore = "1.2.1"
 tink = "1.23.0"
 androidxActivityCompose = "1.13.0"
 androidxCoreKtx = "1.19.1"
+androidxBrowser = "1.10.0"
 robolectric = "4.17"
 kotlinxCoroutinesTest = "1.11.0"
 junit4 = "4.13.2"
@@ -106,6 +107,7 @@ androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", vers
 androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleNavigation3" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCoreKtx" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "androidxBrowser" }
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }

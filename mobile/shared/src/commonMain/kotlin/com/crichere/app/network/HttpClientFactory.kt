@@ -2,6 +2,7 @@ package com.crichere.app.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
@@ -11,6 +12,7 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.sse.SSE
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLProtocol
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
@@ -40,8 +42,18 @@ internal object HttpClientFactory {
     fun create(
         loadTokens: suspend () -> BearerTokens?,
         refreshTokens: suspend () -> BearerTokens?,
+        onAccountSuspended: suspend () -> Unit = {},
     ): HttpClient = HttpClient {
         applyBaseConfig()
+
+        // Any request can be the one that finds out (docs/PHASE18.md, boards R13b and R13c).
+        HttpResponseValidator {
+            validateResponse { response ->
+                if (response.status == HttpStatusCode.Forbidden && response.problemCode() == ACCOUNT_SUSPENDED) {
+                    onAccountSuspended()
+                }
+            }
+        }
 
         install(Auth) {
             bearer {

@@ -33,4 +33,7 @@ class OtpRequestFailedException(message: String) : Exception(message)
  * The code is no longer usable: expired, already used, or out of attempts (the backend says all
  * three identically). The only way forward is a fresh code from Phone Entry.
  */
+/** The verified number belongs to a suspended account (docs/PHASE18.md). */
+class AccountSuspendedException : Exception("This account is suspended.")
+
 class OtpExpiredException(message: String = "This code has expired. Please request a new one.") : Exception(message)

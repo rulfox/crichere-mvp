@@ -54,7 +54,7 @@ class OtpAuthController(
 
     @PostMapping("/otp/verify")
     fun verify(@Valid @RequestBody request: OtpVerifyRequest): AuthResponse =
-        AuthResponse.from(otpAuthService.verifyOtp(requireNotNull(request.challengeId), request.code))
+        AuthResponse.from(otpAuthService.verifyOtp(requireNotNull(request.challengeId), request.code, request.termsAccepted))
 
     private fun requireAppCheck(token: String?) {
         if (otpProperties.appCheckRequired && !appCheckVerifier.isValid(token)) throw AppCheckFailedException()

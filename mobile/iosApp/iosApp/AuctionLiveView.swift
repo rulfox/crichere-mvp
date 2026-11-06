@@ -53,6 +53,8 @@ struct AuctionLiveView: View {
     @State private var lastResultKey: String?
     @FocusState private var amountFocused: Bool
 
+    @StateObject private var block = BlockViewModelWrapper()
+
     init(leagueId: String) {
         self.leagueId = leagueId
         _wrapper = StateObject(wrappedValue: AuctionViewModelWrapper(leagueId: leagueId))
@@ -62,7 +64,9 @@ struct AuctionLiveView: View {
 
     /// The franchise's logo from the league already loaded -- the stream carries ids, not image URLs (docs/PHASE17.md).
     private func logoUrl(_ franchiseId: String?) -> String? {
-        state.league?.franchises.first { $0.id == franchiseId }?.logoUrl
+        guard let franchise = state.league?.franchises.first(where: { $0.id == franchiseId }) else { return nil }
+        // The stream is public and the same for everyone, so a block hides the logo here (docs/PHASE18.md).
+        return block.blockedIds.contains(franchise.ownerUserId) ? nil : franchise.logoUrl
     }
     private var offline: Bool { state.connectionPhase == .reconnecting || state.connectionPhase == .lost }
 
@@ -422,6 +426,8 @@ struct AuctionLiveView: View {
                     Text(rupees(bid.amount)).font(BrandFont.mono(14, .medium)).foregroundColor(.white)
                 }
             }
+            // Board V2.
+            Text(auctionMoneyNote).font(.system(size: 12)).foregroundColor(AuctionPalette.soft).frame(maxWidth: .infinity)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 20).fill(AuctionPalette.surface))

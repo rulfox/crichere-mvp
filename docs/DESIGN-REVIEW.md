@@ -577,6 +577,38 @@ above.
 
 ## Follow-ups (todo)
 
+**Phase 18 report, block, suspended, terms (boards P11, P12).** Checked on Pixel_9_Pro with a local backend, 2026-11-06:
+terms tick, report person and league sheets, duplicate report, block and undo, blocked row, Unblock in the row menu,
+Blocked people, live auction with a blocked player and owner, V2 note, removed photo notice, suspended mid-auction and at
+sign in, dashboard filter, blocked organizer notice (R9a) and banner (R9b).
+
+Also checked on Pixel_9_Pro, 2026-11-06 (board P13 R3e to R3g and the remaining list):
+- Block organizer: visitor, member, co-organizer and organizer views, dialog with the real name, R9a, R9b, Undo, Unblock,
+  Blocked people.
+- Terms and Privacy links on sign in and My Profile. Typed number and tick survive the round trip.
+- Report failure and retry, the 500 character limit, Something else needs details, Also block.
+- Removed league logo, banner and franchise logo (flags set by SQL; the script's image removal was already run).
+- Suspended on app start, with 20 second access tokens to force a refresh. This found a bug: Sign in replaced the
+  suspended screen. Fixed.
+- Account deletion request with a block and a report in place, then sign-in cancels it. The purge itself is backend
+  integration tests only.
+- Web money note at 360 px, as a Playwright test.
+
+Not verified:
+- iOS: every Phase 18 screen. Written, never compiled, so SKIE enum case names and flow types may need fixing. iOS uses a
+  long press on a roster row instead of the ⋮, which differs from board R1. iOS doesn't yet show the neutral shapes for a
+  removed league logo, banner or franchise logo.
+- Physical phone CPH2487.
+
+Known differences from the boards:
+- P11 and P12 are drawn in Inter with the V2 colours, and the app has its own fonts and colours, so sizes and layout were
+  compared with exact CSS, not fonts or colours. Fixed: "What's the problem?" size, the filled Block button, Report league
+  link size. Left as they are: roster rows use the app's 32 dp avatars (boards 40), and the R7 dialog lines have no icons.
+- Dark boards R1e, R4, R5, R7, R7e don't apply: the app has no dark theme, only the dark auction screen.
+- The Android subtitle always includes "Blocked".
+- On Android the suspended screen shows the masked number only at sign in: mid-session the app doesn't hold the number.
+- Blocked people's empty state still only mentions the ⋮, not Block organizer.
+
 Open items found while implementing the redesign, not yet scheduled.
 
 - [ ] **Photos and logos in lists** (2026-10-11, [PHASE17.md](PHASE17.md)). Existing avatar and logo slots now show

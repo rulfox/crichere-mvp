@@ -1,5 +1,7 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.moderation.SuspendedPhoneHashEntity
+import com.crichere.backend.moderation.SuspendedPhoneHashRepository
 import com.crichere.backend.common.AbstractWebIntegrationTest
 import com.crichere.backend.profile.BattingStyle
 import com.crichere.backend.profile.BowlingStyle
@@ -20,6 +22,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import tools.jackson.databind.ObjectMapper
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,6 +62,9 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
     private lateinit var jwtService: JwtService
 
     @Autowired
+    private lateinit var suspendedPhoneHashRepository: SuspendedPhoneHashRepository
+
+    @Autowired
     private lateinit var rateLimiter: AuthRateLimiter
 
     /** Each test gets its own phone number, so tests never collide on the `users` unique index. */
@@ -71,6 +77,98 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
         rateLimiter.reset()
     }
 
+    // ---------------------------------------------------------------- terms and suspension
+
+    @Test
+    fun `a new account needs the terms checkbox`() {
+        givenFirebaseAccepts(phone)
+
+        postJson("/api/v1/auth/session", mapOf("idToken" to "token"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("TERMS_NOT_ACCEPTED"))
+
+        assertNull(userRepository.findByPhoneLookupHash(phoneCryptoService.hmacLookupHash(phone)))
+    }
+
+    @Test
+    fun `accepting the terms is recorded, and an existing account signs in either way`() {
+        givenFirebaseAccepts(phone)
+        postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true)).andExpect(status().isOk)
+
+        val user = requireNotNull(userRepository.findByPhoneLookupHash(phoneCryptoService.hmacLookupHash(phone)))
+        assertNotNull(user.termsAcceptedAt)
+        assertEquals(TERMS_VERSION, user.termsVersion)
+
+        postJson("/api/v1/auth/session", mapOf("idToken" to "token")).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `a suspended account can't sign in, and that leaves a pending deletion alone`() {
+        val user = signedUpUser()
+        user.suspendedAt = Instant.now()
+        user.deletionRequestedAt = Instant.now()
+        userRepository.save(user)
+
+        postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true))
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"))
+            .andExpect(noInternalsLeaked())
+
+        assertNotNull(userRepository.findById(requireNotNull(user.id)).get().deletionRequestedAt)
+    }
+
+    @Test
+    fun `a suspended number stays out after its account is gone`() {
+        givenFirebaseAccepts(phone)
+        suspendedPhoneHashRepository.save(SuspendedPhoneHashEntity(phoneCryptoService.hmacLookupHash(phone)))
+
+        postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true))
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"))
+    }
+
+    @Test
+    fun `a suspended account's refresh token stops working, with a code the app can tell from logout`() {
+        givenFirebaseAccepts(phone)
+        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true))
+            .andReturn().body()
+        suspendUser()
+        refreshTokenRepository.findAll().filter { it.revokedAt == null }.forEach { it.revokedAt = Instant.now(); refreshTokenRepository.save(it) }
+
+        postJson("/api/v1/auth/refresh", mapOf("refreshToken" to session["refreshToken"]))
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"))
+    }
+
+    @Test
+    fun `a suspended account's access token is refused even on public reads, anonymous reads still work`() {
+        givenFirebaseAccepts(phone)
+        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true))
+            .andReturn().body()
+        suspendUser()
+        val bearer = "Bearer ${session["accessToken"]}"
+
+        mockMvc.perform(get("/api/v1/me/leagues").header("Authorization", bearer))
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"))
+            .andExpect(noInternalsLeaked())
+        mockMvc.perform(get("/api/v1/auctions/live-now").header("Authorization", bearer))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(get("/api/v1/auctions/live-now")).andExpect(status().is2xxSuccessful)
+    }
+
+    private fun signedUpUser(): UserEntity {
+        givenFirebaseAccepts(phone)
+        postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true)).andExpect(status().isOk)
+        return requireNotNull(userRepository.findByPhoneLookupHash(phoneCryptoService.hmacLookupHash(phone)))
+    }
+
+    private fun suspendUser() {
+        val user = requireNotNull(userRepository.findByPhoneLookupHash(phoneCryptoService.hmacLookupHash(phone)))
+        user.suspendedAt = Instant.now()
+        userRepository.save(user)
+    }
+
     // ---------------------------------------------------------------- the happy path
 
     @Test
@@ -78,7 +176,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
         givenFirebaseAccepts(phone)
 
         // --- sign in -------------------------------------------------------------
-        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.tokenType").value("Bearer"))
             .andExpect(jsonPath("$.profileComplete").value(false))
@@ -266,7 +364,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
             ),
         )
 
-        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "token"))
+        val session = postJson("/api/v1/auth/session", mapOf("idToken" to "token", "termsAccepted" to true))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.profileComplete").value(true))
             .andReturn()
@@ -281,7 +379,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
 
     @Test
     fun `a validation failure returns an RFC 7807 problem detail`() {
-        postJson("/api/v1/auth/session", mapOf("idToken" to ""))
+        postJson("/api/v1/auth/session", mapOf("idToken" to "", "termsAccepted" to true))
             .andExpect(status().isBadRequest)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(jsonPath("$.type").value("https://api.crichere.app/problems/validation-failed"))
@@ -310,7 +408,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
     fun `a rejected Firebase token returns a 401 problem detail from the controller advice`() {
         every { firebaseTokenVerifier.verify(any()) } throws InvalidFirebaseIdTokenException()
 
-        postJson("/api/v1/auth/session", mapOf("idToken" to "a-forged-token"))
+        postJson("/api/v1/auth/session", mapOf("idToken" to "a-forged-token", "termsAccepted" to true))
             .andExpect(status().isUnauthorized)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(jsonPath("$.type").value("https://api.crichere.app/problems/invalid-credentials"))
@@ -407,11 +505,11 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
         givenFirebaseAccepts(phone)
 
         repeat(10) {
-            postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+            postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
                 .andExpect(status().isOk)
         }
 
-        postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+        postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
             .andExpect(status().isTooManyRequests)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
@@ -433,12 +531,12 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
     fun `exceeding the per-IP rate limit returns a 429 problem detail from the filter`() {
         repeat(20) {
             givenFirebaseAccepts(uniquePhone())
-            postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+            postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
                 .andExpect(status().isOk)
         }
 
         givenFirebaseAccepts(uniquePhone())
-        postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+        postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
             .andExpect(status().isTooManyRequests)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
@@ -490,7 +588,7 @@ class AuthFlowIntegrationTest : AbstractWebIntegrationTest {
             .body()
 
     private fun signIn(): Map<String, Any?> =
-        postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+        postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
             .andExpect(status().isOk)
             .andReturn()
             .body()

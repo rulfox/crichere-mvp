@@ -54,9 +54,10 @@ internal fun DeletedUserAvatar(
     background: Color = DeletedAvatarBackground,
     tint: Color = DeletedAvatarIcon,
     shape: Shape = CircleShape,
+    description: String? = "Deleted user",
 ) {
     Box(Modifier.size(size).clip(shape).background(background), contentAlignment = Alignment.Center) {
-        Icon(painterResource(R.drawable.ic_person_filled), contentDescription = "Deleted user", tint = tint, modifier = Modifier.size(iconSize))
+        Icon(painterResource(R.drawable.ic_person_filled), contentDescription = description, tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 

@@ -120,7 +120,7 @@ private fun JoinLeagueScreen(state: JoinLeagueState, viewModel: JoinLeagueViewMo
                     ) {
                         val fee = league.playerFee
                         if (fee != null) {
-                            LeagueSummaryRow(league.id, league.name, league.logoUrl, league.startsOn, league.format)
+                            LeagueSummaryRow(league.id, league.name, league.logoUrl, league.startsOn, league.format, league.logoRemoved)
                             Spacer(Modifier.height(12.dp))
                             PayToCard(
                                 feeLabel = "Player fee",

@@ -50,6 +50,7 @@ import tools.jackson.databind.ObjectMapper
 class SecurityConfig(
     private val jwtService: JwtService,
     private val rateLimiter: AuthRateLimiter,
+    private val suspensionChecker: SuspensionChecker,
     private val objectMapper: ObjectMapper,
     private val webViewerProperties: WebViewerProperties,
 ) {
@@ -103,6 +104,7 @@ class SecurityConfig(
                 JwtAuthenticationFilter(jwtService),
                 UsernamePasswordAuthenticationFilter::class.java,
             )
+            .addFilterAfter(SuspensionFilter(suspensionChecker, objectMapper), JwtAuthenticationFilter::class.java)
 
         return http.build()
     }

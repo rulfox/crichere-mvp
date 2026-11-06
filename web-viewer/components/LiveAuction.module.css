@@ -868,6 +868,14 @@
   color: var(--auction-muted);
 }
 
+.tickerNote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--auction-muted);
+}
+
 .tickerEmpty {
   padding: 22px 12px;
   border-radius: 12px;

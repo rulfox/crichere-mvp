@@ -10,6 +10,7 @@ fun LeagueEntity.toSummaryResponse(groundName: String) = LeagueSummaryResponse(
     id = requireNotNull(id),
     name = name,
     logoUrl = logoUrl,
+    logoRemoved = logoRemoved,
     district = district,
     state = state,
     groundName = groundName,

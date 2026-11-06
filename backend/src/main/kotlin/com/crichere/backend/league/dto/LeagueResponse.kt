@@ -17,6 +17,9 @@ data class LeagueResponse(
     val description: String?,
     val logoUrl: String?,
     val bannerUrl: String?,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
+    val bannerRemoved: Boolean = false,
     val country: String,
     val state: String,
     val district: String,
@@ -55,4 +58,8 @@ data class LeagueResponse(
     val organizerHandoverAt: Instant? = null,
     /** `true` only for the current organizer after a handover, until they dismiss it (design D9, `POST .../handover-notice/dismiss`). */
     val showHandoverNotice: Boolean = false,
+    /** For the Block organizer link (docs/PHASE18.md). Signed-in callers only: nobody else can block, so anonymous responses carry no organizer name. */
+    val organizerName: String? = null,
+    /** The organizer's account was deleted: they can't be blocked, so the apps hide the link. */
+    val organizerDeleted: Boolean = false,
 )

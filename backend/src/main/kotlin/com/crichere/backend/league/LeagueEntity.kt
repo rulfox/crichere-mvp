@@ -46,6 +46,13 @@ class LeagueEntity(
     @Column(name = "banner_url", columnDefinition = "TEXT")
     var bannerUrl: String? = null,
 
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not a fallback. */
+    @Column(name = "logo_removed", nullable = false)
+    var logoRemoved: Boolean = false,
+
+    @Column(name = "banner_removed", nullable = false)
+    var bannerRemoved: Boolean = false,
+
     @Column(name = "country", nullable = false, length = 2)
     var country: String = "IN",
 

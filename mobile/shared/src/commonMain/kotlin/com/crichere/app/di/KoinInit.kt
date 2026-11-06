@@ -1,6 +1,11 @@
 package com.crichere.app.di
 
 import com.crichere.app.account.AccountNotices
+import com.crichere.app.moderation.BlockViewModel
+import com.crichere.app.moderation.BlockedPeopleViewModel
+import com.crichere.app.moderation.ModerationNoticesViewModel
+import com.crichere.app.moderation.ModerationRepository
+import com.crichere.app.moderation.ReportViewModel
 import com.crichere.app.account.DeleteAccountViewModel
 
 import com.crichere.app.auth.AppStartViewModel
@@ -116,5 +121,21 @@ class KoinHelper : KoinComponent {
         get() = get()
 
     val accountNotices: AccountNotices
+        get() = get()
+
+    // Phase 18 -- report, block and notices (docs/PHASE18.md).
+    val reportViewModel: ReportViewModel
+        get() = get()
+
+    val blockViewModel: BlockViewModel
+        get() = get()
+
+    val blockedPeopleViewModel: BlockedPeopleViewModel
+        get() = get()
+
+    val moderationNoticesViewModel: ModerationNoticesViewModel
+        get() = get()
+
+    val moderationRepository: ModerationRepository
         get() = get()
 }

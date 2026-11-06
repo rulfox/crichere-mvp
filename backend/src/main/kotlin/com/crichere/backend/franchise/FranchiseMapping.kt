@@ -30,6 +30,7 @@ fun FranchiseEntity.toResponse(
         ownerDeleted = owner?.accountDeleted == true,
         name = name,
         logoUrl = logoUrl,
+        logoRemoved = logoRemoved,
         joinedAt = joinedAt,
         paymentScreenshotUrl = if (visible) screenshotSigner.readUrl(paymentScreenshotUrl, leagueId, ownerUserId) else null,
         leaveRequestedAt = if (visible) leaveRequestedAt else null,

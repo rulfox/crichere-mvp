@@ -28,6 +28,7 @@ final class PhoneEntryViewModelWrapper: ObservableObject {
     }
 
     func onPhoneNumberChanged(_ value: String) { viewModel.onPhoneNumberChanged(value: value) }
+    func onTermsAcceptedChanged(_ value: Bool) { viewModel.onTermsAcceptedChanged(accepted: value) }
     func requestCode() { viewModel.requestCode() }
 }
 
@@ -39,6 +40,7 @@ struct PhoneEntryView: View {
 
     @StateObject private var wrapper = PhoneEntryViewModelWrapper()
     @StateObject private var notices = AccountNoticesWrapper()
+    @State private var legalPage: URL?
 
     var body: some View {
         Form {
@@ -71,13 +73,27 @@ struct PhoneEntryView: View {
                     Text(error).foregroundColor(.red)
                 }
             }
+            // Board T1: not pre-ticked, and Send code waits for it (docs/PHASE18.md).
+            Section {
+                Toggle(isOn: Binding(
+                    get: { wrapper.state.termsAccepted },
+                    set: { wrapper.onTermsAcceptedChanged($0) }
+                )) {
+                    Text("I agree to the [Terms](crichere-legal://terms) and [Privacy Policy](crichere-legal://privacy), and I am 18 or older.")
+                        .environment(\.openURL, OpenURLAction { url in
+                            legalPage = url.host == "terms" ? termsUrl : privacyUrl
+                            return .handled
+                        })
+                }
+            }
             Section {
                 Button(wrapper.state.isSubmitting ? "Sending..." : "Send code") {
                     wrapper.requestCode()
                 }
-                .disabled(wrapper.state.isSubmitting)
+                .disabled(!wrapper.state.canSend)
             }
         }
+        .sheet(item: $legalPage) { SafariView(url: $0) }
         .onChange(of: wrapper.navigationEvent) { _, event in
             // SKIE exports this single-case sealed interface as a Swift enum with the case's
             // properties as associated values -- same convention `OwnProfileView`'s multi-case

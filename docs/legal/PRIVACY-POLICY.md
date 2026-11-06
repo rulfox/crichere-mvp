@@ -25,6 +25,9 @@ By creating an account you agree to this policy. If you do not agree, do not use
 | Ground details you register: name and map coordinates | Let leagues pick a ground | Only if you register a ground |
 | Payment proof screenshots (for example a UPI receipt) | Let a league organiser confirm that you paid a league fee | Only if you join a paid league |
 | Bids, franchise claims, join requests, follows | Operate the auction and leagues | Created by your actions |
+| Reports you send: the reason, any text you add, and who and what you reported | Let our team review them | Only if you report someone |
+| People you block | Hide their photo and uploads from you | Only if you block someone |
+| When you accepted the Terms and Privacy Policy, and which version | Record your consent | Yes |
 
 **Collected automatically or from your device**
 
@@ -47,6 +50,8 @@ By creating an account you agree to this policy. If you do not agree, do not use
 We do not sell your personal data and we do not use it for third-party advertising. We do not run advertising or analytics SDKs in the app.
 
 ## 3. Who sees your data
+
+**Reports and blocks.** Reports go to the Crichere team only. The person or league you report is not told who reported them, and organisers do not see reports. When you send a report we keep a copy of what was shown at that time, such as a name, photo or league details, so the team can check it. People you block are not told.
 
 **Other users.** Your name, photo, state, district, playing details and league activity (including auction bids and results) are visible to organisers and participants of the leagues you join. Public league pages and shared links (crichere.com) can show a league's name, ground, district, state and live auction results to anyone with the link.
 
@@ -73,6 +78,8 @@ These providers may process data outside India. We share only what each needs.
 - Account, profile and league data: while your account is active.
 - Payment screenshots: [12] months after the league is completed, then deleted.
 - Server logs: up to [90] days.
+- Reports and moderation records: [24] months after the report is closed, then deleted. Evidence in an open report is kept until it is closed, even if the account involved is deleted.
+- If an account is suspended and later deleted, we keep a one-way hash of its mobile number so that number cannot sign up again.
 - After you delete your account (section 5) there is a 14-day grace period, then we erase your personal data, normally within a day. We may keep limited records longer where law requires. League history other people rely on (auction results, rosters of leagues that already ran) stays, with your name replaced by "Deleted user".
 
 ## 5. Your rights and choices

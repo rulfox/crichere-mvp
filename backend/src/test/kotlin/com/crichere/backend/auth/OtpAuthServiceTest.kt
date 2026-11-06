@@ -204,13 +204,13 @@ class OtpAuthServiceTest {
         givenChallenge(challenge())
         every { challengeRepository.spendAttempt(challengeId, now, 5) } returns 1
         every { otpSender.verify("req-1", "123456") } returns OtpCheckResult.VALID
-        every { authService.signInVerifiedPhone(any(), any()) } returns expectedAuthResult
+        every { authService.signInVerifiedPhone(any(), any(), any()) } returns expectedAuthResult
 
-        val result = service.verifyOtp(challengeId, "123456")
+        val result = service.verifyOtp(challengeId, "123456", true)
 
         assertEquals(expectedAuthResult, result)
         // The phone comes from the challenge row -- the verify call carried none.
-        verify { authService.signInVerifiedPhone(phoneCryptoService.hmacLookupHash(PHONE), PHONE) }
+        verify { authService.signInVerifiedPhone(phoneCryptoService.hmacLookupHash(PHONE), PHONE, true) }
         verify { challengeRepository.consume(challengeId, now) }
     }
 
@@ -223,10 +223,10 @@ class OtpAuthServiceTest {
         every { challengeRepository.findById(challengeId) } returnsMany
             listOf(Optional.of(challenge()), Optional.of(challenge(verifyAttempts = 2)))
 
-        val e = assertThrows<OtpInvalidCodeException> { service.verifyOtp(challengeId, "000000") }
+        val e = assertThrows<OtpInvalidCodeException> { service.verifyOtp(challengeId, "000000", true) }
 
         assertEquals(3, e.attemptsRemaining)
-        verify(exactly = 0) { authService.signInVerifiedPhone(any(), any()) }
+        verify(exactly = 0) { authService.signInVerifiedPhone(any(), any(), any()) }
         verify(exactly = 0) { challengeRepository.consume(any(), any()) }
     }
 
@@ -237,7 +237,7 @@ class OtpAuthServiceTest {
         every { challengeRepository.spendAttempt(challengeId, now, 5) } returns 1
         every { otpSender.verify(any(), any()) } returns OtpCheckResult.INVALID
 
-        val e = assertThrows<OtpInvalidCodeException> { service.verifyOtp(challengeId, "000000") }
+        val e = assertThrows<OtpInvalidCodeException> { service.verifyOtp(challengeId, "000000", true) }
 
         assertEquals(0, e.attemptsRemaining)
         verify { challengeRepository.consume(challengeId, now) }
@@ -248,7 +248,7 @@ class OtpAuthServiceTest {
         givenChallenge(challenge(verifyAttempts = 5))
         every { challengeRepository.spendAttempt(challengeId, now, 5) } returns 0
 
-        assertThrows<OtpChallengeExpiredException> { service.verifyOtp(challengeId, "123456") }
+        assertThrows<OtpChallengeExpiredException> { service.verifyOtp(challengeId, "123456", true) }
 
         verify(exactly = 0) { otpSender.verify(any(), any()) }
     }
@@ -260,9 +260,9 @@ class OtpAuthServiceTest {
         every { otpSender.verify(any(), any()) } returns OtpCheckResult.VALID
         every { challengeRepository.consume(challengeId, now) } returns 0
 
-        assertThrows<OtpChallengeExpiredException> { service.verifyOtp(challengeId, "123456") }
+        assertThrows<OtpChallengeExpiredException> { service.verifyOtp(challengeId, "123456", true) }
 
-        verify(exactly = 0) { authService.signInVerifiedPhone(any(), any()) }
+        verify(exactly = 0) { authService.signInVerifiedPhone(any(), any(), any()) }
     }
 
     @Test
@@ -271,13 +271,13 @@ class OtpAuthServiceTest {
         every { challengeRepository.spendAttempt(challengeId, now, 5) } returns 1
         every { otpSender.verify(any(), any()) } throws OtpUnavailableException()
 
-        assertThrows<OtpUnavailableException> { service.verifyOtp(challengeId, "123456") }
+        assertThrows<OtpUnavailableException> { service.verifyOtp(challengeId, "123456", true) }
     }
 
     @Test
     fun `an unknown challenge id is indistinguishable from an expired one`() {
         every { challengeRepository.findById(challengeId) } returns Optional.empty()
-        assertThrows<OtpChallengeExpiredException> { service.verifyOtp(challengeId, "123456") }
+        assertThrows<OtpChallengeExpiredException> { service.verifyOtp(challengeId, "123456", true) }
     }
 
     @Test

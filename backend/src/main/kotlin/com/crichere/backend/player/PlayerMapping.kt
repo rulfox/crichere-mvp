@@ -33,5 +33,6 @@ fun PlayerEntity.toResponse(
         playingRole = profile?.playingRole,
         deleted = profile?.accountDeleted == true,
         photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
+        photoRemoved = profile?.photoRemoved == true,
     )
 }

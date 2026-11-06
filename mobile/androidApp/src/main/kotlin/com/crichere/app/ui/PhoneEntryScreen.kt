@@ -1,5 +1,17 @@
 package com.crichere.app.ui
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withLink
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -157,14 +169,40 @@ fun PhoneEntryScreen(
             Spacer(Modifier.height(20.dp))
             Spacer(Modifier.weight(1f))
 
+            TermsCheckbox(checked = state.termsAccepted, onChange = viewModel::onTermsAcceptedChanged)
+            Spacer(Modifier.height(14.dp))
+
             CricherePrimaryButton(
                 text = "Send code",
                 onClick = viewModel::requestCode,
-                enabled = state.phoneNumber.isNotBlank(),
+                enabled = state.phoneNumber.isNotBlank() && state.termsAccepted,
                 loading = state.isSubmitting,
                 loadingText = "Sending code…",
             )
         }
+    }
+}
+
+/** Boards T1a and T1b. The links open over this screen, so the typed number and the tick stay. */
+@Composable
+private fun TermsCheckbox(checked: Boolean, onChange: (Boolean) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val link = SpanStyle(color = colors.primary, fontWeight = FontWeight.Medium)
+    val text = buildAnnotatedString {
+        append("I agree to the ")
+        withLink(LinkAnnotation.Clickable("terms", TextLinkStyles(link)) { openLegalPage(context, TERMS_URL) }) { append("Terms") }
+        append(" and ")
+        withLink(LinkAnnotation.Clickable("privacy", TextLinkStyles(link)) { openLegalPage(context, PRIVACY_URL) }) { append("Privacy Policy") }
+        append(", and I am 18 or older.")
+    }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = colors.primary))
+        Spacer(Modifier.width(12.dp))
+        Text(text, style = TextStyle(fontFamily = InstrumentSansFamily, fontSize = 14.sp, lineHeight = 21.sp), color = colors.onSurfaceVariant)
     }
 }
 

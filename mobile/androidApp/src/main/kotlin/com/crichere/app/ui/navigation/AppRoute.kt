@@ -74,6 +74,14 @@ sealed interface AppRoute : NavKey {
     /** Account deletion (docs/PHASE16.md, design D2–D6), pushed from My Profile. */
     @Serializable
     data object DeleteAccount : AppRoute
+
+    /** Boards R11a to R11g, pushed from My Profile. */
+    @Serializable
+    data object BlockedPeople : AppRoute
+
+    /** Boards R13a to R13c. Replaces the whole stack: there is no way back into the app. */
+    @Serializable
+    data object Suspended : AppRoute
 }
 
 internal enum class MainTab { DASHBOARD, MY_LEAGUES, MY_PROFILE }

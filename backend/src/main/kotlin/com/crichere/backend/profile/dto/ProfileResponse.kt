@@ -22,6 +22,8 @@ data class ProfileResponse(
     val userId: UUID,
     val name: String?,
     val photoUrl: String?,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val photoRemoved: Boolean = false,
     val country: String?,
     val state: String?,
     val district: String?,

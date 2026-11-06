@@ -16,13 +16,14 @@ import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
 import com.crichere.backend.league.dto.LeagueRoleResponse
 import com.crichere.backend.league.dto.LeagueSaveRequest
+import com.crichere.backend.moderation.BlockService
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.player.toResponse
 import com.crichere.backend.profile.ProfileRepository
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class LeagueService(
@@ -39,6 +40,7 @@ class LeagueService(
     private val leagueRoleRepository: LeagueRoleRepository,
     private val screenshotSigner: PaymentScreenshotUrlSigner,
     private val mediaUrlPolicy: MediaUrlPolicy,
+    private val blockService: BlockService,
 ) {
 
     /**
@@ -57,7 +59,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun listByArea(state: String?, district: String?, callerId: UUID?): List<LeagueResponse> =
-        leagueRepository.findByAreaFilters(state, district).map { it.toResponse(callerId) }
+        blockService.visibleTo(callerId, leagueRepository.findByAreaFilters(state, district)).map { it.toResponse(callerId) }
 
     /**
      * `GET /api/v1/leagues?near=lat,lng`, ordered by distance to each league's ground (every
@@ -65,7 +67,7 @@ class LeagueService(
      */
     @Transactional(readOnly = true)
     fun listNearest(latitude: Double, longitude: Double, callerId: UUID?): List<LeagueResponse> =
-        leagueRepository.findNearest(latitude, longitude).map { it.toResponse(callerId) }
+        blockService.visibleTo(callerId, leagueRepository.findNearest(latitude, longitude)).map { it.toResponse(callerId) }
 
     /**
      * `POST /api/v1/leagues`. Rate-limited per caller (see [ContentRateLimiter]) -- an open,
@@ -367,6 +369,8 @@ class LeagueService(
         league.description = request.description
         league.logoUrl = request.logoUrl
         league.bannerUrl = request.bannerUrl
+        if (request.logoUrl != null) league.logoRemoved = false
+        if (request.bannerUrl != null) league.bannerRemoved = false
         league.state = request.state
         league.district = request.district
         league.groundId = requireNotNull(request.groundId)
@@ -431,6 +435,7 @@ class LeagueService(
         // tradeoff for awards).
         val groundName = groundRepository.findById(groundId).orElseThrow().name
         val coOrganizers = leagueRoleRepository.findByLeagueIdAndRevokedAtIsNull(leagueId).map { it.toResponse() }
+        val organizerProfile = profileRepository.findById(organizerUserId).orElse(null)
         return LeagueResponse(
             id = leagueId,
             organizerUserId = organizerUserId,
@@ -438,6 +443,8 @@ class LeagueService(
             description = description,
             logoUrl = logoUrl,
             bannerUrl = bannerUrl,
+            logoRemoved = logoRemoved,
+            bannerRemoved = bannerRemoved,
             country = country,
             state = state,
             district = district,
@@ -466,6 +473,8 @@ class LeagueService(
             auctionStatus = auctionStatus,
             organizerHandoverAt = organizerHandoverAt,
             showHandoverNotice = callerId == organizerUserId && organizerHandoverAt != null && organizerHandoverSeenAt == null,
+            organizerName = organizerProfile?.takeIf { callerId != null && !it.accountDeleted }?.name,
+            organizerDeleted = organizerProfile?.accountDeleted == true,
         )
     }
 
@@ -478,6 +487,7 @@ class LeagueService(
             grantedAt = grantedAt,
             deleted = profile?.accountDeleted == true,
             photoUrl = profile?.takeUnless { it.accountDeleted }?.photoUrl,
+            photoRemoved = profile?.photoRemoved == true,
         )
     }
 

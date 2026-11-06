@@ -22,4 +22,6 @@ data class LeagueFranchiseResponse(
     val leaveRequestedAt: Instant?,
     /** The owner's account was deleted (docs/PHASE16.md); [ownerName] is "Deleted user". */
     val ownerDeleted: Boolean = false,
+    /** The team removed this image (docs/PHASE18.md): show the neutral placeholder, not initials. */
+    val logoRemoved: Boolean = false,
 )

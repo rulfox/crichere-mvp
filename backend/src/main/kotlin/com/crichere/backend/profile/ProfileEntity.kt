@@ -59,6 +59,10 @@ class ProfileEntity(
     var bowlingStyle: BowlingStyle? = null,
 
     /** Set by the account purge (docs/PHASE16.md); clients show the neutral "Deleted user" avatar from it. */
+    /** The team removed this photo (docs/PHASE18.md). The profile stays complete; a new upload clears it. */
+    @Column(name = "photo_removed", nullable = false)
+    var photoRemoved: Boolean = false,
+
     @Column(name = "account_deleted", nullable = false)
     var accountDeleted: Boolean = false,
 )

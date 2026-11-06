@@ -270,6 +270,23 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun `refresh on a suspended account clears the session and raises the notice, not a plain logout`() = runTest {
+        val storage = FakeSecureStorage(
+            mapOf(SecureStorageKeys.ACCESS_TOKEN to "access", SecureStorageKeys.REFRESH_TOKEN to "refresh"),
+        )
+        val notices = com.crichere.app.account.AccountNotices()
+        val httpClient = mockHttpClient {
+            respond(content = """{"code":"ACCOUNT_SUSPENDED"}""", status = HttpStatusCode.Forbidden)
+        }
+        val repository = KtorAuthRepository(httpClient, FakePhoneAuthClient(), storage, authenticatedHttpClientProvider = { mockHttpClient { error("no HTTP call expected") } }, accountNotices = notices)
+
+        assertNull(repository.refresh())
+
+        assertNull(storage.snapshot()[SecureStorageKeys.REFRESH_TOKEN])
+        assertTrue(notices.suspended.value != null)
+    }
+
+    @Test
     fun `refresh throws on a 500 instead of treating it like an invalid token`() = runTest {
         val storage = FakeSecureStorage(mapOf(SecureStorageKeys.REFRESH_TOKEN to "some-refresh"))
         val httpClient = mockHttpClient { respond(content = "{}", status = HttpStatusCode.InternalServerError) }

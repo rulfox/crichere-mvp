@@ -124,6 +124,9 @@ struct AuctionSettingsView: View {
                     Button(wrapper.state.isSaving ? "Saving…" : "Save") { wrapper.submit() }
                         .disabled(!wrapper.state.canSave)
 
+                    // Board V1.
+                    Text(auctionMoneyNote).font(.footnote).foregroundColor(.secondary)
+
                     Section("Auction pool") {
                         Text("\(league.players.count) player(s) joined")
                         if league.franchises.isEmpty {

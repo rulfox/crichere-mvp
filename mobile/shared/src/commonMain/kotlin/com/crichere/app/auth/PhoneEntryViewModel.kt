@@ -18,7 +18,11 @@ data class PhoneEntryState(
     val country: Country = Countries.default,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
-)
+    /** The sign-in checkbox (boards T1a, T1b). Starts unticked, and Send code needs it. */
+    val termsAccepted: Boolean = false,
+) {
+    val canSend: Boolean get() = termsAccepted && !isSubmitting
+}
 
 /** One-shot navigation signal -- Task 7's OTP Verify screen is wired to this in this task; see `androidApp`'s nav host. */
 sealed interface PhoneEntryNavigationEvent {
@@ -51,9 +55,13 @@ class PhoneEntryViewModel(
         _state.update { it.copy(phoneNumber = PhoneNumberInput.sanitize(it.country, value), errorMessage = null) }
     }
 
+    fun onTermsAcceptedChanged(accepted: Boolean) {
+        _state.update { it.copy(termsAccepted = accepted) }
+    }
+
     fun requestCode() {
         val currentState = _state.value
-        if (currentState.isSubmitting) return
+        if (!currentState.canSend) return
 
         // Everything past this point (Firebase, MSG91, OTP Verify, resend) works in E.164.
         val phoneNumber = PhoneNumberInput.toE164(currentState.country, currentState.phoneNumber)

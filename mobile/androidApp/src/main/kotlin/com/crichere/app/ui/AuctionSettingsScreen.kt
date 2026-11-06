@@ -185,6 +185,8 @@ private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewMo
     Column(Modifier.alpha(if (state.isSaving) 0.55f else 1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         SettingField(state.basePrice, viewModel::onBasePriceChanged, "Base price", errors[AuctionField.BasePrice], amount, state.isSaving)
         SettingField(state.purse, viewModel::onPurseChanged, "Purse per franchise", errors[AuctionField.Purse], amount, state.isSaving)
+        // Board V1.
+        Text(AUCTION_MONEY_NOTE, style = pText(12.sp, lineHeight = 18.sp), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 2.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SettingField(state.squadMin, viewModel::onSquadMinChanged, "Squad size (min)", errors[AuctionField.SquadMin], count, state.isSaving, Modifier.weight(1f))
             SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Squad size (max)", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f))

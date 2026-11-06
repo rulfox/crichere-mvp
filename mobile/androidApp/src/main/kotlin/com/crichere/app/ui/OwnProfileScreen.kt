@@ -93,6 +93,7 @@ fun OwnProfileScreen(
     onNavigateToPhoneEntry: () -> Unit,
     onViewPhoto: (String) -> Unit,
     onDeleteAccount: () -> Unit,
+    onBlockedPeople: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -135,6 +136,7 @@ fun OwnProfileScreen(
             onEdit = viewModel::editProfile,
             onLogout = { showLogoutConfirm = true },
             onDeleteAccount = onDeleteAccount,
+            onBlockedPeople = onBlockedPeople,
         )
     }
 
@@ -212,6 +214,7 @@ private fun Profile(
     onEdit: () -> Unit,
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit,
+    onBlockedPeople: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val name = state.name.orEmpty()
@@ -304,6 +307,24 @@ private fun Profile(
             }
         }
         Spacer(Modifier.height(16.dp))
+        // Board R10a: a list row, not a button, so it reads as "go somewhere".
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(colors.surface)
+                .border(1.dp, colors.outlineVariant, RoundedCornerShape(16.dp))
+                .clickable(onClick = onBlockedPeople)
+                .padding(start = 16.dp, end = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(R.drawable.ic_block), contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Text("Blocked people", style = pText(15.sp), color = colors.onBackground, modifier = Modifier.weight(1f))
+            Icon(painterResource(R.drawable.ic_arrow_forward), contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.height(16.dp))
         Box(
             Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).background(colors.primary).clickable(onClick = onEdit),
             contentAlignment = Alignment.Center,
@@ -319,6 +340,23 @@ private fun Profile(
             Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(24.dp)).clickable(onClick = onDeleteAccount),
             contentAlignment = Alignment.Center,
         ) { Text("Delete account", style = pText(14.sp, FontWeight.SemiBold, 14.sp), color = CrichereErrorStrong) }
+        // Board T2: quiet footer links, so the policies stay reachable after sign in.
+        val context = LocalContext.current
+        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text(
+                "Terms",
+                style = pText(13.sp),
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.clickable { openLegalPage(context, TERMS_URL) }.padding(horizontal = 6.dp, vertical = 14.dp),
+            )
+            Text("·", style = pText(13.sp), color = colors.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp))
+            Text(
+                "Privacy Policy",
+                style = pText(13.sp),
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.clickable { openLegalPage(context, PRIVACY_URL) }.padding(horizontal = 6.dp, vertical = 14.dp),
+            )
+        }
     }
 }
 

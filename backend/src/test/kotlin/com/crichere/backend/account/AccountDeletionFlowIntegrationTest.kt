@@ -244,7 +244,7 @@ class AccountDeletionFlowIntegrationTest : AbstractWebIntegrationTest() {
 
     private fun signIn(phone: String = uniquePhone()): Session {
         every { firebaseTokenVerifier.verify(any()) } returns VerifiedFirebaseToken(uid = "fb-$phone", phoneNumber = phone)
-        val body = postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token"))
+        val body = postJson("/api/v1/auth/session", mapOf("idToken" to "a-valid-firebase-id-token", "termsAccepted" to true))
             .andExpect(status().isOk).andReturn().body()
         return Session(
             userId = UUID.fromString(body["userId"] as String),

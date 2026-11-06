@@ -11,6 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -43,6 +44,20 @@ class LeagueRepositoryTest {
          "state":"Karnataka","district":"Bengaluru Urban","groundId":"g1","groundName":"Test Ground",
          "startsOn":"2026-10-12","status":"ANNOUNCED","awards":[]}
     """.trimIndent()
+
+    @Test
+    fun `a league decodes the organizer name and deleted flag, and defaults without them`() {
+        val json = Json { ignoreUnknownKeys = true }
+        val plain = json.decodeFromString<LeagueDto>(sampleLeagueJson())
+        val named = json.decodeFromString<LeagueDto>(
+            sampleLeagueJson().replace("\"name\":\"Weekend League\"", "\"name\":\"Weekend League\",\"organizerName\":\"Anil Thomas\",\"organizerDeleted\":true"),
+        )
+
+        assertEquals(null, plain.organizerName)
+        assertEquals(false, plain.organizerDeleted)
+        assertEquals("Anil Thomas", named.organizerName)
+        assertEquals(true, named.organizerDeleted)
+    }
 
     @Test
     fun `listByArea GETs leagues with the area filters as query params`() = runTest {

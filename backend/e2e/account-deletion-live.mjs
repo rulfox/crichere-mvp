@@ -23,7 +23,7 @@ async function call(method, path, token, body) {
 async function signIn(phone) {
   const send = await call('POST', '/auth/otp/send', null, { phoneNumber: phone })
   if (send.status !== 200) throw new Error(`send ${phone}: ${send.status} ${JSON.stringify(send.body)}`)
-  const v = await call('POST', '/auth/otp/verify', null, { challengeId: send.body.challengeId, code: '123456' })
+  const v = await call('POST', '/auth/otp/verify', null, { challengeId: send.body.challengeId, code: '123456', termsAccepted: true })
   if (v.status !== 200) throw new Error(`verify ${phone}: ${v.status} ${JSON.stringify(v.body)}`)
   return v.body
 }

@@ -1,5 +1,6 @@
 package com.crichere.backend.common
 
+import com.crichere.backend.moderation.OPEN_REPORT_IMAGE_URLS
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -75,7 +76,7 @@ class S3ObjectLister(
  *
  * Only image keys the upload endpoints issue are candidates, never payment screenshots (the account
  * purge owns those). A candidate goes only when it is older than [MediaSweepProperties.minAge] and
- * no stored URL names it.
+ * no stored URL names it. An open report's evidence counts as stored (docs/PHASE18.md).
  */
 @Service
 class MediaSweepService(
@@ -135,6 +136,7 @@ class MediaSweepService(
             union select logo_url from leagues where logo_url is not null
             union select banner_url from leagues where banner_url is not null
             union select logo_url from league_franchises where logo_url is not null
+            union $OPEN_REPORT_IMAGE_URLS
         """
     }
 }

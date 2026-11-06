@@ -1,5 +1,7 @@
 package com.crichere.app.ui
 
+import com.crichere.app.moderation.ModerationNoticesViewModel
+import com.crichere.app.moderation.ModerationRepository
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -118,6 +120,16 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
     val inMainArea = AppRoute.Main in backStack
     // One-time account notices (docs/PHASE16.md D7/D8), shared with the ViewModels that raise them.
     val accountNotices: AccountNotices = koinInject()
+    val moderationRepository: ModerationRepository = koinInject()
+
+    // Any request can be the one that finds out (docs/PHASE18.md): nothing stale stays on screen.
+    val suspended by accountNotices.suspended.collectAsStateWithLifecycle()
+    LaunchedEffect(suspended) {
+        if (suspended != null) {
+            moderationRepository.clear()
+            navigator.replaceAll(AppRoute.Suspended)
+        }
+    }
 
     LaunchedEffect(pendingLeagueId, inMainArea) {
         val leagueId = pendingLeagueId
@@ -153,6 +165,8 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
         entryProvider = entryProvider {
             entry<AppRoute.Starting> {
                 AppStartRoute { resolved ->
+                    // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
+                    if (accountNotices.suspended.value != null) return@AppStartRoute
                     navigator.replaceAll(
                         when (resolved) {
                             AppStartDestination.PhoneEntry -> AppRoute.PhoneEntry()
@@ -214,10 +228,23 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
                     onNavigateToPhoneEntry = { navigator.replaceAll(AppRoute.PhoneEntry()) },
                     onViewPhoto = { photoUrl -> navigator.navigate(AppRoute.ScreenshotViewer(photoUrl, title = "Profile photo")) },
                     onDeleteAccount = { navigator.navigate(AppRoute.DeleteAccount) },
+                    onBlockedPeople = { navigator.navigate(AppRoute.BlockedPeople) },
                     accountNotices = accountNotices,
                 )
             }
 
+            entry<AppRoute.BlockedPeople> {
+                BlockedPeopleScreen(onBack = { navigator.back() })
+            }
+            entry<AppRoute.Suspended> {
+                SuspendedScreen(
+                    maskedPhone = suspended?.maskedPhone,
+                    onBackToSignIn = {
+                        accountNotices.dismissSuspended()
+                        navigator.replaceAll(AppRoute.PhoneEntry())
+                    },
+                )
+            }
             entry<AppRoute.DeleteAccount> {
                 DeleteAccountRoute(
                     onBack = { navigator.back() },
@@ -434,9 +461,14 @@ private fun MainRoute(
     onNavigateToPhoneEntry: () -> Unit,
     onViewPhoto: (String) -> Unit,
     onDeleteAccount: () -> Unit,
+    onBlockedPeople: () -> Unit,
     accountNotices: AccountNotices,
 ) {
     var tab by rememberSaveable { mutableStateOf(MainTab.DASHBOARD) }
+    // Loads the block list once signed in, and queues removed-image notices (R12b to R12e).
+    val noticesViewModel: ModerationNoticesViewModel = koinViewModel()
+    val notices by noticesViewModel.notices.collectAsStateWithLifecycle()
+    notices.firstOrNull()?.let { ModerationNoticeDialog(it, noticesViewModel::dismissFirst) }
     // D8: a sign-in that cancelled a pending deletion says so once, on the first screen.
     val deletionCancelled by accountNotices.deletionCancelled.collectAsStateWithLifecycle()
     LaunchedEffect(deletionCancelled) {
@@ -469,6 +501,7 @@ private fun MainRoute(
                     onNavigateToPhoneEntry = onNavigateToPhoneEntry,
                     onViewPhoto = onViewPhoto,
                     onDeleteAccount = onDeleteAccount,
+                    onBlockedPeople = onBlockedPeople,
                 )
             }
             DeletionCancelledSnack(
@@ -486,10 +519,11 @@ private fun OwnProfileRoute(
     onNavigateToPhoneEntry: () -> Unit,
     onViewPhoto: (String) -> Unit,
     onDeleteAccount: () -> Unit,
+    onBlockedPeople: () -> Unit,
 ) {
     val viewModel: OwnProfileViewModel = koinViewModel()
     LaunchedEffect(Unit) { viewModel.retry() }
-    OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry, onViewPhoto, onDeleteAccount)
+    OwnProfileScreen(viewModel, onNavigateToEditProfile, onNavigateToPhoneEntry, onViewPhoto, onDeleteAccount, onBlockedPeople)
 }
 
 /** D8: dark bar with a green check, 16 dp in from the sides and 15 dp above the tab bar; tap to dismiss. */

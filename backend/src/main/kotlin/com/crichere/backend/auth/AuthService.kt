@@ -1,5 +1,6 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.moderation.SuspendedPhoneHashRepository
 import com.crichere.backend.profile.ProfileCompletionLookup
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -40,6 +41,7 @@ class AuthService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val profileCompletionLookup: ProfileCompletionLookup,
     private val rateLimiter: AuthRateLimiter,
+    private val suspendedPhoneHashRepository: SuspendedPhoneHashRepository,
     private val clock: Clock,
 ) {
 
@@ -59,7 +61,7 @@ class AuthService(
      * refresh token is exactly the state of someone who has never signed in, and the next
      * attempt finds and reuses it.
      */
-    fun verifySession(idToken: String): AuthResult {
+    fun verifySession(idToken: String, termsAccepted: Boolean): AuthResult {
         val verified = firebaseTokenVerifier.verify(idToken)
 
         val lookupHash = phoneCryptoService.hmacLookupHash(verified.phoneNumber)
@@ -71,7 +73,7 @@ class AuthService(
             throw RateLimitExceededException(retryAfter)
         }
 
-        return signInVerifiedPhone(lookupHash, verified.phoneNumber)
+        return signInVerifiedPhone(lookupHash, verified.phoneNumber, termsAccepted)
     }
 
     /**
@@ -81,10 +83,21 @@ class AuthService(
      *
      * @param lookupHash `PhoneCryptoService.hmacLookupHash(phoneNumber)`, passed in because both
      *   callers have already computed it.
+     * @param termsAccepted the sign-in checkbox (docs/PHASE18.md). Required to create an account.
      */
-    fun signInVerifiedPhone(lookupHash: String, phoneNumber: String): AuthResult {
-        val user = findOrCreateUser(lookupHash, phoneNumber)
+    fun signInVerifiedPhone(lookupHash: String, phoneNumber: String, termsAccepted: Boolean): AuthResult {
+        // Before anything else: a suspended account can't sign in, and that must not cancel a
+        // pending deletion below. The hash table covers a suspended number whose account was purged.
+        if (suspendedPhoneHashRepository.existsById(lookupHash)) throw AccountSuspendedException()
+        val existing = userRepository.findByPhoneLookupHash(lookupHash)
+        if (existing?.suspendedAt != null) throw AccountSuspendedException()
+        if (existing == null && !termsAccepted) throw TermsNotAcceptedException()
+
+        val user = existing ?: findOrCreateUser(lookupHash, phoneNumber)
         val userId = requireNotNull(user.id) { "persisted user must have an id" }
+        if (termsAccepted && user.termsVersion != TERMS_VERSION) {
+            userRepository.recordTermsAcceptance(userId, clock.instant(), TERMS_VERSION)
+        }
 
         // Signing in during the deletion grace period cancels the deletion (docs/PHASE16.md).
         // Conditional update, so it is a no-op if a purge got there first -- and a purged account
@@ -116,6 +129,8 @@ class AuthService(
     fun refresh(rawRefreshToken: String): AuthResult {
         val existing = refreshTokenRepository.findByTokenHashForUpdate(jwtService.hashRefreshToken(rawRefreshToken))
             ?: throw InvalidRefreshTokenException()
+        // First: suspending revokes every token, and this user needs the suspended answer, not a plain 401.
+        if (userRepository.existsByIdAndSuspendedAtIsNotNull(existing.userId)) throw AccountSuspendedException()
 
         val now = clock.instant()
         // One flat failure for "revoked", "expired" and "unknown" alike -- see
@@ -143,6 +158,8 @@ class AuthService(
         // lock serializes this with AccountDeletionService.request -- see findByIdForUpdate.
         val user = userRepository.findByIdForUpdate(existing.userId)
         if (user == null || user.deletionRequestedAt != null || user.deletedAt != null) throw InvalidRefreshTokenException()
+        // Same row lock as a suspension, so a refresh in flight can't outrun it.
+        if (user.suspendedAt != null) throw AccountSuspendedException()
 
         // A lost-reply retry keeps the original rotation time, so the grace window never stretches.
         if (existing.revokedAt == null) existing.revokedAt = now
@@ -187,6 +204,8 @@ class AuthService(
                     phoneLookupHash = lookupHash,
                     phoneEncrypted = phoneCryptoService.encryptToString(phoneNumber),
                     createdAt = clock.instant(),
+                    termsAcceptedAt = clock.instant(),
+                    termsVersion = TERMS_VERSION,
                 ),
             ).also { log.info("Registered new user {}", it.id) }
         } catch (e: DataIntegrityViolationException) {
@@ -223,3 +242,6 @@ class AuthService(
         return result to requireNotNull(stored.id)
     }
 }
+
+/** The Terms and Privacy Policy version a sign-in accepts. Change it when the legal text changes materially. */
+const val TERMS_VERSION = "2026-11-04"

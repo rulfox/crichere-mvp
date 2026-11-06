@@ -1,5 +1,6 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.moderation.SuspendedPhoneHashRepository
 import com.crichere.backend.profile.ProfileCompletionLookup
 import io.mockk.every
 import io.mockk.mockk
@@ -34,6 +35,7 @@ class AuthServiceTest {
     private val userRepository = mockk<UserRepository>()
     private val refreshTokenRepository = mockk<RefreshTokenRepository>()
     private val profileCompletionLookup = mockk<ProfileCompletionLookup>()
+    private val suspendedPhoneHashRepository = mockk<SuspendedPhoneHashRepository>()
 
     // The crypto and JWT services are real: they are pure, already unit-tested, and mocking
     // them here would make the assertions about "the hash we store" meaningless.
@@ -54,9 +56,13 @@ class AuthServiceTest {
             refreshTokenRepository = refreshTokenRepository,
             profileCompletionLookup = profileCompletionLookup,
             rateLimiter = rateLimiter,
+            suspendedPhoneHashRepository = suspendedPhoneHashRepository,
             clock = clock,
         )
         every { profileCompletionLookup.isComplete(any()) } returns false
+        every { suspendedPhoneHashRepository.existsById(any()) } returns false
+        every { userRepository.recordTermsAcceptance(any(), any(), any()) } returns 1
+        every { userRepository.existsByIdAndSuspendedAtIsNotNull(any()) } returns false
         every { refreshTokenRepository.save(any()) } answers { firstArg<RefreshTokenEntity>().also { if (it.id == null) it.id = UUID.randomUUID() } }
         every { userRepository.findByIdForUpdate(any()) } answers { UserEntity(id = firstArg(), phoneLookupHash = "h", phoneEncrypted = "e") }
     }
@@ -70,7 +76,7 @@ class AuthServiceTest {
         val saved = slot<UserEntity>()
         every { userRepository.save(capture(saved)) } answers { firstArg<UserEntity>().also { it.id = USER_ID } }
 
-        val result = authService.verifySession("firebase-id-token")
+        val result = authService.verifySession("firebase-id-token", termsAccepted = true)
 
         assertEquals(USER_ID, result.userId)
         assertEquals(phoneCryptoService.hmacLookupHash(PHONE), saved.captured.phoneLookupHash)
@@ -84,7 +90,7 @@ class AuthServiceTest {
         val saved = slot<UserEntity>()
         every { userRepository.save(capture(saved)) } answers { firstArg<UserEntity>().also { it.id = USER_ID } }
 
-        authService.verifySession("firebase-id-token")
+        authService.verifySession("firebase-id-token", termsAccepted = true)
 
         assertFalse(saved.captured.phoneEncrypted!!.contains(PHONE), "the number must not be readable at rest")
         assertFalse(saved.captured.phoneLookupHash!!.contains(PHONE))
@@ -101,8 +107,8 @@ class AuthServiceTest {
         )
         every { userRepository.findByPhoneLookupHash(existing.phoneLookupHash!!) } returns existing
 
-        val first = authService.verifySession("firebase-id-token")
-        val second = authService.verifySession("another-firebase-id-token")
+        val first = authService.verifySession("firebase-id-token", termsAccepted = true)
+        val second = authService.verifySession("another-firebase-id-token", termsAccepted = true)
 
         assertEquals(USER_ID, first.userId)
         assertEquals(USER_ID, second.userId)
@@ -117,11 +123,11 @@ class AuthServiceTest {
         val winner = UserEntity(id = USER_ID, phoneLookupHash = lookupHash, phoneEncrypted = "x")
         // First lookup misses, the insert loses the race against the unique index, the retry
         // finds the row the other request just wrote.
-        every { userRepository.findByPhoneLookupHash(lookupHash) } returnsMany listOf(null, winner)
+        every { userRepository.findByPhoneLookupHash(lookupHash) } returnsMany listOf(null, null, winner)
         every { userRepository.save(any<UserEntity>()) } throws
             org.springframework.dao.DataIntegrityViolationException("unique violation")
 
-        val result = authService.verifySession("firebase-id-token")
+        val result = authService.verifySession("firebase-id-token", termsAccepted = true)
 
         assertEquals(USER_ID, result.userId)
     }
@@ -132,7 +138,7 @@ class AuthServiceTest {
         val savedToken = slot<RefreshTokenEntity>()
         every { refreshTokenRepository.save(capture(savedToken)) } answers { firstArg<RefreshTokenEntity>().also { it.id = UUID.randomUUID() } }
 
-        val result = authService.verifySession("firebase-id-token")
+        val result = authService.verifySession("firebase-id-token", termsAccepted = true)
 
         assertEquals(USER_ID, jwtService.parseAccessToken(result.accessToken))
         assertEquals(USER_ID, savedToken.captured.userId)
@@ -148,17 +154,17 @@ class AuthServiceTest {
         givenExistingUser()
         every { profileCompletionLookup.isComplete(USER_ID) } returns true
 
-        assertTrue(authService.verifySession("firebase-id-token").profileComplete)
+        assertTrue(authService.verifySession("firebase-id-token", termsAccepted = true).profileComplete)
 
         every { profileCompletionLookup.isComplete(USER_ID) } returns false
-        assertFalse(authService.verifySession("firebase-id-token").profileComplete)
+        assertFalse(authService.verifySession("firebase-id-token", termsAccepted = true).profileComplete)
     }
 
     @Test
     fun `a rejected Firebase token never reaches the database`() {
         every { firebaseTokenVerifier.verify(any()) } throws InvalidFirebaseIdTokenException()
 
-        assertThrows<InvalidFirebaseIdTokenException> { authService.verifySession("bad-token") }
+        assertThrows<InvalidFirebaseIdTokenException> { authService.verifySession("bad-token", termsAccepted = true) }
 
         verify(exactly = 0) { userRepository.findByPhoneLookupHash(any()) }
         verify(exactly = 0) { userRepository.save(any()) }
@@ -170,9 +176,9 @@ class AuthServiceTest {
         rateLimiter = AuthRateLimiter(RateLimitProperties(phoneCapacity = 3, ipCapacity = 1_000))
         authService = rebuiltWith(rateLimiter)
 
-        repeat(3) { authService.verifySession("firebase-id-token") }
+        repeat(3) { authService.verifySession("firebase-id-token", termsAccepted = true) }
 
-        assertThrows<RateLimitExceededException> { authService.verifySession("firebase-id-token") }
+        assertThrows<RateLimitExceededException> { authService.verifySession("firebase-id-token", termsAccepted = true) }
     }
 
     @Test
@@ -184,13 +190,13 @@ class AuthServiceTest {
         }
 
         givenVerifiedPhone(PHONE)
-        authService.verifySession("token")
+        authService.verifySession("token", termsAccepted = true)
         givenVerifiedPhone(OTHER_PHONE)
         // A different number has its own bucket and must not be blocked by the first one.
-        authService.verifySession("token")
+        authService.verifySession("token", termsAccepted = true)
 
         givenVerifiedPhone(PHONE)
-        assertThrows<RateLimitExceededException> { authService.verifySession("token") }
+        assertThrows<RateLimitExceededException> { authService.verifySession("token", termsAccepted = true) }
     }
 
     // ---------------------------------------------------------------- refresh
@@ -382,6 +388,7 @@ class AuthServiceTest {
         refreshTokenRepository = refreshTokenRepository,
         profileCompletionLookup = profileCompletionLookup,
         rateLimiter = limiter,
+        suspendedPhoneHashRepository = suspendedPhoneHashRepository,
         clock = clock,
     )
 

@@ -7,7 +7,7 @@ These Terms are a contract between you and [Legal name of the owner / company], 
 
 ## 1. What Crichere is
 
-Crichere is software for amateur cricket leagues. Organisers create leagues, run a live player auction and manage franchises; players create profiles, join leagues and are bid for; franchise owners bid for players with a virtual purse. **Auction purses, bids and "prices" are virtual points used to run the auction. They are not real money and have no cash value.**
+Crichere is software for amateur cricket leagues. Organisers create leagues, run a live player auction and manage franchises; players create profiles, join leagues and are bid for; franchise owners bid for players with a virtual purse. **Auction purses, bids and "prices" are shown in rupees, but they are a virtual budget used only to run the auction. They are not payments: nothing is charged, paid or transferred because of a bid or sale, and they have no cash value.**
 
 ## 2. Eligibility and account
 
@@ -33,7 +33,9 @@ Do not:
 - collect other users' data or use it for anything other than the league it was shown for;
 - break any applicable law, including the Information Technology Act, 2000 and its rules.
 
-We may remove content, hide a league, and suspend or terminate accounts that break these Terms or harm others, with or without notice where needed to protect users or the Service.
+You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within [24] hours. A report never causes automatic action.
+
+We may remove content, hide a league, and suspend or terminate accounts that break these Terms or harm others, with or without notice where needed to protect users or the Service. A number linked to a suspended account cannot sign up again. Contact us at hello@crichere.com if you think we made a mistake.
 
 ## 5. Organisers and league fees
 
