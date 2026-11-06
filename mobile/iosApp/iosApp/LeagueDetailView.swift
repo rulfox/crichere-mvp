@@ -239,20 +239,33 @@ struct LeagueDetailView: View {
                 }
             }
 
-            // Board R3: a quiet link at the end of the page, never near Share and Follow.
-            if !organizer && state.currentUserId != nil {
-                Section {
-                    Button("Report league") {
-                        report.open(ReportSubject(
-                            type: .league,
-                            id: league.id,
-                            name: league.name,
-                            context: "Name, logo, banner and description",
-                            contextLeagueId: nil
-                        ))
+            // Boards R3 and R3e to R3g: quiet links at the end of the page, never near Share and Follow.
+            if let me = state.currentUserId {
+                let canBlock = me != league.organizerUserId && !league.organizerDeleted
+                    && !block.blockedIds.contains(league.organizerUserId)
+                if !organizer || canBlock {
+                    Section {
+                        if !organizer {
+                            Button("Report league") {
+                                report.open(ReportSubject(
+                                    type: .league,
+                                    id: league.id,
+                                    name: league.name,
+                                    context: "Name, logo, banner and description",
+                                    contextLeagueId: nil
+                                ))
+                            }
+                            .foregroundColor(Brand.inkMuted)
+                            .frame(maxWidth: .infinity)
+                        }
+                        if canBlock {
+                            Button("Block organizer") {
+                                block.askToBlock(userId: league.organizerUserId, name: organizerName(league))
+                            }
+                            .foregroundColor(Brand.inkMuted)
+                            .frame(maxWidth: .infinity)
+                        }
                     }
-                    .foregroundColor(Brand.inkMuted)
-                    .frame(maxWidth: .infinity)
                 }
             }
 
@@ -475,11 +488,8 @@ struct LeagueDetailView: View {
             && !league.franchises.contains { $0.ownerUserId == state.currentUserId }
     }
 
-    /// The list responses carry no organizer name: it's known only if they also play or own a franchise.
     private func organizerName(_ league: LeagueDto) -> String {
-        league.players.first { $0.userId == league.organizerUserId }?.name
-            ?? league.franchises.first { $0.ownerUserId == league.organizerUserId }?.ownerName
-            ?? "this organizer"
+        league.organizerName ?? "this organizer"
     }
 
     private func franchiseRow(_ franchise: LeagueFranchiseDto, editable: Bool) -> some View {
