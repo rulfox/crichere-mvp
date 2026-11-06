@@ -26,6 +26,7 @@ class PhoneEntryScreenTest {
             nextSendOtpResult = Result.success(PhoneVerificationHandle(verificationId = "verification-1"))
         }
         val viewModel = PhoneEntryViewModel(authRepository)
+        viewModel.onTermsAcceptedChanged(true)
 
         composeRule.setContent { PhoneEntryScreen(viewModel) }
 
@@ -42,6 +43,7 @@ class PhoneEntryScreenTest {
     fun anImplausibleNumberIsRejectedWithoutCallingSendOtp() {
         val authRepository = FakeAuthRepository()
         val viewModel = PhoneEntryViewModel(authRepository)
+        viewModel.onTermsAcceptedChanged(true)
 
         composeRule.setContent { PhoneEntryScreen(viewModel) }
 
@@ -51,5 +53,26 @@ class PhoneEntryScreenTest {
 
         composeRule.onNodeWithText("Enter a valid 10-digit mobile number.").assertExists()
         assert(authRepository.sendOtpCalls.isEmpty())
+    }
+
+    @Test
+    fun sendCodeDoesNothingUntilTheTermsAreTicked() {
+        val authRepository = FakeAuthRepository().apply {
+            nextSendOtpResult = Result.success(PhoneVerificationHandle(verificationId = "verification-1"))
+        }
+        val viewModel = PhoneEntryViewModel(authRepository)
+
+        composeRule.setContent { PhoneEntryScreen(viewModel) }
+
+        composeRule.onNodeWithText("10-digit mobile number").performTextInput("9876543210")
+        composeRule.onNodeWithText("Send code").performClick()
+        composeRule.waitForIdle()
+        assert(authRepository.sendOtpCalls.isEmpty())
+
+        viewModel.onTermsAcceptedChanged(true)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Send code").performClick()
+        composeRule.waitForIdle()
+        assert(authRepository.sendOtpCalls == listOf("+919876543210"))
     }
 }

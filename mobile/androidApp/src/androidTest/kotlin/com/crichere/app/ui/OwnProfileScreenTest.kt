@@ -25,11 +25,11 @@ class OwnProfileScreenTest {
         val viewModel = OwnProfileViewModel(profileRepository, authRepository)
         viewModel.retry()
 
-        composeRule.setContent { OwnProfileScreen(viewModel, onNavigateToEditProfile = {}, onNavigateToPhoneEntry = {}, onViewPhoto = {}, onDeleteAccount = {}) }
+        composeRule.setContent { OwnProfileScreen(viewModel, onNavigateToEditProfile = {}, onNavigateToPhoneEntry = {}, onViewPhoto = {}, onDeleteAccount = {}, onBlockedPeople = {}) }
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Rahul Sharma").assertExists()
-        composeRule.onNodeWithText("Bengaluru").assertExists()
+        composeRule.onNodeWithText("Karnataka").assertExists()
 
         // Design N4: Log out asks first.
         composeRule.onNodeWithText("Log out").performClick()

@@ -103,7 +103,14 @@ internal fun ModerationRowMenu(name: String, blocked: Boolean, onReport: () -> U
         ) {
             Icon(painterResource(R.drawable.ic_more_vert), contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.width(208.dp)) {
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            shape = RoundedCornerShape(12.dp),
+            containerColor = colors.surface,
+            shadowElevation = 8.dp,
+            modifier = Modifier.width(208.dp),
+        ) {
             Text(name, style = pText(12.sp), color = colors.onSurfaceVariant, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 6.dp))
             DropdownMenuItem(
                 text = { Text("Report", style = pText(15.sp), color = colors.onBackground) },
@@ -430,7 +437,7 @@ internal fun BlockedOrganizerNotice(organizerName: String, onUnblock: () -> Unit
         Text("You blocked this league's organizer", style = pText(22.sp, FontWeight.Bold, 28.sp), color = colors.onBackground)
         Spacer(Modifier.height(12.dp))
         Text(
-            "$organizerName organizes this league. While they're blocked, its details stay hidden from you. They haven't been told.",
+            "${organizerName.replaceFirstChar(Char::uppercase).replace("This organizer", "This person")} organizes this league. While they're blocked, its details stay hidden from you. They haven't been told.",
             style = pText(15.sp, lineHeight = 23.sp),
             color = colors.onSurfaceVariant,
         )
