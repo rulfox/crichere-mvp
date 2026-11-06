@@ -362,6 +362,8 @@ enum NoticeColors {
 final class AccountNoticesWrapper: ObservableObject {
     @Published var deletionScheduledOn: String?
     @Published var deletionCancelled = false
+    @Published var isSuspended = false
+    @Published var suspendedPhone: String?
     private let notices: AccountNotices
 
     init() {
@@ -373,8 +375,15 @@ final class AccountNoticesWrapper: ObservableObject {
         Task { [weak self] in
             for await value in notices.deletionCancelled { self?.deletionCancelled = value.boolValue }
         }
+        Task { [weak self] in
+            for await value in notices.suspended {
+                self?.suspendedPhone = value?.maskedPhone
+                self?.isSuspended = value != nil
+            }
+        }
     }
 
     func dismissScheduled() { notices.dismissDeletionScheduled() }
     func dismissCancelled() { notices.dismissDeletionCancelled() }
+    func dismissSuspended() { notices.dismissSuspended() }
 }

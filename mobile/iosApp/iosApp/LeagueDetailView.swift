@@ -57,6 +57,10 @@ struct LeagueDetailView: View {
     /// A one-off message to show on arrival (design update #4 K10), cleared through [onNoticeShown].
     let notice: String?
     let onNoticeShown: () -> Void
+    let onHome: () -> Void
+
+    @StateObject private var block = BlockViewModelWrapper()
+    @StateObject private var report = ReportViewModelWrapper()
 
     @StateObject private var wrapper: LeagueDetailViewModelWrapper
     @State private var showCompleteConfirm = false
@@ -98,7 +102,15 @@ struct LeagueDetailView: View {
             if state.isLoading {
                 ProgressView()
             } else if let league = state.league {
-                content(league)
+                if hiddenByBlock(league) {
+                    BlockedOrganizerNoticeView(
+                        organizerName: organizerName(league),
+                        onUnblock: { block.unblock(userId: league.organizerUserId, name: organizerName(league)) },
+                        onHome: onHome
+                    )
+                } else {
+                    content(league)
+                }
             } else {
                 VStack(spacing: 12) {
                     Text(state.errorMessage ?? "Couldn't load this league.").foregroundColor(Brand.error)
@@ -122,6 +134,11 @@ struct LeagueDetailView: View {
             }
         }
         .onAppear { wrapper.retry() }
+        .blockConfirm(block)
+        .blockToast(block)
+        .sheet(isPresented: Binding(get: { report.state.subject != nil }, set: { if !$0 { report.close() } })) {
+            ReportSheetView(wrapper: report)
+        }
         .alert(
             "Mark \(state.league?.name.trimmingCharacters(in: .whitespaces) ?? "this league") as completed?",
             isPresented: $showCompleteConfirm
@@ -211,6 +228,32 @@ struct LeagueDetailView: View {
             } else {
                 playersSection(league, completed: false)
                 franchisesSection(league, completed: false)
+            }
+
+            // Board R9b: a member keeps the league, without the organizer's uploads.
+            if block.blockedIds.contains(league.organizerUserId) {
+                Section {
+                    Text("You blocked \(organizerName(league)), who organizes this league. Their logo, banner and description are hidden.")
+                        .font(.footnote)
+                    Button("Unblock") { block.unblock(userId: league.organizerUserId, name: organizerName(league)) }
+                }
+            }
+
+            // Board R3: a quiet link at the end of the page, never near Share and Follow.
+            if !organizer && state.currentUserId != nil {
+                Section {
+                    Button("Report league") {
+                        report.open(ReportSubject(
+                            type: .league,
+                            id: league.id,
+                            name: league.name,
+                            context: "Name, logo, banner and description",
+                            contextLeagueId: nil
+                        ))
+                    }
+                    .foregroundColor(Brand.inkMuted)
+                    .frame(maxWidth: .infinity)
+                }
             }
 
             if let error = state.errorMessage {
@@ -371,17 +414,20 @@ struct LeagueDetailView: View {
         let name = player.name ?? "Player"
         let busy = state.removingIds.contains(player.id) || state.respondingToLeaveRequestIds.contains(player.id)
         let tappable = editable || player.paymentScreenshotUrl != nil
+        let blocked = block.blockedIds.contains(player.userId)
         return Button {
             if tappable { playerActions = player }
         } label: {
             personRow(
                 // Design D10: a deleted user gets the neutral avatar and a muted name.
-                avatar: player.deleted ? AnyView(DeletedUserAvatar(size: 36)) : AnyView(initialsAvatar(name, photoUrl: player.photoUrl)),
+                avatar: player.deleted || player.photoRemoved || blocked
+                    ? AnyView(DeletedUserAvatar(size: 36))
+                    : AnyView(initialsAvatar(name, photoUrl: player.photoUrl)),
                 name: name,
                 muted: player.deleted,
                 detail: player.leaveRequestedAt != nil && editable
                     ? Text("Leave requested").foregroundColor(Brand.error)
-                    : Text(playerDetail(player)),
+                    : Text(blocked ? "\(playerDetail(player)) · Blocked" : playerDetail(player)),
                 chevron: tappable,
                 busy: busy
             )
@@ -395,21 +441,61 @@ struct LeagueDetailView: View {
                 }
             }
         }
+        .contextMenu {
+            if state.currentUserId != nil && player.userId != state.currentUserId && !player.deleted {
+                moderationMenu(userId: player.userId, name: name, role: "Player")
+            }
+        }
+    }
+
+    // MARK: - report and block
+
+    /// Boards R1 and R2. On iOS a long press, next to the swipe actions organizers already have.
+    @ViewBuilder
+    private func moderationMenu(userId: String, name: String, role: String) -> some View {
+        Button {
+            report.open(ReportSubject(
+                type: .user,
+                id: userId,
+                name: name,
+                context: "\(role) in \(state.league?.name ?? "this league")",
+                contextLeagueId: state.league?.id
+            ))
+        } label: { Label("Report", systemImage: "flag") }
+        if block.blockedIds.contains(userId) {
+            Button { block.unblock(userId: userId, name: name) } label: { Label("Unblock", systemImage: "nosign") }
+        } else {
+            Button(role: .destructive) { block.askToBlock(userId: userId, name: name) } label: { Label("Block", systemImage: "nosign") }
+        }
+    }
+
+    private func hiddenByBlock(_ league: LeagueDto) -> Bool {
+        block.blockedIds.contains(league.organizerUserId) && !state.isOrganizer
+            && !league.players.contains { $0.userId == state.currentUserId }
+            && !league.franchises.contains { $0.ownerUserId == state.currentUserId }
+    }
+
+    /// The list responses carry no organizer name: it's known only if they also play or own a franchise.
+    private func organizerName(_ league: LeagueDto) -> String {
+        league.players.first { $0.userId == league.organizerUserId }?.name
+            ?? league.franchises.first { $0.ownerUserId == league.organizerUserId }?.ownerName
+            ?? "this organizer"
     }
 
     private func franchiseRow(_ franchise: LeagueFranchiseDto, editable: Bool) -> some View {
         let busy = state.removingIds.contains(franchise.id) || state.respondingToLeaveRequestIds.contains(franchise.id)
         let tappable = editable || franchise.paymentScreenshotUrl != nil
+        let blocked = block.blockedIds.contains(franchise.ownerUserId)
         return Button {
             if tappable { franchiseActions = franchise }
         } label: {
             personRow(
-                avatar: AnyView(FranchiseBadge(name: franchise.name, size: 36, radius: 10, fontSize: 12, logoUrl: franchise.logoUrl)),
+                avatar: AnyView(FranchiseBadge(name: franchise.name, size: 36, radius: 10, fontSize: 12, logoUrl: blocked ? nil : franchise.logoUrl)),
                 name: franchise.name,
                 muted: false,
                 detail: franchise.leaveRequestedAt != nil && editable
                     ? Text("Leave requested").foregroundColor(Brand.error)
-                    : Text("Owner: \(franchise.ownerName ?? "Unknown")"),
+                    : Text("Owner: \(franchise.ownerName ?? "Unknown")" + (blocked ? " · Blocked" : "")),
                 chevron: tappable,
                 busy: busy
             )
@@ -421,6 +507,11 @@ struct LeagueDetailView: View {
                 if franchise.leaveRequestedAt != nil {
                     Button("Approve leave") { wrapper.approveFranchiseLeave(franchiseId: franchise.id) }.tint(Brand.primary)
                 }
+            }
+        }
+        .contextMenu {
+            if state.currentUserId != nil && franchise.ownerUserId != state.currentUserId && !franchise.ownerDeleted {
+                moderationMenu(userId: franchise.ownerUserId, name: franchise.ownerName ?? franchise.name, role: "Franchise owner")
             }
         }
     }

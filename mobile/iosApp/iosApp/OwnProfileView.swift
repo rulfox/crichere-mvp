@@ -40,8 +40,10 @@ struct OwnProfileView: View {
     let onNavigateToEditProfile: () -> Void
     let onNavigateToPhoneEntry: () -> Void
     let onDeleteAccount: () -> Void
+    let onBlockedPeople: () -> Void
 
     @StateObject private var wrapper = OwnProfileViewModelWrapper()
+    @State private var legalPage: URL?
 
     var body: some View {
         Group {
@@ -63,14 +65,19 @@ struct OwnProfileView: View {
                         LabeledContent("Bowling style", value: bowlingStyle.name)
                     }
 
+                    Button("Blocked people", action: onBlockedPeople)
                     Button("Edit profile") { wrapper.editProfile() }
                     Button("Log out", role: .destructive) { wrapper.logout() }
                     // Design D1: quieter than Log out, opens DeleteAccountView.
                     Button("Delete account", action: onDeleteAccount).foregroundColor(Color(hex: 0x8C1D12))
+                    // Board T2.
+                    Button("Terms") { legalPage = termsUrl }
+                    Button("Privacy Policy") { legalPage = privacyUrl }
                 }
             }
         }
         .navigationTitle("Your profile")
+        .sheet(item: $legalPage) { SafariView(url: $0) }
         .onAppear { wrapper.retry() }
         .onChange(of: wrapper.navigationEvent) { _, event in
             switch event {
