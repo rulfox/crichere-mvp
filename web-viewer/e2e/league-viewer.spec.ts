@@ -32,6 +32,18 @@ test("live league shows the player under the hammer, the bid, the ticker and the
   await expect(standings.getByText(/₹-/)).toHaveCount(0);
 });
 
+test("the money note stays on screen at phone width, with no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/leagues/league-live");
+
+  const note = page.getByText("Bids are recorded here only. No money moves through Crichere.");
+  await expect(note).toBeVisible();
+  const box = await note.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+});
+
 test("a sold lot shows the SOLD band, then moves on", async ({ page }) => {
   await page.goto("/leagues/league-sold");
   await expect(page.getByRole("heading", { name: "Aswin Sudarsanan" })).toBeVisible();
