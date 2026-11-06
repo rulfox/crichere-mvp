@@ -165,6 +165,8 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
         entryProvider = entryProvider {
             entry<AppRoute.Starting> {
                 AppStartRoute { resolved ->
+                    // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
+                    if (accountNotices.suspended.value != null) return@AppStartRoute
                     navigator.replaceAll(
                         when (resolved) {
                             AppStartDestination.PhoneEntry -> AppRoute.PhoneEntry()

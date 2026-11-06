@@ -78,6 +78,8 @@ struct AppRootView: View {
 
             case .starting:
                 AppStartRootView { resolved in
+                    // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
+                    guard !accountNotices.isSuspended else { return }
                     switch resolved {
                     case .phoneEntry: destination = .phoneEntry
                     case .profileSetup: destination = .profileSetup(isEditMode: false)
