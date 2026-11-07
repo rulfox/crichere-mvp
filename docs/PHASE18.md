@@ -1,6 +1,6 @@
 # Phase 18: Play compliance (report, block, terms acceptance, auction note)
 
-**Status:** analysis and plan done, decisions closed. Nothing built.
+**Status:** built and live on production since 2026-11-06 (merge `df59304`). Mobile release not shipped.
 **Date:** 2026-11-04
 
 ## 1. Scope

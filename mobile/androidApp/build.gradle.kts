@@ -64,7 +64,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0-toolchain-proof"
+        versionName = "1.0.0"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         manifestPlaceholders["usesCleartextTraffic"] = (appEnv == "local").toString()
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
@@ -94,7 +94,17 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // The release build's R8 output, debug signed, so it can run on an emulator against a local
+        // backend (`-Penv=local` can't be combined with a release build). R8 failures only show up
+        // at runtime, so test this before shipping. Never uploaded: the debug key signs it.
+        create("qa") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
         }
     }
 }
