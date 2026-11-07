@@ -16,6 +16,17 @@ fun configureBackendBaseUrl(url: String) {
 }
 
 /**
+ * Whether the HTTP clients log requests. Off unless the platform entry point turns it on before the
+ * clients are built, so a release build never writes request URLs to the device log.
+ */
+internal var networkLoggingEnabled: Boolean = false
+    private set
+
+fun configureNetworkLogging(enabled: Boolean) {
+    networkLoggingEnabled = enabled
+}
+
+/**
  * The public web viewer's base URL (docs/PHASE6.md) -- a plain `https://` link pasted into a chat
  * app, not a URL the app process itself connects to.
  */

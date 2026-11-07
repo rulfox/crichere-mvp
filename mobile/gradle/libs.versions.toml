@@ -44,6 +44,9 @@ androidxTestOrchestrator = "1.6.1"
 # the brief's literal artifact name would fail to resolve against this BOM version.
 firebaseBom = "34.19.0"
 googleServices = "4.5.0"
+# Checked live on dl.google.com 2026-11-07. The BOM stays on 34.x: 35.0.0 is a major jump for auth
+# and messaging, so it gets its own upgrade (docs/PHASE19.md).
+firebaseCrashlytics = "3.0.8"
 kotlinxCoroutinesPlayServices = "1.11.0"
 # Ground location picker (Phase 2). Checked against live sources (mvnrepository.com,
 # developers.google.com/android/guides/releases) on 2026-09-04, same precedent as the
@@ -122,6 +125,7 @@ androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-mani
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
 
 play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
@@ -139,3 +143,4 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebaseCrashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytics" }

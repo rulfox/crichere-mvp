@@ -28,6 +28,8 @@ node_modules/
 
 # Secrets / local config
 *.pem
+*.jks
+*.keystore
 application-local.yml
 application-local.yaml
 firebase-service-account*.json
