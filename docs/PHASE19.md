@@ -75,7 +75,13 @@ Crashlytics: `assembleRelease`, `assembleQa` and `assembleDebug` pass; merged ma
 `false` for qa and debug; the release build uploaded its mapping. Not checked: the qa build with Crashlytics added was not
 launched on a device, and no crash has reached the Crashlytics console yet. Check both with the first signed build.
 
-## 3. Open
+## 3. Play Console
+
+Answers for every Play Console form (Data safety, content rating, target audience, ads, app access), the closed test
+path for a new personal account and a draft store listing: `docs/legal/PLAY-CONSOLE.md`. Checked 2026-11-07: release
+manifest has no sensitive permissions, targetSdk 36 meets the 31 Aug 2026 rule, native libraries are 16 KB aligned.
+
+## 4. Open
 
 | Item | Needs |
 |---|---|

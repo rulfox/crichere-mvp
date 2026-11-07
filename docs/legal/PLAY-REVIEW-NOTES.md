@@ -1,7 +1,8 @@
 # Google Play review notes (draft)
 
 Paste the section below into Play Console, App content > App access and the review notes field.
-Before submitting: replace the [placeholders], and check every statement is still true of the build.
+Before submitting: fill in the sample league's name, and check every statement is still true of the build.
+Last checked against release 1.0.0 on 2026-11-07. Other Play Console answers: PLAY-CONSOLE.md.
 
 ---
 
@@ -31,8 +32,11 @@ Blocked people. Our team reviews reports every day and can remove content or sus
 must tick their acceptance of the Terms and Privacy Policy before they can sign in. The app is for
 users aged 18 and over.
 
-**How to sign in.** [MSG91 demo number and its fixed code, set up by the owner.]
+**How to sign in.** Enter the phone number from the App access instructions (10 digits, without +91),
+tick the Terms box and tap Send code. Enter the fixed code from the same instructions. The account
+already has a profile.
 
-**Test data.** [Name of a sample league with players, franchises and a completed auction.]
+**Test data.** Open the league "<sample league name>" from the dashboard. It has players, franchises
+and a completed auction, so you can see rosters, results and the ⋮ menu on each row.
 
 **Contact.** hello@crichere.com

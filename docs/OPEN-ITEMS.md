@@ -20,6 +20,9 @@ were answered by update #5 (PHASE15 8).
 | Terms acceptance and auction money note | Backend live since 2026-11-06, before the mobile release, so installed older apps can't create accounts until it ships. Existing accounts are unaffected. | PHASE18 |
 | MSG91 before launch | Check the production widget: keep one demo number for the Play reviewer (non-obvious OTP if possible, plain sample account), remove the others. Rotate the Auth Key and widget token. Test real SMS on Jio, Airtel and Vi. | PHASE12 6, PHASE18 |
 | Android release: keystore, Play signing SHA in `assetlinks.json`, Maps key, Data safety | R8, logging, version, Crashlytics and signing config done on `android-release`. Rest needs the owner. | PHASE19 |
+| Play release path | Personal account (after Nov 2023): internal test, then a closed test with 12+ testers opted in for 14 days in a row, then apply for production. Form answers and listing draft ready. | legal/PLAY-CONSOLE |
+| Play reviewer account | Finish the demo account's profile and add it to a sample league with players, franchises and a completed auction; put the league's name in the review notes. Confirm hello@crichere.com receives mail. | legal/PLAY-REVIEW-NOTES |
+| Store listing assets | 512 px icon, 1024 x 500 feature graphic, 2 to 8 phone screenshots from the release build. | legal/PLAY-CONSOLE 3 |
 
 ## 2a. Decided (2026-11-04)
 
