@@ -14,6 +14,10 @@ keystore, then App Links SHA and Maps key once the app is in Play Console.
 - **Logging:** Ktor request logging and Koin's Android logger are debug only. `configureNetworkLogging` defaults to off, so
   iOS logs nothing either.
 - **Version:** `1.0.0`, versionCode 1.
+- **Portrait only** (owner, 2026-11-07): `screenOrientation="portrait"` on `MainActivity`; iOS Info.plist portrait on iPhone
+  and iPad, with `UIRequiresFullScreen` (iPad needs it to lock orientation). Android 16 ignores the lock on screens 600dp
+  wide and up when targeting SDK 36, so tablets and unfolded foldables can still rotate. Checked on the CPH2487 release
+  build: forced landscape kept the app portrait. iOS not compiled.
 
 - **Crash reporting: Firebase Crashlytics** (owner, 2026-11-07, over Play Console's own reports: better traces and alerts,
   and the Firebase project already exists for push). Plugin 3.0.8, library from BOM 34.19.0. Collection is on only in

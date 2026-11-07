@@ -29,9 +29,15 @@
             (androidApp/build.gradle.kts sets the placeholder). Every other build, release
             included, refuses cleartext (docs/SECURITY-AUDIT.md, mobile).
         -->
+        <!--
+            Portrait only (owner, 2026-11-07). Android 16 ignores this on large screens (smallest width
+            600dp and up, such as tablets and unfolded foldables) for apps targeting SDK 36, so layouts
+            must still cope with landscape there.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.Crichere">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
