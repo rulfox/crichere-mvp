@@ -75,9 +75,9 @@ launched on a device, and no crash has reached the Crashlytics console yet. Chec
 
 | Item | Needs |
 |---|---|
-| Upload keystore | Owner creates it (section 1, Signing) and fills `local.properties`. Build config is ready. |
+| Upload keystore | Done 2026-11-07, outside the repo. `bundleRelease` signs with it (checked with `jarsigner -verify`). Upload SHA-256 `40:D6:4F:36:DA:61:2F:BD:19:59:64:8A:04:3C:A0:85:84:11:87:CB:1C:83:E5:2D:37:57:CE:92:98:81:3B:7F`. |
 | Play App Signing SHA-256 in `web-viewer/public/.well-known/assetlinks.json` | Lists the debug key only. Without it shared links won't open the app in the Play build. Available once the app is in Play Console. |
-| Maps key | `Maps SDK Android (debug)` must allow the release and Play signing SHA-1, or maps and Places fail in the Play build. |
+| Maps key | `Maps SDK Android (debug)` (Maps SDK and Places) allows the debug SHA-1 and, since 2026-11-07, the upload key SHA-1 `79:60:5F:01:25:A7:60:F1:B6:BC:8C:CB:ED:C3:9B:22:84:95:5D:91`. Add the Play app signing SHA-1 after the first upload, or maps and Places fail in Play installs. `gcloud services api-keys update` replaces the whole list: pass every app and API target. Rename the key then. |
 | Data safety form | Add "Crash logs" and "Diagnostics", collected, not shared, for app functionality, not optional. |
 | Firebase BOM 35 | 35.x is out (35.1.0 on 2026-11-07). Major jump for auth and messaging; own upgrade with device checks. |
 | iOS crash reports | Crashlytics not added to iOS. Needs the Privacy Policy line widened when it is. |
