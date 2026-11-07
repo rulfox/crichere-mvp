@@ -1,6 +1,7 @@
 # Phase 19: Android release readiness
 
-**Status:** R8, logging and version done on branch `android-release`. Signing, App Links, Maps key and crash reporting open.
+**Status:** R8, logging, version, Crashlytics and signing config done on branch `android-release`. Owner: create the upload
+keystore, then App Links SHA and Maps key once the app is in Play Console.
 **Date:** 2026-11-07
 
 ## 1. Done
@@ -14,8 +15,38 @@
   iOS logs nothing either.
 - **Version:** `1.0.0`, versionCode 1.
 
-Keep `build/outputs/mapping/release/mapping.txt` for every uploaded build, or upload the bundle with it. Without it crash
-traces can't be read.
+- **Crash reporting: Firebase Crashlytics** (owner, 2026-11-07, over Play Console's own reports: better traces and alerts,
+  and the Firebase project already exists for push). Plugin 3.0.8, library from BOM 34.19.0. Collection is on only in
+  `release` (manifest flag `firebase_crashlytics_collection_enabled`), off in debug and qa. No user ID or custom keys are
+  set. A release build uploads its R8 mapping to Firebase; qa doesn't. Privacy Policy (doc and web page) lists it, with
+  90 days retention. iOS has no Crashlytics yet.
+- **Signing config:** `release` signs with the upload key when `local.properties` has all of `RELEASE_STORE_FILE`,
+  `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`; otherwise the APK is unsigned. `*.jks` and
+  `*.keystore` are gitignored.
+
+Keep `build/outputs/mapping/release/mapping.txt` for every uploaded build. Crashlytics gets it on each release build, and
+Play Console needs it in the bundle for its own reports.
+
+### Signing
+
+Play App Signing: Google holds the app signing key; we hold only the upload key. A lost upload key can be reset through Play
+support, which takes days. Keep the keystore and its password in a password manager and one offline backup, never in the repo.
+
+```
+keytool -genkeypair -v -keystore crichere-upload.jks -alias upload -keyalg RSA -keysize 4096 -validity 10000 \
+  -dname "CN=Crichere, C=IN"
+```
+
+Then in `mobile/local.properties` (use forward slashes):
+
+```
+RELEASE_STORE_FILE=C:/Users/<you>/keys/crichere-upload.jks
+RELEASE_STORE_PASSWORD=...
+RELEASE_KEY_ALIAS=upload
+RELEASE_KEY_PASSWORD=...
+```
+
+`./gradlew :androidApp:bundleRelease` gives `androidApp/build/outputs/bundle/release/androidApp-release.aab` for Play.
 
 ## 2. Checked on the qa build
 
@@ -36,13 +67,19 @@ not R8.
 
 Not checked on a minified build: photo upload to S3, token refresh, push notification delivery, paid join with payment proof.
 
+Crashlytics: `assembleRelease`, `assembleQa` and `assembleDebug` pass; merged manifests have collection `true` for release,
+`false` for qa and debug; the release build uploaded its mapping. Not checked: the qa build with Crashlytics added was not
+launched on a device, and no crash has reached the Crashlytics console yet. Check both with the first signed build.
+
 ## 3. Open
 
 | Item | Needs |
 |---|---|
-| Upload keystore | Owner decision. No `signingConfig` on `release` yet, so `assembleRelease` gives an unsigned APK. Keep the keystore and password out of the repo. |
+| Upload keystore | Owner creates it (section 1, Signing) and fills `local.properties`. Build config is ready. |
 | Play App Signing SHA-256 in `web-viewer/public/.well-known/assetlinks.json` | Lists the debug key only. Without it shared links won't open the app in the Play build. Available once the app is in Play Console. |
 | Maps key | `Maps SDK Android (debug)` must allow the release and Play signing SHA-1, or maps and Places fail in the Play build. |
-| Crash reporting | Owner decision: Crashlytics (needs Privacy Policy and Data safety updates) or Play Console's reports. |
+| Data safety form | Add "Crash logs" and "Diagnostics", collected, not shared, for app functionality, not optional. |
+| Firebase BOM 35 | 35.x is out (35.1.0 on 2026-11-07). Major jump for auth and messaging; own upgrade with device checks. |
+| iOS crash reports | Crashlytics not added to iOS. Needs the Privacy Policy line widened when it is. |
 
 Merging to `master` deploys production through Railway's GitHub trigger, including the web viewer.

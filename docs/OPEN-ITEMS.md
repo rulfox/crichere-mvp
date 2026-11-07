@@ -19,7 +19,7 @@ were answered by update #5 (PHASE15 8).
 | Report and block (Google Play User Generated Content policy) | Live on production since 2026-11-06 (docs/PHASE18.md): backend, shared, Android and web tested; iOS written, never compiled. Backend and web deployed; mobile release not shipped. Block organizer link added 2026-11-06 for organizers with no roster row. | PHASE18 |
 | Terms acceptance and auction money note | Backend live since 2026-11-06, before the mobile release, so installed older apps can't create accounts until it ships. Existing accounts are unaffected. | PHASE18 |
 | MSG91 before launch | Check the production widget: keep one demo number for the Play reviewer (non-obvious OTP if possible, plain sample account), remove the others. Rotate the Auth Key and widget token. Test real SMS on Jio, Airtel and Vi. | PHASE12 6, PHASE18 |
-| Android release: keystore, Play signing SHA in `assetlinks.json`, Maps key, crash reporting | R8, logging and version done on `android-release`. Rest needs the owner. | PHASE19 |
+| Android release: keystore, Play signing SHA in `assetlinks.json`, Maps key, Data safety | R8, logging, version, Crashlytics and signing config done on `android-release`. Rest needs the owner. | PHASE19 |
 
 ## 2a. Decided (2026-11-04)
 

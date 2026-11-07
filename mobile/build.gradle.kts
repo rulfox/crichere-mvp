@@ -16,4 +16,5 @@ plugins {
     // when `google-services.json` actually exists (see that file for why: the plugin fails the
     // build hard otherwise, and no real Firebase project is connected in this environment).
     alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
 }

@@ -1,3 +1,4 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -18,8 +19,11 @@ plugins {
 // service account credentials). Applying it conditionally, only when the real file exists, keeps
 // the build green here while still doing the real thing the moment someone drops a real
 // `google-services.json` into this directory (the location Google's tooling expects it in).
-if (file("google-services.json").exists()) {
+val hasFirebaseConfig = file("google-services.json").exists()
+if (hasFirebaseConfig) {
     apply(plugin = "com.google.gms.google-services")
+    // Crash reports (docs/PHASE19.md). Needs the same Firebase app, so it follows the same switch.
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 // Ground location picker (Phase 2) needs a Google Maps API key, which -- like
@@ -33,6 +37,13 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY", "")
+
+// Upload key for Play (docs/PHASE19.md "Signing"). The keystore and its passwords live outside the
+// repo; local.properties names them. If any is missing the release build is unsigned, as before.
+val releaseSigning: Map<String, String>? =
+    listOf("RELEASE_STORE_FILE", "RELEASE_STORE_PASSWORD", "RELEASE_KEY_ALIAS", "RELEASE_KEY_PASSWORD")
+        .associateWith { localProperties.getProperty(it, "") }
+        .takeIf { values -> values.values.all { it.isNotBlank() } }
 
 // Register-ground map search (docs/PHASE2.md "Ground map search"): "geocoder" (default; Android's
 // built-in Geocoder, no API or billing) or "places" (Google Places autocomplete; needs Places API
@@ -70,6 +81,8 @@ android {
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
         buildConfigField("String", "PLACE_SEARCH_PROVIDER", "\"$placeSearchProvider\"")
         buildConfigField("String", "BACKEND_BASE_URL", "\"${backendEnvironments.getValue(appEnv)}\"")
+        // Crash reports are sent only from the release build: debug and qa runs stay out of the console.
+        manifestPlaceholders["crashlyticsCollectionEnabled"] = "false"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Runs each @Test in its own instrumentation process -- an app crash or leaked static
         // state in one test can't take the rest of the suite down with it. Real device/emulator
@@ -92,8 +105,21 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getValue("RELEASE_STORE_FILE"))
+                storePassword = releaseSigning.getValue("RELEASE_STORE_PASSWORD")
+                keyAlias = releaseSigning.getValue("RELEASE_KEY_ALIAS")
+                keyPassword = releaseSigning.getValue("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseSigning != null) signingConfig = signingConfigs.getByName("release")
+            manifestPlaceholders["crashlyticsCollectionEnabled"] = "true"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -105,6 +131,11 @@ android {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
+            manifestPlaceholders["crashlyticsCollectionEnabled"] = "false"
+            // Its mapping file never matches an uploaded build.
+            if (hasFirebaseConfig) {
+                (this as ExtensionAware).extensions.configure<CrashlyticsExtension> { mappingFileUploadEnabled = false }
+            }
         }
     }
 }
@@ -149,6 +180,9 @@ dependencies {
     // not KMP-shareable logic -- see that file's own doc.
     implementation(project.dependencies.platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    // Crash reports (docs/PHASE19.md). No user ID or custom keys are set, so a report carries the
+    // stack trace, device model, OS and app version, and Crashlytics' own installation ID.
+    implementation(libs.firebase.crashlytics)
 
     // Plain-JVM unit tests (src/test) for the navigation back-stack rules (AppNavigatorTest).
     testImplementation(libs.junit4)

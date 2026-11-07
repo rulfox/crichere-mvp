@@ -34,6 +34,7 @@ By creating an account you agree to this policy. If you do not agree, do not use
 - **Approximate location (Android: `ACCESS_COARSE_LOCATION`).** Only when you tap "Use my location" or "Show nearest to me". Used to fill your state and district, or to sort leagues by distance. We do not track your location in the background.
 - **Push notification token** (Firebase Cloud Messaging) so we can send auction and league alerts. You can switch notifications off in your device settings.
 - **Technical data** such as IP address, device and app version, and request logs, kept for security, abuse prevention and debugging.
+- **Crash reports** (Firebase Crashlytics, Android app): when the app crashes it sends the error details, device model, operating system and app version, and a random ID for this app install. Crash reports do not include your name, mobile number or account ID. Used only to find and fix bugs.
 - **Search text** you type in the ground search is sent to Google Places to return suggestions (see section 3).
 
 **We do not collect** your contacts, SMS inbox, call log, microphone recordings, precise background location, government ID, or bank / card / UPI credentials. Crichere does not process payments: league fees are paid directly between you and the organiser outside the app, and you upload a screenshot as proof. Cover or crop anything in the screenshot you do not want the organiser to see.
@@ -63,6 +64,7 @@ We do not sell your personal data and we do not use it for third-party advertisi
 |---|---|---|
 | MSG91 | Sends sign-in OTP SMS | Mobile number |
 | Google Firebase (Cloud Messaging) | Push notifications | Notification token |
+| Google Firebase (Crashlytics) | Crash reports | Error details, device model, OS and app version, install ID |
 | Google Maps and Places | Map display and ground search | Search text, map coordinates, device and app identifiers as per Google's policy |
 | Amazon Web Services (S3) | Stores photos, logos, banners and payment screenshots | Uploaded images |
 | Railway | Hosts our servers and database | All account and league data |
@@ -78,6 +80,7 @@ These providers may process data outside India. We share only what each needs.
 - Account, profile and league data: while your account is active.
 - Payment screenshots: [12] months after the league is completed, then deleted.
 - Server logs: up to [90] days.
+- Crash reports: 90 days in Firebase Crashlytics, then deleted by Google.
 - Reports and moderation records: [24] months after the report is closed, then deleted. Evidence in an open report is kept until it is closed, even if the account involved is deleted.
 - If an account is suspended and later deleted, we keep a one-way hash of its mobile number so that number cannot sign up again.
 - After you delete your account (section 5) there is a 14-day grace period, then we erase your personal data, normally within a day. We may keep limited records longer where law requires. League history other people rely on (auction results, rosters of leagues that already ran) stays, with your name replaced by "Deleted user".

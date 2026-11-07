@@ -77,6 +77,11 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
+        <!-- Crash reports (docs/PHASE19.md): on only in the release build, set in build.gradle.kts. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="${crashlyticsCollectionEnabled}" />
+
         <!-- Push notifications (docs/PHASE8.md), see CrichereFirebaseMessagingService's own doc. -->
         <service
             android:name=".notification.CrichereFirebaseMessagingService"
