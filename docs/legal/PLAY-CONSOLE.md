@@ -132,7 +132,7 @@ In-app path: My Profile > Delete account. Web: `https://crichere.com/delete-acco
 | Website | https://crichere.com | Set 2026-11-10 |
 
 Status 2026-11-10: name, short and full descriptions saved as a draft in Play Console; the images are in
-`D:\App Releases\Android\Crichere6-11-10\store-assets\` (layout: Claude Design "Crichere - V2", `P14 Play Store
+`D:/App Releases/Android/Crichere/2026-11-10/store-assets/` (layout: Claude Design "Crichere - V2", `P14 Play Store
 Graphics`; prompt: `docs/design-prompts/PLAY-STORE-GRAPHICS-PROMPT.md`). Upload them and save the listing in Play Console.
 
 Avoid words that suggest money games in the listing and screenshots: win, prize, cash, earn, bet, jackpot. Prefer
