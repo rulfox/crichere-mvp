@@ -3,9 +3,9 @@ import Link from "next/link";
 import { LegalArticle, type LegalSection } from "@/components/legal/LegalArticle";
 
 /*
- * Draft policy text from docs/legal/PRIVACY-POLICY.md (keep the two in step). The [bracketed] items
- * still need the owner's details, so the page stays out of search and out of the footer until they
- * are filled in and reviewed (docs/PHASE16.md).
+ * Policy text from docs/legal/PRIVACY-POLICY.md (keep the two in step). Owner's details filled in
+ * 2026-11-09. The page stays out of search and out of the footer until a lawyer has reviewed it
+ * (docs/PHASE16.md); Play only needs the URL.
  */
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -113,11 +113,11 @@ const SECTIONS: LegalSection[] = [
     body: (
       <ul>
         <li>Account, profile and league data: while your account is active.</li>
-        <li>Payment screenshots: [12] months after the league is completed, then deleted.</li>
-        <li>Server logs: up to [90] days.</li>
+        <li>Payment screenshots: 12 months after the league is completed, then deleted.</li>
+        <li>Server logs: up to 90 days.</li>
         <li>Crash reports: 90 days in Firebase Crashlytics, then deleted by Google.</li>
         <li>
-          Reports and moderation records: [24] months after the report is closed, then deleted. Evidence in an open report is kept until it is closed,
+          Reports and moderation records: 24 months after the report is closed, then deleted. Evidence in an open report is kept until it is closed,
           even if the account involved is deleted.
         </li>
         <li>If an account is suspended and later deleted, we keep a one-way hash of its mobile number so that number cannot sign up again.</li>
@@ -148,7 +148,7 @@ const SECTIONS: LegalSection[] = [
           <li>Withdraw consent, for example by turning off location or notifications, or deleting your account. This does not affect earlier lawful processing.</li>
           <li>Nominate another person to exercise your rights if you die or cannot act.</li>
           <li>
-            Complain to our Grievance Officer (section 9). We reply within [7] days and resolve within 30 days. If unsatisfied, you may approach the
+            Complain to our Grievance Officer (section 9). We reply within 7 days and resolve within 30 days. If unsatisfied, you may approach the
             Data Protection Board of India.
           </li>
         </ul>
@@ -190,7 +190,7 @@ const SECTIONS: LegalSection[] = [
     title: "9. Contact",
     body: (
       <p>
-        Data fiduciary: [Legal name], [registered address], India. Grievance Officer: [Name], <a href="mailto:hello@crichere.com">hello@crichere.com</a>.
+        Data fiduciary: Aswin A S, Alappuzha, Kerala 688538, India. Grievance Officer: Aswin A S, <a href="mailto:hello@crichere.com">hello@crichere.com</a>.
       </p>
     ),
   },
@@ -201,7 +201,7 @@ export default function PrivacyPage() {
     <LegalArticle
       page="privacy"
       title="Privacy Policy"
-      updated="2026-11-07"
+      updated="2026-11-09"
       intro="Crichere runs a mobile app and crichere.com for organising cricket leagues, player auctions and franchise teams. This policy explains what personal data we collect, why, who we share it with, and your choices. It follows India's Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000."
       sections={SECTIONS}
     />

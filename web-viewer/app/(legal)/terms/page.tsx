@@ -3,9 +3,9 @@ import Link from "next/link";
 import { LegalArticle, type LegalSection } from "@/components/legal/LegalArticle";
 
 /*
- * Draft terms from docs/legal/TERMS-OF-SERVICE.md (keep the two in step). The [bracketed] items still
- * need the owner's details, so the page stays out of search and out of the footer until they are
- * filled in and reviewed (docs/PHASE16.md).
+ * Terms from docs/legal/TERMS-OF-SERVICE.md (keep the two in step). Owner's details filled in
+ * 2026-11-09. The page stays out of search and out of the footer until a lawyer has reviewed it
+ * (docs/PHASE16.md); Play only needs the URL.
  */
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -67,7 +67,7 @@ const SECTIONS: LegalSection[] = [
           <li>collect other users&rsquo; data or use it for anything other than the league it was shown for;</li>
           <li>break any applicable law, including the Information Technology Act, 2000 and its rules.</li>
         </ul>
-        <p>You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within [24] hours. A report never causes automatic action.</p>
+        <p>You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within 24 hours. A report never causes automatic action.</p>
         <p>
           We may remove content, hide a league, and suspend or end accounts that break these Terms or harm others. A number linked to a suspended account
           cannot sign up again. Contact us at hello@crichere.com if you think we made a mistake.
@@ -134,7 +134,7 @@ const SECTIONS: LegalSection[] = [
           <li>the Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranties of any kind;</li>
           <li>we are not liable for the acts of organisers, franchise owners, players or other users, disputes between them, or money exchanged between them;</li>
           <li>we are not liable for indirect, incidental, special or consequential loss, or loss of profit, data or goodwill;</li>
-          <li>our total liability to you for any claim relating to the Service is limited to Rs. [1,000].</li>
+          <li>our total liability to you for any claim relating to the Service is limited to Rs. 1,000.</li>
         </ul>
         <p>Nothing in these Terms excludes liability that cannot be excluded under Indian law.</p>
       </>
@@ -176,7 +176,7 @@ const SECTIONS: LegalSection[] = [
     title: "13. Governing law and disputes",
     body: (
       <p>
-        These Terms are governed by the laws of India. Courts at [City, State], India have exclusive jurisdiction, subject to any mandatory consumer
+        These Terms are governed by the laws of India. Courts at Alappuzha, Kerala, India have exclusive jurisdiction, subject to any mandatory consumer
         rights. Please first write to hello@crichere.com so we can try to resolve the issue informally.
       </p>
     ),
@@ -186,7 +186,7 @@ const SECTIONS: LegalSection[] = [
     title: "14. Grievance Officer and contact",
     body: (
       <p>
-        Grievance Officer: [Name], <a href="mailto:hello@crichere.com">hello@crichere.com</a>, [registered address]. We acknowledge complaints within
+        Grievance Officer: Aswin A S, <a href="mailto:hello@crichere.com">hello@crichere.com</a>, Alappuzha, Kerala 688538, India. We acknowledge complaints within
         24 hours and resolve them within 15 days.
       </p>
     ),
@@ -198,8 +198,8 @@ export default function TermsPage() {
     <LegalArticle
       page="terms"
       title="Terms of Service"
-      updated="2026-10-11"
-      intro="These Terms are a contract between you and [Legal name], India, for the Crichere app and crichere.com. By creating an account or using the Service you accept them and our Privacy Policy."
+      updated="2026-11-09"
+      intro="These Terms are a contract between you and Aswin A S, Alappuzha, Kerala 688538, India, for the Crichere app and crichere.com. By creating an account or using the Service you accept them and our Privacy Policy."
       sections={SECTIONS}
     />
   );

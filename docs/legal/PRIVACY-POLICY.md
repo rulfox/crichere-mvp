@@ -1,12 +1,12 @@
 # Crichere Privacy Policy
 
-**Effective date:** [DD Month YYYY]
-**Last updated:** [DD Month YYYY]
+**Effective date:** 9 November 2026
+**Last updated:** 9 November 2026
 
 Crichere ("Crichere", "we", "us") runs a mobile app and website (crichere.com) for organising cricket leagues, player auctions and franchise teams. This policy explains what personal data we collect, why, who we share it with, and the choices you have. It is written to meet India's Digital Personal Data Protection Act, 2023 (DPDP Act), the Information Technology Act, 2000 and Google Play's User Data policy.
 
-**Data fiduciary:** [Legal name of the owner / company], [registered address], India.
-**Contact / Grievance Officer:** [Name], hello@crichere.com
+**Data fiduciary:** Aswin A S, Alappuzha, Kerala 688538, India.
+**Contact / Grievance Officer:** Aswin A S, hello@crichere.com
 
 By creating an account you agree to this policy. If you do not agree, do not use Crichere.
 
@@ -78,10 +78,10 @@ These providers may process data outside India. We share only what each needs.
 ## 4. Retention
 
 - Account, profile and league data: while your account is active.
-- Payment screenshots: [12] months after the league is completed, then deleted.
-- Server logs: up to [90] days.
+- Payment screenshots: 12 months after the league is completed, then deleted.
+- Server logs: up to 90 days.
 - Crash reports: 90 days in Firebase Crashlytics, then deleted by Google.
-- Reports and moderation records: [24] months after the report is closed, then deleted. Evidence in an open report is kept until it is closed, even if the account involved is deleted.
+- Reports and moderation records: 24 months after the report is closed, then deleted. Evidence in an open report is kept until it is closed, even if the account involved is deleted.
 - If an account is suspended and later deleted, we keep a one-way hash of its mobile number so that number cannot sign up again.
 - After you delete your account (section 5) there is a 14-day grace period, then we erase your personal data, normally within a day. We may keep limited records longer where law requires. League history other people rely on (auction results, rosters of leagues that already ran) stays, with your name replaced by "Deleted user".
 
@@ -95,7 +95,7 @@ Under the DPDP Act you may:
   - If you organise a league that isn't completed, it passes to its earliest co-organiser when your account is erased; you need at least one co-organiser (or to mark the league completed) before you can delete. You cannot delete while an auction you take part in is running.
 - **Withdraw consent** (for example turn off location or notifications in device settings, or delete your account). Withdrawal does not affect earlier lawful processing.
 - **Nominate** another person to exercise your rights if you die or cannot act.
-- **Complain** to our Grievance Officer (above). We reply within [7] days and resolve within 30 days. If unsatisfied, you may approach the Data Protection Board of India.
+- **Complain** to our Grievance Officer (above). We reply within 7 days and resolve within 30 days. If unsatisfied, you may approach the Data Protection Board of India.
 
 ## 6. Security
 
@@ -111,6 +111,6 @@ We may update this policy. For material changes we will notify you in the app or
 
 ## 9. Contact
 
-[Legal name], [registered address]
+Aswin A S, Alappuzha, Kerala 688538, India
 Email: hello@crichere.com
 Website: https://crichere.com/privacy

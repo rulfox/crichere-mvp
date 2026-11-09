@@ -31,7 +31,7 @@ Every track goes through review. The first review of a new app usually takes sev
 
 ### Privacy policy
 
-`https://crichere.com/privacy`. It must be complete before you submit: no [placeholders] (docs/OPEN-ITEMS.md).
+`https://crichere.com/privacy`. Owner details filled in on 2026-11-09; live once that change is merged and deployed.
 
 ### App access
 
@@ -164,7 +164,7 @@ screenshots of league pages, rosters and the auction with small, plain budget nu
 | Risk | Level | Why | What covers it |
 |---|---|---|---|
 | Real-money or gambling impression | Medium | Rupee amounts in the auction, joining fees, league awards | Terms section 1, in-app money note, review notes, listing wording, screenshots |
-| Policy incomplete or not matching Data safety | Medium until fixed | Placeholders on the live pages | Fill them (OPEN-ITEMS), then compare section 2 with the policy |
+| Policy not matching Data safety | Low | Placeholders filled 2026-11-09 | Compare section 2 with the policy after every data change |
 | Reviewer can't reach features | Low-medium | Demo account without a profile or league | Finish the demo profile, sample league, App access notes |
 | Payment screenshots | Low | Users upload UPI receipts | Declared under Photos and Other financial info; private storage; deleted with the account |
 | User-generated content | Low | Profiles, photos, league pages | Report, block, Terms tick, daily moderation (PHASE18) |
