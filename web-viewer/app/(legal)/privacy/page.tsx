@@ -42,6 +42,11 @@ const SECTIONS: LegalSection[] = [
           </li>
           <li>A push notification token (Firebase Cloud Messaging) for auction and league alerts. You can switch notifications off in your device settings.</li>
           <li>Technical data such as IP address, device and app version, and request logs, kept for security, abuse prevention and debugging.</li>
+          <li>
+            Crash reports (Firebase Crashlytics, Android app): when the app crashes it sends the error details, device model, operating system and app
+            version, and a random ID for this app install. Crash reports do not include your name, mobile number or account ID. Used only to find and
+            fix bugs.
+          </li>
           <li>Text you type in the ground search, sent to Google Places to return suggestions.</li>
         </ul>
         <p>
@@ -89,6 +94,7 @@ const SECTIONS: LegalSection[] = [
         <ul>
           <li>MSG91: sends sign-in OTP SMS (mobile number).</li>
           <li>Google Firebase Cloud Messaging: push notifications (notification token).</li>
+          <li>Google Firebase Crashlytics: crash reports (error details, device model, OS and app version, install ID).</li>
           <li>Google Maps and Places: map display and ground search (search text, map coordinates, device and app identifiers as per Google&rsquo;s policy).</li>
           <li>Amazon Web Services (S3): stores photos, logos, banners and payment screenshots.</li>
           <li>Railway: hosts our servers and database.</li>
@@ -109,6 +115,7 @@ const SECTIONS: LegalSection[] = [
         <li>Account, profile and league data: while your account is active.</li>
         <li>Payment screenshots: [12] months after the league is completed, then deleted.</li>
         <li>Server logs: up to [90] days.</li>
+        <li>Crash reports: 90 days in Firebase Crashlytics, then deleted by Google.</li>
         <li>
           Reports and moderation records: [24] months after the report is closed, then deleted. Evidence in an open report is kept until it is closed,
           even if the account involved is deleted.
@@ -194,7 +201,7 @@ export default function PrivacyPage() {
     <LegalArticle
       page="privacy"
       title="Privacy Policy"
-      updated="2026-10-11"
+      updated="2026-11-07"
       intro="Crichere runs a mobile app and crichere.com for organising cricket leagues, player auctions and franchise teams. This policy explains what personal data we collect, why, who we share it with, and your choices. It follows India's Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000."
       sections={SECTIONS}
     />

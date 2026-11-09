@@ -96,8 +96,10 @@ internal object HttpClientFactory {
     fun createUploadClient(): HttpClient = HttpClient {
         expectSuccess = false
 
-        install(Logging) {
-            level = LogLevel.INFO
+        if (networkLoggingEnabled) {
+            install(Logging) {
+                level = LogLevel.INFO
+            }
         }
 
         install(HttpTimeout) {
@@ -125,8 +127,10 @@ internal object HttpClientFactory {
             )
         }
 
-        install(Logging) {
-            level = LogLevel.INFO
+        if (networkLoggingEnabled) {
+            install(Logging) {
+                level = LogLevel.INFO
+            }
         }
 
         install(HttpTimeout) {

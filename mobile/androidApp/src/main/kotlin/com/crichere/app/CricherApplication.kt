@@ -7,6 +7,7 @@ import android.os.Build
 import com.crichere.app.auth.CurrentActivityTracker
 import com.crichere.app.di.initKoin
 import com.crichere.app.network.configureBackendBaseUrl
+import com.crichere.app.network.configureNetworkLogging
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 
@@ -15,8 +16,9 @@ class CricherApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         configureBackendBaseUrl(BuildConfig.BACKEND_BASE_URL)
+        configureNetworkLogging(BuildConfig.DEBUG)
         initKoin {
-            androidLogger()
+            if (BuildConfig.DEBUG) androidLogger()
             androidContext(this@CricherApplication)
         }
         // Real Firebase Phone Auth needs a foreground Activity for its reCAPTCHA fallback UI
