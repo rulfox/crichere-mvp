@@ -5,6 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.crichere.app",
       "sha256_cert_fingerprints": [
+        "34:E2:8D:F2:F2:C9:33:A8:96:EC:FD:F8:89:C6:80:C3:F3:A6:29:33:F8:D8:A2:44:04:8A:D1:F5:82:77:E2:78",
+        "40:D6:4F:36:DA:61:2F:BD:19:59:64:8A:04:3C:A0:85:84:11:87:CB:1C:83:E5:2D:37:57:CE:92:98:81:3B:7F",
         "86:37:16:DF:82:52:0E:0B:77:09:C4:09:1E:BB:B1:43:28:5C:BC:EB:97:EC:E1:80:69:AF:CB:69:66:B9:9D:E6"
       ]
     }
