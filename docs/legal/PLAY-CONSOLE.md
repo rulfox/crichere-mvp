@@ -124,12 +124,16 @@ In-app path: My Profile > Delete account. Web: `https://crichere.com/delete-acco
 | App name | Up to 30 characters | `Crichere` |
 | Short description | Up to 80 characters | Draft below |
 | Full description | Up to 4,000 characters | Draft below |
-| App icon | 512 x 512 PNG, 32-bit | To export from the brand icon |
-| Feature graphic | 1024 x 500 PNG or JPEG | To make |
-| Phone screenshots | 2 to 8; 16:9 or 9:16; each side 320 to 3,840 px | To make from the release build |
-| Category | Sports | |
-| Contact email | hello@crichere.com | Check the mailbox receives mail |
-| Website | https://crichere.com | |
+| App icon | 512 x 512 PNG, up to 1 MB | Made 2026-11-10: the shipped launcher icon (`#1B5E20`, white C), not the Claude Design mark, so it matches the APK |
+| Feature graphic | 1024 x 500 PNG or JPEG | Made 2026-11-10, dark (live auction) and light (league detail) versions |
+| Phone screenshots | 2 to 8; 16:9 or 9:16; each side 320 to 3,840 px | Made 2026-11-10: 5 at 1080 x 1920 with captions, real app screens with fictional local data (owner view) |
+| Category | Sports | Set 2026-11-10 |
+| Contact email | hello@crichere.com | Set 2026-11-10; mailbox confirmed by the owner |
+| Website | https://crichere.com | Set 2026-11-10 |
+
+Status 2026-11-10: name, short and full descriptions saved as a draft in Play Console; the images are in
+`D:\App Releases\Android\Crichere6-11-10\store-assets\` (layout: Claude Design "Crichere - V2", `P14 Play Store
+Graphics`; prompt: `docs/design-prompts/PLAY-STORE-GRAPHICS-PROMPT.md`). Upload them and save the listing in Play Console.
 
 Avoid words that suggest money games in the listing and screenshots: win, prize, cash, earn, bet, jackpot. Prefer
 screenshots of league pages, rosters and the auction with small, plain budget numbers.
