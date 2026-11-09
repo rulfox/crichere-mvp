@@ -86,8 +86,8 @@ manifest has no sensitive permissions, targetSdk 36 meets the 31 Aug 2026 rule, 
 | Item | Needs |
 |---|---|
 | Upload keystore | Done 2026-11-07, outside the repo. `bundleRelease` signs with it (checked with `jarsigner -verify`). Upload SHA-256 `40:D6:4F:36:DA:61:2F:BD:19:59:64:8A:04:3C:A0:85:84:11:87:CB:1C:83:E5:2D:37:57:CE:92:98:81:3B:7F`. |
-| Play App Signing SHA-256 in `web-viewer/public/.well-known/assetlinks.json` | Lists the debug key only. Without it shared links won't open the app in the Play build. Available once the app is in Play Console. |
-| Maps key | `Maps SDK Android (debug)` (Maps SDK and Places) allows the debug SHA-1 and, since 2026-11-07, the upload key SHA-1 `79:60:5F:01:25:A7:60:F1:B6:BC:8C:CB:ED:C3:9B:22:84:95:5D:91`. Add the Play app signing SHA-1 after the first upload, or maps and Places fail in Play installs. `gcloud services api-keys update` replaces the whole list: pass every app and API target. Rename the key then. |
+| App Links in a Play install | `assetlinks.json` lists the Play app signing SHA-256 `34:E2:8D:F2:F2:C9:33:A8:96:EC:FD:F8:89:C6:80:C3:F3:A6:29:33:F8:D8:A2:44:04:8A:D1:F5:82:77:E2:78` (2026-11-10), the upload key and the debug key. Check a shared link opens the app once installed from Play. |
+| Maps key | `Maps SDK Android` (Maps SDK and Places) allows the debug SHA-1, the upload key SHA-1 `79:60:5F:01:25:A7:60:F1:B6:BC:8C:CB:ED:C3:9B:22:84:95:5D:91` and, since 2026-11-10, the Play app signing SHA-1 `44:13:53:64:B2:06:C7:37:7E:A3:16:46:42:BD:91:66:E2:49:D2:78`. `gcloud services api-keys update` replaces the whole list: pass every app and API target. Check maps and Places in a Play install. |
 | Data safety form | Add "Crash logs" and "Diagnostics", collected, not shared, for app functionality, not optional. |
 | Firebase BOM 35 | 35.x is out (35.1.0 on 2026-11-07). Major jump for auth and messaging; own upgrade with device checks. |
 | iOS crash reports | Crashlytics not added to iOS. Needs the Privacy Policy line widened when it is. |

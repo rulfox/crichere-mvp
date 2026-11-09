@@ -1,9 +1,9 @@
 # Crichere Terms of Service
 
-**Effective date:** [DD Month YYYY]
-**Last updated:** [DD Month YYYY]
+**Effective date:** 9 November 2026
+**Last updated:** 9 November 2026
 
-These Terms are a contract between you and [Legal name of the owner / company], [registered address], India ("Crichere", "we", "us"). They apply to the Crichere mobile app and the website crichere.com (together, the "Service"). By creating an account or using the Service you accept these Terms and our Privacy Policy (https://crichere.com/privacy). If you do not accept them, do not use the Service.
+These Terms are a contract between you and Aswin A S, Alappuzha, Kerala 688538, India ("Crichere", "we", "us"). They apply to the Crichere mobile app and the website crichere.com (together, the "Service"). By creating an account or using the Service you accept these Terms and our Privacy Policy (https://crichere.com/privacy). If you do not accept them, do not use the Service.
 
 ## 1. What Crichere is
 
@@ -33,7 +33,7 @@ Do not:
 - collect other users' data or use it for anything other than the league it was shown for;
 - break any applicable law, including the Information Technology Act, 2000 and its rules.
 
-You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within [24] hours. A report never causes automatic action.
+You can report a person or league, and block a person, from league rosters. Our team reviews reports, normally within 24 hours. A report never causes automatic action.
 
 We may remove content, hide a league, and suspend or terminate accounts that break these Terms or harm others, with or without notice where needed to protect users or the Service. A number linked to a suspended account cannot sign up again. Contact us at hello@crichere.com if you think we made a mistake.
 
@@ -63,7 +63,7 @@ To the fullest extent permitted by law:
 - the Service is provided "as is" and "as available" without warranties of any kind, including fitness for a particular purpose and non-infringement;
 - we are not liable for the acts or omissions of organisers, franchise owners, players or other users, for disputes between them, or for money exchanged between them;
 - we are not liable for indirect, incidental, special or consequential loss, or loss of profit, data or goodwill;
-- our total liability to you for any claim relating to the Service is limited to Rs. [1,000] (the Service is free to use unless we state otherwise).
+- our total liability to you for any claim relating to the Service is limited to Rs. 1,000 (the Service is free to use unless we state otherwise).
 
 Nothing in these Terms excludes liability that cannot be excluded under Indian law.
 
@@ -81,13 +81,13 @@ We may update these Terms. We will notify you in the app or by push for material
 
 ## 13. Governing law and disputes
 
-These Terms are governed by the laws of India. Courts at [City, State], India have exclusive jurisdiction, subject to any mandatory consumer rights. Please first write to hello@crichere.com so we can try to resolve the issue informally.
+These Terms are governed by the laws of India. Courts at Alappuzha, Kerala, India have exclusive jurisdiction, subject to any mandatory consumer rights. Please first write to hello@crichere.com so we can try to resolve the issue informally.
 
 ## 14. Grievance Officer and contact
 
 In line with the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021 and the DPDP Act:
 
-Grievance Officer: [Name]
+Grievance Officer: Aswin A S
 Email: hello@crichere.com
-Address: [registered address]
+Address: Alappuzha, Kerala 688538, India
 We acknowledge complaints within 24 hours and resolve them within 15 days.
