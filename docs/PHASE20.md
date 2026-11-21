@@ -576,3 +576,14 @@ Step 11 update (2026-11-21, 21:30 IST): first real sign-in.
   (possibly a browser extension).
 - Still to check: alert email in the inbox, client IP the backend recorded, a test report dismissed and seen in the
   audit log, O7, O8.
+- Alert email for the 15:57 sign-in arrived (owner confirmed).
+- Client IP was wrong: the admin site showed `100.64.0.5`, Railway's proxy, not the owner's `103.182.167.128`. So in
+  production every per-IP limit (OTP send 20/h, OTP verify 60/h, auth 20/h, admin sign-in 10/15 min) was shared by
+  all users. Decided with the owner (2026-11-21): fix in the same PR as the stream fix.
+  Fix: `server.forward-headers-strategy: native` and `server.tomcat.remoteip.internal-proxies` = 100.64.0.0/10 only
+  (application.yml). Tomcat's RemoteIpValve takes the rightmost X-Forwarded-For entry that isn't a trusted proxy, so
+  an address a client puts in the header itself is ignored; requests not from that range keep their socket address.
+  Test: `ClientIpIntegrationTest` (real Tomcat, loopback as the proxy) fails with the setting off. 629/629 pass.
+- After deploy: the admin session should show the owner's real IP; spoof check = 11 sign-in POSTs from one machine
+  with a different `X-Forwarded-For` each must reach 429 (if Railway passed client headers through unchanged and
+  appended nothing, they wouldn't).
