@@ -108,7 +108,7 @@ class AdminModerationController(private val moderation: AdminModerationService) 
     }
 }
 
-@RestControllerAdvice(assignableTypes = [AdminModerationController::class])
+@RestControllerAdvice(basePackageClasses = [AdminModerationController::class])
 class AdminModerationExceptionHandler {
     @ExceptionHandler(AdminNotFoundException::class)
     fun notFound(e: AdminNotFoundException, request: HttpServletRequest): ResponseEntity<ProblemDetail> =

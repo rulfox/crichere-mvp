@@ -37,6 +37,9 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
 
     private lateinit var organizerToken: String
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private lateinit var jdbcTemplate: org.springframework.jdbc.core.JdbcTemplate
+
     @BeforeEach
     fun signIn() {
         organizerToken = signInNewUser()
@@ -123,6 +126,13 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
             .andExpect(jsonPath("$.franchises[0].purseSpent").value(200))
             .andExpect(jsonPath("$.franchises[0].purseRemaining").value(800))
             .andExpect(jsonPath("$.franchises[0].belowSquadMin").value(false))
+
+        // Completion time for the admin history (docs/PHASE20.md Step 7); an undo reopening the auction clears it.
+        val completedAt = "select auction_completed_at from leagues where id = ?::uuid"
+        kotlin.test.assertNotNull(jdbcTemplate.queryForObject(completedAt, java.sql.Timestamp::class.java, leagueId))
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/undo").andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionStatus").value("IN_PROGRESS"))
+        kotlin.test.assertNull(jdbcTemplate.queryForObject(completedAt, java.sql.Timestamp::class.java, leagueId))
     }
 
     @Test

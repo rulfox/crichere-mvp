@@ -118,6 +118,9 @@ crichere:
     # Comma-separated. Only ever from here, never from a request.
     to: ${ALERT_TO:}
     report-job-enabled: ${REPORT_ALERT_JOB_ENABLED:true}
+  metrics:
+    # Nightly summary at 00:10 IST into metrics_daily, plus the retention purges (docs/PHASE20.md Step 7).
+    nightly-enabled: ${METRICS_NIGHTLY_ENABLED:true}
 
 ---
 # local profile: developer machine, Postgres via backend/docker-compose.yml
@@ -193,3 +196,6 @@ crichere:
   alerts:
     # Tests call ReportAlertService directly.
     report-job-enabled: false
+  metrics:
+    # Tests call AdminMetricsService directly.
+    nightly-enabled: false

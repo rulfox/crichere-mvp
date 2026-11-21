@@ -384,6 +384,11 @@ class AuctionService(
 
     private fun saveAndBroadcast(league: LeagueEntity): AuctionStateResponse {
         league.updatedAt = Instant.now()
+        // Every auction state change passes here, so this is the one place completion time is kept.
+        league.auctionCompletedAt = when {
+            league.auctionStatus != AuctionStatus.COMPLETED -> null
+            else -> league.auctionCompletedAt ?: league.updatedAt
+        }
         val saved = leagueRepository.save(league)
         val state = saved.toStateResponse()
         broadcastService.broadcast(requireNotNull(saved.id), state)

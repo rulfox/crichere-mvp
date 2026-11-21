@@ -395,3 +395,31 @@ until PR #4 is live and the Data safety change is submitted.**
   (429 after). A stream times out at its session's expiry and closes at once on sign-out or sign-out everywhere
   (no database check per tick). An admin removed from `ADMIN_EMAILS` loses streams at the restart that applies it.
 - Next: Step 7 (nightly job and retention).
+
+**Step 7 done (2026-11-21), tests green (615 backend tests, 6 new in `AdminMetricsIntegrationTest`, plus an auction
+completion-time check).** Decisions taken under the owner's "complete all steps" goal, for review:
+- Metrics (`Metric` in `AdminMetricsJob.kt`), all leaving internal accounts out. Per day: `new_users`, `users_total`,
+  `active_users_day/week/month` (distinct users over 1, 7 and 30 days), `leagues_created`, `active_leagues`, `joins`,
+  `bids`, `auctions_completed`, `reports_opened`, `reports_closed`, `report_close_median_minutes_30d`,
+  `otp_people_sent`, `otp_people_signed_in`. Splits, current night only (no history to rebuild them from):
+  `leagues_by_status` (open, auction_live, auction_done, completed; the app has no draft state) and
+  `users_by_district` (`State|District`).
+- Funnel: code sent and signed in count distinct numbers per day (counted the night after, before the OTP rows are
+  deleted); "signed in" means the number reached an account, so a returning user who never typed the code counts
+  too. Profile done and joined a league are counted per sign-up day (`cohort_profile_done`, `cohort_joined`) and
+  recounted every night for 35 days, since people finish later.
+- Retention: weekly sign-up cohorts (Monday start, IST), `retention_cohort_size` and `retention_week` with dimension
+  `w0..w11`, recounted nightly for the last 12 weeks.
+- V28 `leagues.auction_completed_at`: set in `AuctionService.saveAndBroadcast` when an auction reaches COMPLETED,
+  cleared when an undo reopens it; past auctions take their last bid time.
+- `AdminMetricsJob` at 00:10 IST: yesterday, the rolling recounts, then the purges, in one transaction with a
+  transaction-scoped advisory lock and a 120 s statement timeout; each run is a `job_runs` row (a run that finds the
+  lock held is recorded as skipped).
+- Purges (Privacy Policy section 4): activity days older than 13 months; closed reports 24 months after closing;
+  moderation records older than 24 months, except a suspension on an account still suspended and actions on an open
+  report; finished `job_runs` after 90 days. Run nightly rather than monthly (same result, simpler).
+- Backfill: `POST /api/v1/admin/metrics/backfill {from, to}` (admin session, site guard, audited as
+  `METRICS_BACKFILL`), at most 400 days, ending before today. Rebuilds daily flows and active-user counts only.
+- Limit: OTP rows can be deleted by a send after 00:10 if they expired over a day earlier, so a few codes sent just
+  after midnight two days back may be missed. Accepted.
+- Next: Step 8 (insights and system health API).
