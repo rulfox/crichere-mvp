@@ -487,4 +487,24 @@ completion-time check).** Decisions taken under the owner's "complete all steps"
 - e2e: Google sign-in can't run unattended, so `e2e/fixtures.ts` inserts an `admin_sessions` row for the local
   allowlisted e2e email and sets its cookie; no test-only path exists in the backend.
 - Not verified: listed under DESIGN-REVIEW Follow-ups (Phase 20 admin web).
-- Next: Step 11 (deploy), which needs the owner (Railway service, DNS, IAM, variables, PR #4 merged first).
+- Host checked 2026-11-21: the production Docker image (Caddy) answers every page and real 404s with the CSP,
+  `X-Frame-Options: DENY`, HSTS and `X-Robots-Tag`; `robots.txt` disallows all; a browser pass over every route
+  found no CSP violation (`e2e/host.spec.ts`, project `host`).
+- Security review fixes: sign-in `next` is resolved with the URL parser, compared by origin, and the normalised path
+  is checked again (`/	/evil`, `/.//evil`, `/%2e//evil` all fall back to `/`).
+
+**Step 11 runbook (deploy and check).** Order matters: the backend must be live with Phase 20 before the site.
+1. PR #4 (privacy) merged 2026-11-21. Owner: Data safety change in Play Console (docs/legal/PLAY-CONSOLE.md).
+2. Owner: IAM inline policy for SES on the backend user (section 13, Step 4).
+3. Backend variables on Railway (backend service): `ADMIN_EMAILS=aranyventures@gmail.com`,
+   `GOOGLE_ADMIN_CLIENT_ID=111016291164-885leerfs3tqgc4g2mkh2c4k1pn5jlrj.apps.googleusercontent.com`,
+   `ADMIN_ORIGIN=https://admin.crichere.com`, `SES_REGION=ap-south-1`,
+   `ALERT_FROM=Crichere Admin <alerts@crichere.com>`, `ALERT_TO=aranyventures@gmail.com`.
+4. Merge `admin-web` into `master` (PR). Railway redeploys the backend; Flyway runs V26 to V28 on production.
+5. New Railway service `admin-web` from the same repo, root directory `admin-web`, Dockerfile build, build args
+   `NEXT_PUBLIC_API_BASE=https://api.crichere.com`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (as above),
+   `NEXT_PUBLIC_ENV_LABEL=Production · api.crichere.com`; custom domain `admin.crichere.com`.
+6. Hostinger DNS: CNAME `admin` to the target Railway gives.
+7. Check: sign in with Google, alert email arrives, overview loads, live stream connects, a test report can be
+   dismissed, audit log shows it, `curl -I https://admin.crichere.com` shows the headers.
+8. Mark the owner and reviewer numbers internal (O7) from the user page.
