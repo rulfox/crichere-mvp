@@ -298,10 +298,15 @@ Step 6 deploys.
 - Not verified yet: a real Google sign-in end to end (needs the admin site, Step 10); the sign-in email alert comes
   with Step 4.
 
-**Step 3 in progress (2026-11-21): code written and compiling, integration tests not written yet.**
+**Step 3 done (2026-11-21), tests green (585 backend tests, 16 new in `AdminModerationFlowIntegrationTest`).**
 - `AdminModerationService` / `AdminModerationController`: reports list (keyset, OPEN oldest first) and detail
   (evidence, target, private reporter, history), dismiss, resolve, remove image (S3 delete only when unused and
   under the row's own prefix, after the app change commits), suspend (live-auction guard, `duringAuction`
   override), unsuspend, suspended accounts and blocked numbers, release number, audit log. Every action needs a
   note and records the admin's email. The script now writes `admin_email = 'script'`.
-- Next: integration tests for these endpoints, then Step 4 (SES alerts).
+- Tests cover: session and admin-site guard and required note on every action; report list order, filters and
+  cursor paging; detail; dismiss/resolve once with audit; remove image for each stored-file outcome (deleted, still
+  used, not owned, unknown location) plus league logo and owner notice; suspend/unsuspend (tokens revoked, device
+  tokens dropped, listed with admin and note), live-auction guard and its override; release number; audit log
+  filters (`script` rows) and paging.
+- Next: Step 4 (SES alerts).
