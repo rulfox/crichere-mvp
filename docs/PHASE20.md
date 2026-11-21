@@ -508,3 +508,10 @@ completion-time check).** Decisions taken under the owner's "complete all steps"
 7. Check: sign in with Google, alert email arrives, overview loads, live stream connects, a test report can be
    dismissed, audit log shows it, `curl -I https://admin.crichere.com` shows the headers.
 8. Mark the owner and reviewer numbers internal (O7) from the user page.
+
+Step 11 status (2026-11-21): PR #5 (`admin-web` into `master`) opened, owner merges. Backend variables in step 3 set
+on Railway (production, backend service) by Claude with the owner's approval, with deploys skipped, so they take
+effect when PR #5 deploys. Waiting on the owner: Data safety (1), SES IAM policy (2), merging PR #5 (4). Then Claude
+creates the `admin-web` Railway service and the DNS record (5, 6), each confirmed first, runs the checks (7), and
+looks at what client IP the backend sees behind Railway before proposing any forward-headers change (owner choice:
+check on production first).
