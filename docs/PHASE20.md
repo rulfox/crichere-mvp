@@ -601,3 +601,10 @@ Step 11 update (2026-11-21, 21:50 IST): client IP, second try.
   checks that `X-Forwarded-For` is ignored. 630/630 pass.
 - After deploy: 11 refused sign-ins, each with a different made-up `X-Real-IP`, must reach 429 (shows Railway
   overwrites a client-sent `X-Real-IP`), and the logged IP must be the owner's 103.182.167.128.
+- PR #8 merged (`553df9f`), backend deployed. Checked on production (2026-11-21, 17:20 UTC): 11 refused admin
+  sign-ins from one machine, each with a different made-up `X-Real-IP` and `X-Forwarded-For`, got 401 x10 then 429,
+  so Railway overwrites a client-sent `X-Real-IP` and the limit is per client. Every refusal logged
+  "Admin sign-in refused from 157.51.238.232", which is this machine's public IP at that moment (three lookup
+  services agree; it had changed from 103.182.167.128 earlier in the day). Client IP fixed.
+- Step 11 left: dismiss a test report and see it in the audit log (owner signed in), O7 internal numbers, O8 Play
+  Data safety. The two 403 CORS preflights stay a follow-up (not reproduced).
