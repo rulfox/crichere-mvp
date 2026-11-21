@@ -548,3 +548,12 @@ Step 11 update (2026-11-21, late):
 - The Playwright MCP browser hangs on navigation in this environment; a standalone `@playwright/test` script works.
 - Next: PR `phase20-deploy` to master, owner merges (Railway redeploys admin-web), then the real Google sign-in, the
   alert email (after the SES policy) and the client IP check.
+
+Step 11 update (2026-11-21, 21:25 IST):
+- PR #6 merged (`8f6790e`); admin-web redeployed. Live `https://admin.crichere.com/signin/` now sends
+  `Referrer-Policy: strict-origin`; `/gsi/client`, `/gsi/style`, `/gsi/button` all 200 with
+  `referer: https://admin.crichere.com/`, no GSI console error; `/icon.svg` 200; CSP, HSTS, `X-Frame-Options` unchanged.
+- Left for Step 11 (owner needed): real Google sign-in with the admin account, SES IAM policy (O4; the local CLI user
+  can't read IAM, so not checkable here) then the sign-in alert email, client IP shown in the session/audit log, a
+  test report dismissed and seen in the audit log, owner and reviewer numbers marked internal (O7), Play Data safety
+  change (O8).
