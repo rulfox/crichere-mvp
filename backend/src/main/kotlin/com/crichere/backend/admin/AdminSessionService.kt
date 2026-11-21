@@ -28,15 +28,22 @@ class AdminSignInRateLimitedException : RuntimeException("Too many admin sign-in
 /** Writes admin events to the shared audit table (moderation_actions, docs/PHASE20.md A6). */
 @Component
 class AdminAuditWriter(private val jdbcTemplate: JdbcTemplate) {
-    fun record(action: String, adminEmail: String, note: String? = null) {
+    fun record(
+        action: String,
+        adminEmail: String,
+        note: String? = null,
+        reportId: UUID? = null,
+        userId: UUID? = null,
+        leagueId: UUID? = null,
+    ) {
         jdbcTemplate.update(
-            "insert into moderation_actions (id, action, admin_email, note) values (?, ?, ?, ?)",
-            UUID.randomUUID(), action, adminEmail, note?.take(NOTE_LIMIT),
+            "insert into moderation_actions (id, action, admin_email, report_id, user_id, league_id, note) values (?, ?, ?, ?, ?, ?, ?)",
+            UUID.randomUUID(), action, adminEmail, reportId, userId, leagueId, note?.take(NOTE_LIMIT),
         )
     }
 
     private companion object {
-        const val NOTE_LIMIT = 300
+        const val NOTE_LIMIT = 2000
     }
 }
 

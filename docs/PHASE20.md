@@ -297,3 +297,11 @@ Step 6 deploys.
   `ADMIN_ORIGIN=https://admin.crichere.com`. Local profile defaults: origin `http://localhost:3001`, non-secure cookie.
 - Not verified yet: a real Google sign-in end to end (needs the admin site, Step 10); the sign-in email alert comes
   with Step 4.
+
+**Step 3 in progress (2026-11-21): code written and compiling, integration tests not written yet.**
+- `AdminModerationService` / `AdminModerationController`: reports list (keyset, OPEN oldest first) and detail
+  (evidence, target, private reporter, history), dismiss, resolve, remove image (S3 delete only when unused and
+  under the row's own prefix, after the app change commits), suspend (live-auction guard, `duringAuction`
+  override), unsuspend, suspended accounts and blocked numbers, release number, audit log. Every action needs a
+  note and records the admin's email. The script now writes `admin_email = 'script'`.
+- Next: integration tests for these endpoints, then Step 4 (SES alerts).

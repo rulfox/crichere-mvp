@@ -32,7 +32,7 @@ def connect():
 
 def audit(cur, action, report=None, user=None, league=None, note=None):
     cur.execute(
-        "insert into moderation_actions (id, action, report_id, user_id, league_id, note) values (%s, %s, %s, %s, %s, %s)",
+        "insert into moderation_actions (id, action, admin_email, report_id, user_id, league_id, note) values (%s, 'script', %s, %s, %s, %s, %s)",
         (uuid.uuid4(), action, report, user, league, note),
     )
 
