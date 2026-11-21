@@ -354,4 +354,20 @@ Step 6 deploys.
   Railway backend variables: `SES_REGION=ap-south-1`, `ALERT_FROM=Crichere Admin <alerts@crichere.com>`,
   `ALERT_TO=aranyventures@gmail.com`.
 - Not verified yet: a real SES send from the backend (needs the policy above); checked at deploy (Step 11).
-- Next: Step 5 (Privacy Policy and Data safety).
+
+**Step 5 in review (2026-11-21): PR #4 to `master` (branch `privacy-admin-update`, commit `270b597`).**
+- Decided with the owner: a dated update with a "What changed" note and `TERMS_VERSION` 2026-11-21 (new sign-ins
+  record consent to this text), no in-app notice (closed test, users are testers); a separate PR so it is live
+  without the rest of this branch; the owner changes Data safety in Play Console from `docs/legal/PLAY-CONSOLE.md`.
+- Policy now covers: days the app is used (13 months), usage totals as a purpose, the team's admin site (Google
+  sign-in on an allowlist, actions, screenshot views and phone lookups logged, phone numbers never shown), team
+  access to payment screenshots for reports or disputes, SES (no user data), admin action logs kept 24 months
+  (chosen to match moderation records; owner to confirm in the PR), activity erased with the account.
+- Data safety: App interactions gains the Analytics purpose. Nothing else changes.
+- Open for the owner: section 8 promises in-app or push notice for material changes; this update has only the
+  dated note. Suggest telling testers directly.
+- Carried into later steps: Step 6 adds `user_activity_days` to `AccountPurgeService` (the `users` row is kept, so
+  the cascade never fires) and drops the purged id from the in-memory set; Step 7 purges admin-only audit rows
+  (sign-ins, views, lookups) after 24 months. Step 6 deploys only after PR #4 is merged and live, and the Data
+  safety change is submitted.
+- Next: Step 6 (live data and activity). Merge `master` into this branch after PR #4.
