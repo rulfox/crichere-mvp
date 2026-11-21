@@ -20,6 +20,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -225,6 +226,17 @@ class AdminLiveIntegrationTest : AbstractWebIntegrationTest() {
 
         signOut(cookie)
         assertEquals(start, stream.subscriberCount())
+    }
+
+    @Test
+    fun `a closed stream's async dispatch is not denied`() {
+        // The servlet container re-dispatches (DispatcherType.ASYNC) when an emitter completes. The session
+        // filter doesn't run again on that dispatch, so it must not be authorized as anonymous: in production
+        // that logged "Access Denied ... response is already committed" every time a stream ended.
+        val cookie = adminCookie()
+        val result = mockMvc.perform(get("/api/v1/admin/live").cookie(cookie)).andExpect(request().asyncStarted()).andReturn()
+        signOut(cookie)
+        mockMvc.perform(asyncDispatch(result)).andExpect(status().isOk)
     }
 
     @Test
