@@ -257,3 +257,13 @@ Step 6 deploys.
   sign-in only) and was not copied anywhere.
 - AWS (owner choice): a temporary inline policy `crichere-ses-setup-temp` on `crichere-claude`, SES identity setup only,
   region ap-south-1; removed after setup. Backend sending permission comes with Step 4.
+- Done 2026-11-21: SES identities in ap-south-1 (account in sandbox: 200 a day, 1 a second, verified recipients only,
+  which fits alerts to the owner). Domain `crichere.com` with Easy DKIM (RSA 2048), pending the three DNS records
+  below; `aranyventures@gmail.com` pending the owner's click on Amazon's verification email. Existing DNS kept: Hostinger
+  MX and SPF, and a DMARC record. SES signs with DKIM, so DMARC passes through DKIM alignment; no SPF change needed.
+
+  | Type | Name (host) | Value |
+  |---|---|---|
+  | CNAME | `dofopnodjpnlte5nbfdq2qjvmikhqvuz._domainkey` | `dofopnodjpnlte5nbfdq2qjvmikhqvuz.dkim.amazonses.com` |
+  | CNAME | `k4mqhlt3muj2airwkdp7dlhzcygyghoq._domainkey` | `k4mqhlt3muj2airwkdp7dlhzcygyghoq.dkim.amazonses.com` |
+  | CNAME | `2alxuxg4s2euzz63nlxytx2v7r3qkg33._domainkey` | `2alxuxg4s2euzz63nlxytx2v7r3qkg33.dkim.amazonses.com` |
