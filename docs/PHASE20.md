@@ -436,3 +436,29 @@ completion-time check).** Decisions taken under the owner's "complete all steps"
 - Release markers: list, add, delete (`ADD_RELEASE_MARKER` / `DELETE_RELEASE_MARKER` audited).
 - The admin `NOT_FOUND` / conflict handler now covers every admin controller.
 - Next: Step 9 (league and user browsers, phone lookup, internal flag, search).
+
+**Step 9 done (2026-11-21), tests green (627 backend tests, 7 new in `AdminBrowseIntegrationTest`).**
+- `AdminBrowseService` / `AdminBrowseController`, all `no-store`, read-only except the internal flag.
+- Leagues: `GET /api/v1/admin/leagues` with search (league or organizer name, contains), state, district, status
+  (open, auction_live, auction_done, completed: the app has no draft state, so the board's "Draft" is not offered),
+  created range, has open reports, include internal; sorts newest, starts, name. Keyset cursors carry the sort value
+  (timestamps as epoch microseconds, exact); total counted once per filter (first page only), capped at 1000.
+  Per-row counts for the page in one query. Tabs: `/{id}` overview (every field, ground, followers, organizer,
+  co-organizers), `/franchises`, `/players` (fee state NO_FEE / PROOF_UPLOADED / WAITING_FOR_PROOF: the app stores
+  no "organizer marked paid" flag, so the board's "Paid" is shown as proof uploaded), `/auction` (settings and up to
+  2000 bids), `/awards`, `/moderation`, `/timeline` (stored timestamps only).
+- Payment proof: `POST /api/v1/admin/payment-proofs/{player|franchise}/{rowId}` returns a short-lived signed link and
+  writes `VIEW_PAYMENT_PROOF` (POST because it writes the audit row; site guard applies).
+- Users: `GET /api/v1/admin/users` with name search, state, district, status (active, profile_incomplete,
+  suspended, deletion_pending), joined range, open reports, include internal; sorts newest, name, last active. Purged
+  accounts are not listed; deleted ones show as "Deleted user". Tabs: `/{id}` profile, `/leagues`, `/auction`,
+  `/activity` (days, 13 months), `/moderation` (block counts only), `/account` (push devices and live app sessions as
+  counts). No response carries a phone number.
+- Phone lookup: `POST /api/v1/admin/users/lookup {phone}` normalises to +91, hashes like sign-in, exact match only;
+  30 lookups an hour per admin; audited as `PHONE_LOOKUP` with the match count, never the number.
+- Internal flag: `PUT /api/v1/admin/users/{id}/internal {internal}`, audited (`MARK_INTERNAL` / `UNMARK_INTERNAL`),
+  updates the live counters at once.
+- Search: `GET /api/v1/admin/search?q=` five leagues and five people by name, or one of each by exact id.
+- Not done: `EXPLAIN` checks from section 11 on production-sized data; name search uses `ilike` without a trigram
+  index, fine at today's size.
+- Next: Step 10 (admin web).
