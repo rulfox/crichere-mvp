@@ -132,7 +132,7 @@ Rules: read-only; deleted accounts are gone after purge and do not appear.
 | G6 | Closed reports and old evidence are kept forever (runbook: not automated) | Scheduled deletion after the policy's retention period |
 | G7 | Suspended-number release after purge is manual SQL | Admin action with audit |
 | G8 | No quick way to jump to a person or league | Global search (name or id) in the top bar |
-| G9 | Payment screenshot links may be public in S3 | Check bucket access before launch; if public, move to signed URLs (app change, separate phase) |
+| G9 | Payment screenshot links may be public in S3 | Checked 2026-11-21: not public. The bucket policy denies `s3:GetObject` on `leagues/*/payments/*` to anyone outside the account, and the backend serves them as short-lived signed URLs (`PaymentScreenshotUrlSigner`, since 2026-10-04). Other images stay public read by design |
 | G10 | Admin-only security not tested | Tests: app token refused on admin routes, admin token refused on app routes, allowlist empty denies, CORS and Origin checks |
 | G11 | Static host must send security headers | Host chosen must set CSP, `X-Frame-Options: DENY`, HSTS, `noindex` |
 | G12 | Owner setup outside code | Google OAuth client, SES domain and DKIM at Hostinger, IAM for SES and S3 delete, Railway service and DNS |
@@ -215,7 +215,7 @@ Step 6 deploys.
 - Railway static service, `admin.crichere.com`, backend variables. Verify sign-in, every action, alerts, live stream
   and nightly job on production.
 
-**Step 12: payment screenshot exposure (G9).** Check S3 access. If links are public, plan signed URLs as Phase 21.
+**Step 12: payment screenshot exposure (G9).** Done 2026-11-21: already private (see G9).
 
 ## 10. Owner tasks
 
@@ -239,3 +239,21 @@ Step 6 deploys.
 - `EXPLAIN` for every list and history query: index scans only, no sequential scan on growing tables.
 - Load check: dashboard open for 10 minutes makes no database query apart from the first history read.
 - Playwright e2e on the admin site; render each screen beside its Claude Design board.
+
+## 12. Cloud setup check (2026-11-21, read-only)
+
+- AWS CLI runs as `crichere-claude` (account 533848567884), the same key the backend uses (OPEN-ITEMS). It has no SES
+  or IAM rights, so SES setup and permission changes need the owner. Media bucket `crichere-media-prod` is in
+  `ap-south-1`; SES goes in the same region.
+- Google Cloud project `crichere` (number 111016291164) is active; `gcloud` is signed in as the owner's
+  aswincodename47 account. Google offers no command-line or API way to create an OAuth web client for Google
+  Sign-In (the IAP OAuth APIs were shut down in March 2026), so the client is made in the Cloud Console.
+- Done 2026-11-21 (owner approved, Claude in the Console): Google Auth Platform on `crichere`: app name "Crichere
+  Admin", support and contact email aswincodename47@gmail.com, audience External in Testing mode (only listed test
+  users can sign in), Google API Services User Data Policy accepted by the owner. Test user: aranyventures@gmail.com
+  only (added by the owner). Web client "Crichere admin web", JavaScript origins `https://admin.crichere.com` and
+  `http://localhost:3001`, no redirect URIs. Client ID (public, goes in `GOOGLE_ADMIN_CLIENT_ID`):
+  `111016291164-885leerfs3tqgc4g2mkh2c4k1pn5jlrj.apps.googleusercontent.com`. The client secret is not used (ID-token
+  sign-in only) and was not copied anywhere.
+- AWS (owner choice): a temporary inline policy `crichere-ses-setup-temp` on `crichere-claude`, SES identity setup only,
+  region ap-south-1; removed after setup. Backend sending permission comes with Step 4.
