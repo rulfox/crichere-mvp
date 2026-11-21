@@ -43,7 +43,7 @@ const SECTIONS: LegalSection[] = [
         <h3>3.1 Deleted</h3>
         <ul>
           <li>Your mobile number, name, photo, state, district and playing details.</li>
-          <li>Your payment screenshots, notification tokens, sign-in sessions and follows.</li>
+          <li>Your payment screenshots, notification tokens, sign-in sessions, follows and the record of days you used the app.</li>
           <li>Your places in leagues that have not run their auction yet.</li>
         </ul>
         <h3>3.2 Kept</h3>

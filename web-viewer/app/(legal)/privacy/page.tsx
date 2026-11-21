@@ -48,6 +48,11 @@ const SECTIONS: LegalSection[] = [
             fix bugs.
           </li>
           <li>Text you type in the ground search, sent to Google Places to return suggestions.</li>
+          <li>
+            Days you use the app. When you use Crichere we record the date against your account: only the day, not the time or what you did. We use it
+            to count how many people use Crichere each day and how many come back, and the team can see it when reviewing your account, for example
+            after a report.
+          </li>
         </ul>
         <p>
           We do not collect your contacts, SMS inbox, call log, microphone recordings, precise background location, government ID, or bank, card or
@@ -69,8 +74,12 @@ const SECTIONS: LegalSection[] = [
           <li>Let organisers verify league-fee payments.</li>
           <li>Show leagues near you.</li>
           <li>Prevent fraud and abuse, enforce our Terms, comply with law, and fix bugs.</li>
+          <li>Understand how Crichere is used (for example sign-ups, active users and leagues created each day) so we can improve it. We look at this as totals.</li>
         </ul>
-        <p>We do not sell your personal data or use it for third-party advertising. We do not run advertising or analytics SDKs in the app.</p>
+        <p>
+          We do not sell your personal data or use it for third-party advertising. We do not run advertising or third-party analytics SDKs in the app;
+          usage totals are counted on our own servers.
+        </p>
       </>
     ),
   },
@@ -89,7 +98,17 @@ const SECTIONS: LegalSection[] = [
           organisers and participants of the leagues you join. Public league pages and shared links on crichere.com can show a league&rsquo;s name,
           ground, district, state and live auction results to anyone with the link.
         </p>
-        <p>Payment screenshots are visible only to you and the organiser of that league. They are stored privately and served through short-lived links.</p>
+        <p>
+          Payment screenshots are visible only to you, the organiser of that league and, when needed to check a report or a dispute, the Crichere team.
+          They are stored privately and served through short-lived links.
+        </p>
+        <p>
+          The Crichere team: a small number of authorised team members can see account, profile, league and moderation data through a private admin
+          website, to review reports, act on them, keep users safe and run the service. They sign in with a Google account on an approved list. Every
+          moderation action, every view of a payment screenshot and every lookup by mobile number is logged. Mobile numbers are never shown there: the
+          team can only check whether a full number they type belongs to an account. Charts and statistics on the site are totals, not individual
+          profiles.
+        </p>
         <h3>3.1 Service providers</h3>
         <ul>
           <li>MSG91: sends sign-in OTP SMS (mobile number).</li>
@@ -97,6 +116,7 @@ const SECTIONS: LegalSection[] = [
           <li>Google Firebase Crashlytics: crash reports (error details, device model, OS and app version, install ID).</li>
           <li>Google Maps and Places: map display and ground search (search text, map coordinates, device and app identifiers as per Google&rsquo;s policy).</li>
           <li>Amazon Web Services (S3): stores photos, logos, banners and payment screenshots.</li>
+          <li>Amazon Web Services (SES): sends alert emails to the Crichere team. None of your personal data: counts of new reports and a link only.</li>
           <li>Railway: hosts our servers and database.</li>
         </ul>
         <p>These providers may process data outside India. We share only what each needs.</p>
@@ -120,6 +140,11 @@ const SECTIONS: LegalSection[] = [
           Reports and moderation records: 24 months after the report is closed, then deleted. Evidence in an open report is kept until it is closed,
           even if the account involved is deleted.
         </li>
+        <li>
+          Days you used the app: 13 months, then deleted. Totals made from them (for example the number of active users on a day) contain no personal
+          data and are kept.
+        </li>
+        <li>Logs of the team&rsquo;s actions and lookups on the admin website: 24 months, then deleted.</li>
         <li>If an account is suspended and later deleted, we keep a one-way hash of its mobile number so that number cannot sign up again.</li>
         <li>
           After you delete your account there is a 14-day grace period, then we erase your personal data, normally within a day. We may keep limited
@@ -161,6 +186,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         Traffic uses HTTPS. Sign-in uses OTP and short-lived tokens. Payment screenshots are private. Access to servers and storage is restricted.
+        The team&rsquo;s admin website needs a Google sign-in on an approved list, its sessions end after 30 minutes, and actions there are logged.
         No system is perfectly secure; if a breach affecting you occurs we will notify you and the authorities as the law requires.
       </p>
     ),
@@ -201,8 +227,8 @@ export default function PrivacyPage() {
     <LegalArticle
       page="privacy"
       title="Privacy Policy"
-      updated="2026-11-09"
-      intro="Crichere runs a mobile app and crichere.com for organising cricket leagues, player auctions and franchise teams. This policy explains what personal data we collect, why, who we share it with, and your choices. It follows India's Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000."
+      updated="2026-11-21"
+      intro="Crichere runs a mobile app and crichere.com for organising cricket leagues, player auctions and franchise teams. This policy explains what personal data we collect, why, who we share it with, and your choices. It follows India's Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000. What changed on 21 November 2026: we now record which days you use the app (section 1), the Crichere team uses a private admin website to review reports and run the service (section 3), and section 4 says how long we keep these records."
       sections={SECTIONS}
     />
   );

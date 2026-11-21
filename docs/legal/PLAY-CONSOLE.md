@@ -101,7 +101,7 @@ Data types collected:
 | Location > Approximate location | Required | App functionality | Home state and district; "Use my location" and "Show nearest to me" (coarse, foreground only) |
 | Photos and videos > Photos | Required | App functionality | Profile photo; league logos and banners; franchise logos; payment screenshots |
 | Financial info > Other financial info | Optional | App functionality | Payment screenshots for paid leagues (proof for the organiser) |
-| App activity > App interactions | Required | App functionality | Bids, joins, follows, franchise claims |
+| App activity > App interactions | Required | App functionality, Analytics | Bids, joins, follows, franchise claims; the days the app was used (Analytics, added 2026-11-21 for the admin insights, docs/PHASE20.md) |
 | App activity > In-app search history | Optional | App functionality | Ground search text sent to Google Places |
 | App activity > Other user-generated content | Optional | App functionality, Fraud prevention, security and compliance | League details, ground details, reports and their text, blocks |
 | App info and performance > Crash logs | Required | Analytics, App functionality | Crashlytics crash reports |
@@ -112,6 +112,12 @@ Not collected: email, address (street), precise location, contacts, messages, au
 web browsing, installed apps, user payment info (cards, UPI IDs), purchase history.
 
 Each row matches Privacy Policy section 1. If one changes, change the other.
+
+**Change for 2026-11-21 (owner, in Play Console, before the activity tracking of Phase 20 Step 6 deploys):**
+App content > Data safety > Manage > Next to "Data types" > App activity > App interactions > edit the
+questions: purposes, tick **Analytics** as well as App functionality; collected, not shared, not processed
+ephemerally, required. Save, then send the change for review (Publishing overview). Nothing else changes: the team
+alert emails carry no user data, and the admin website reads data already declared.
 
 ### Account deletion
 
