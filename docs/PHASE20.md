@@ -608,3 +608,6 @@ Step 11 update (2026-11-21, 21:50 IST): client IP, second try.
   services agree; it had changed from 103.182.167.128 earlier in the day). Client IP fixed.
 - Step 11 left: dismiss a test report and see it in the audit log (owner signed in), O7 internal numbers, O8 Play
   Data safety. The two 403 CORS preflights stay a follow-up (not reproduced).
+- Moderation check on production (2026-11-21): a test account (signed in with OTP) filed report `4c8a9bf1` from
+  the app at 17:34:04 UTC (201); the owner signed in at 17:34:34 and dismissed it at 17:35:39 (204); owner confirmed
+  the audit log entry. The owner's sign-in came from the real IP. Still to confirm: the new-report alert email.
