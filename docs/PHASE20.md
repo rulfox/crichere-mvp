@@ -267,3 +267,8 @@ Step 6 deploys.
   | CNAME | `dofopnodjpnlte5nbfdq2qjvmikhqvuz._domainkey` | `dofopnodjpnlte5nbfdq2qjvmikhqvuz.dkim.amazonses.com` |
   | CNAME | `k4mqhlt3muj2airwkdp7dlhzcygyghoq._domainkey` | `k4mqhlt3muj2airwkdp7dlhzcygyghoq.dkim.amazonses.com` |
   | CNAME | `2alxuxg4s2euzz63nlxytx2v7r3qkg33._domainkey` | `2alxuxg4s2euzz63nlxytx2v7r3qkg33.dkim.amazonses.com` |
+- Done 2026-11-21: both SES identities verified (domain DKIM SUCCESS, owner clicked the address link). Test email sent
+  from `Crichere Admin <alerts@crichere.com>` to aranyventures@gmail.com (SES message
+  `010901a1fcf9287a-84841c13-b7d5-41c6-812e-029432776e7c-000000`). Sender for alerts: `alerts@crichere.com`.
+  Owner removes `crichere-ses-setup-temp` next. Step 4 adds a permanent `ses:SendEmail` grant for the backend,
+  limited to the `crichere.com` identity in ap-south-1.
