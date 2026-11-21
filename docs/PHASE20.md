@@ -423,3 +423,16 @@ completion-time check).** Decisions taken under the owner's "complete all steps"
 - Limit: OTP rows can be deleted by a send after 00:10 if they expired over a day earlier, so a few codes sent just
   after midnight two days back may be missed. Accepted.
 - Next: Step 8 (insights and system health API).
+
+**Step 8 done (2026-11-21), tests green (5 new in `AdminInsightsIntegrationTest`).**
+- `GET /api/v1/admin/insights/history?from&to`: `metrics_daily` rows plus release markers, at most 400 days;
+  `Cache-Control: private, max-age` until 00:15 IST (after the nightly run) and a SHA-256 ETag (304 on match).
+- `GET /api/v1/admin/insights/today`: the live snapshot from memory plus a moderation summary (open reports by reason,
+  oldest open, suspended accounts, images removed in 30 days), `no-store`; the summary is cached for 60 s.
+- `GET /api/v1/admin/health` (cached 60 s): last nightly run; OTP codes sent today and the share that expired unused
+  (labelled "failed" on the board: no way to tell a wrong code from a code never typed); SMS sends against the global
+  daily cap, which resets at 00:00 UTC (05:30 IST), not IST midnight as the board says; SES 14-day sends, bounces and
+  complaints when configured; MSG91 balance `null` until owner task O9 confirms an API.
+- Release markers: list, add, delete (`ADD_RELEASE_MARKER` / `DELETE_RELEASE_MARKER` audited).
+- The admin `NOT_FOUND` / conflict handler now covers every admin controller.
+- Next: Step 9 (league and user browsers, phone lookup, internal flag, search).
