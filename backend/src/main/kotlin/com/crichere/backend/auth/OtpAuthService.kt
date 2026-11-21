@@ -1,6 +1,8 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.admin.LiveEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Duration
@@ -39,6 +41,8 @@ class OtpAuthService(
     private val rateLimiter: AuthRateLimiter,
     private val properties: OtpProperties,
     private val clock: Clock,
+    /** Live admin counters (docs/PHASE20.md Step 6); counted after commit. */
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher { },
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -63,6 +67,7 @@ class OtpAuthService(
         spendSendBudget(lookupHash)
 
         val providerReqId = otpSender.send(phone)
+        events.publishEvent(LiveEvent.OtpSent())
 
         // Only now supersede the old challenge, so a failed send does not kill a still-good code.
         previous?.let { challengeRepository.consume(it.id, now) }

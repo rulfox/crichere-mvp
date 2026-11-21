@@ -107,6 +107,10 @@ class LeagueEntity(
     @Enumerated(EnumType.STRING)
     var auctionStatus: AuctionStatus = AuctionStatus.NOT_STARTED,
 
+    /** When the auction reached COMPLETED; cleared if an undo reopens it (V28, docs/PHASE20.md Step 7). */
+    @Column(name = "auction_completed_at")
+    var auctionCompletedAt: Instant? = null,
+
     @Column(name = "auction_current_player_id")
     var auctionCurrentPlayerId: UUID? = null,
 

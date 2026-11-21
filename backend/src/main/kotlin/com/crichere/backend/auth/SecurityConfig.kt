@@ -1,5 +1,6 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.admin.ActivityTracker
 import com.crichere.backend.common.ProblemDetails
 import com.crichere.backend.common.WebViewerProperties
 import jakarta.servlet.http.HttpServletResponse
@@ -53,6 +54,7 @@ class SecurityConfig(
     private val suspensionChecker: SuspensionChecker,
     private val objectMapper: ObjectMapper,
     private val webViewerProperties: WebViewerProperties,
+    private val activityTracker: ActivityTracker,
 ) {
 
     @Bean
@@ -105,6 +107,8 @@ class SecurityConfig(
                 UsernamePasswordAuthenticationFilter::class.java,
             )
             .addFilterAfter(SuspensionFilter(suspensionChecker, objectMapper), JwtAuthenticationFilter::class.java)
+            // Records the day for admin insights, only after a successful signed-in request (docs/PHASE20.md Step 6).
+            .addFilterAfter(ActivityFilter(activityTracker), SuspensionFilter::class.java)
 
         return http.build()
     }

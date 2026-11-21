@@ -154,6 +154,13 @@ class AuthRateLimiter(
         return true
     }
 
+    /** SMS sends counted against today's (UTC) global ceiling, and the ceiling, for the admin health card. */
+    @Synchronized
+    fun globalOtpSendsToday(): Pair<Long, Long> {
+        val today = clock.instant().epochSecond / SECONDS_PER_DAY
+        return (if (today == globalDay) globalSends else 0L) to properties.otpGlobalDailyCap
+    }
+
     /** Test hook: forget every bucket. Not used by production code. */
     @Synchronized
     fun reset() {

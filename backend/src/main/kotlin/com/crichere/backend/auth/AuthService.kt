@@ -1,8 +1,10 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.admin.LiveEvent
 import com.crichere.backend.moderation.SuspendedPhoneHashRepository
 import com.crichere.backend.profile.ProfileCompletionLookup
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -43,6 +45,8 @@ class AuthService(
     private val rateLimiter: AuthRateLimiter,
     private val suspendedPhoneHashRepository: SuspendedPhoneHashRepository,
     private val clock: Clock,
+    /** Live admin counters (docs/PHASE20.md Step 6); counted after commit. */
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher { },
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -207,7 +211,10 @@ class AuthService(
                     termsAcceptedAt = clock.instant(),
                     termsVersion = TERMS_VERSION,
                 ),
-            ).also { log.info("Registered new user {}", it.id) }
+            ).also {
+                log.info("Registered new user {}", it.id)
+                events.publishEvent(LiveEvent.SignedUp(requireNotNull(it.id)))
+            }
         } catch (e: DataIntegrityViolationException) {
             userRepository.findByPhoneLookupHash(lookupHash) ?: throw e
         }

@@ -845,6 +845,21 @@ Open items found while implementing the redesign, not yet scheduled.
     "Bidding closed" card when nobody can bid (H3, `canAnyoneBid`). Unit-tested; not seen against a real
     backend or with the reconnect banner over it.
 
+**Phase 20 admin web (boards P16 S, O, M, L, U, X).** Checked 2026-11-21 in Chromium (1440 desktop, Pixel 7 phone
+viewport) against a local backend with an e2e admin session: sign in page, overview, reports queue and detail,
+dismiss, suspend and unsuspend, search, internal switch with undo, phone lookup, theme, session ended, phone tabs.
+Overview and report detail screenshots compared with O1 and M2.
+
+Not verified:
+- A real Google sign-in (S1w waiting state, S2 refused account): needs the deployed site on an allowed origin.
+- Remove image (M5), the live-auction suspend guard (M4), release number, payment proof viewer (L4): built and
+  backend-tested, not clicked through in the browser.
+- Overview with real data: the local database has almost no history, so every chart was seen near empty. Live
+  auction cards on the board (O1, per-auction lot and bid) are three totals instead; the API has no per-auction detail.
+- Dark theme on every screen except the overview toggle; phone layouts other than the overview tabs (M8, L7, U7).
+- Stale live stream (X3) and refetch frame (X4) only through code paths and unit tests.
+- Safari and Firefox; the self-hosted icon font (5.2 MB) on a slow connection.
+
 ## Decisions made during implementation
 
 ### Design update #6 (2026-10-06)

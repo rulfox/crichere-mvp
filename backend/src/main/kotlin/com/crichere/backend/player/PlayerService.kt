@@ -1,5 +1,6 @@
 package com.crichere.backend.player
 
+import com.crichere.backend.admin.LiveEvent
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.common.MediaUrlPolicy
@@ -17,6 +18,7 @@ import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.dto.LeaguePlayerJoinRequest
 import com.crichere.backend.player.dto.LeaguePlayerResponse
 import com.crichere.backend.profile.ProfileRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -39,6 +41,8 @@ class PlayerService(
     private val fcmSender: FcmSender,
     private val screenshotSigner: PaymentScreenshotUrlSigner,
     private val mediaUrlPolicy: MediaUrlPolicy,
+    /** Live admin counters (docs/PHASE20.md Step 6); counted after commit. */
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher { },
 ) {
 
     /**
@@ -87,6 +91,7 @@ class PlayerService(
         } catch (e: DataIntegrityViolationException) {
             throw AlreadyJoinedException()
         }
+        events.publishEvent(LiveEvent.PlayerJoined(callerId, league.district))
         return saved.toResponse(callerId, league.organizerUserId)
     }
 
