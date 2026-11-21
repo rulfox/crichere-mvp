@@ -1,6 +1,6 @@
 # Phase 20: Admin web (moderation and insights)
 
-**Status:** planned; design approved by the owner 2026-11-21 (alignment pass done); no code yet. **Date:** 2026-11-21.
+**Status:** done, live on production 2026-11-21 (PRs #5 to #8; Step 11 closed, see the end of section 13). **Date:** 2026-11-21.
 
 ## 1. Scope
 
@@ -611,3 +611,10 @@ Step 11 update (2026-11-21, 21:50 IST): client IP, second try.
 - Moderation check on production (2026-11-21): a test account (signed in with OTP) filed report `4c8a9bf1` from
   the app at 17:34:04 UTC (201); the owner signed in at 17:34:34 and dismissed it at 17:35:39 (204); owner confirmed
   the audit log entry. The owner's sign-in came from the real IP. New-report alert email arrived (owner confirmed).
+
+**Phase 20 closed (2026-11-21).** Owner marked the test account, own numbers and the reviewer number internal (O7)
+and updated Play Data safety (O8). All of section 10 is done. Follow-ups, not blocking:
+- Two CORS preflights with 403 (Step 11 update, 21:30 IST): not reproduced.
+- Local Google sign-in on `http://localhost:3001` also needs `http://localhost` (no port) on the OAuth client.
+- The backend IAM user is still `crichere-claude` (same key as the local CLI) and now also holds the SES policy;
+  splitting it is in OPEN-ITEMS.
