@@ -1,9 +1,19 @@
 // Helpers for the sign-in page (kept out of the page file, which may only export the page).
 
-/** Only same-site paths, so a crafted link can't send the admin elsewhere after sign-in. */
-export function safeNext(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/";
-  return next;
+/**
+ * Only paths on this site, so a crafted link can't send the admin elsewhere after sign-in. Resolved
+ * with the URL parser and compared by origin: string checks miss forms the parser normalises, such
+ * as "/\t/evil.example.com" (tabs and newlines are stripped, leaving "//evil.example.com").
+ */
+export function safeNext(next: string | null, origin = typeof window === "undefined" ? "http://localhost" : window.location.origin): string {
+  if (!next || /[\u0000-\u001F\u007F\\]/.test(next)) return "/";
+  try {
+    const url = new URL(next, origin);
+    if (url.origin !== origin) return "/";
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return "/";
+  }
 }
 
 /** The email inside a Google ID token, only to name the account in the "not allowed" message. */
