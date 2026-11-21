@@ -208,6 +208,8 @@ class AdminLiveIntegrationTest : AbstractWebIntegrationTest() {
         events.publishEvent(LiveEvent.ReportFiled(UUID.randomUUID()))
         stream.tick()
         assertEquals(afterFirstTick + 1, result.response.contentAsString.split("event:snapshot").size)
+        repeat(2) { stream.tick() }
+        assertTrue("event:ping" in result.response.contentAsString, "a quiet stream still sends a ping")
         signOut(cookie)
     }
 

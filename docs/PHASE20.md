@@ -391,7 +391,7 @@ until PR #4 is live and the Data safety change is submitted.**
 - Snapshot: today (sign-ups, leagues, joins, reports, OTP sends, bids, active users), now (live auctions, bids in the
   last minute, auction viewers from `AuctionBroadcastService.subscriberCount`), feed.
 - `GET /api/v1/admin/live` (SSE, `no-store`, `X-Accel-Buffering: no`): snapshot on connect, then every 5 s only if it
-  changed, keep-alive comment every 15 s otherwise; nothing built with no subscriber. At most 3 streams per session
+  changed, a `ping` event every 10 s otherwise (a named event, since EventSource never surfaces comments); nothing built with no subscriber. At most 3 streams per session
   (429 after). A stream times out at its session's expiry and closes at once on sign-out or sign-out everywhere
   (no database check per tick). An admin removed from `ADMIN_EMAILS` loses streams at the restart that applies it.
 - Next: Step 7 (nightly job and retention).
@@ -462,3 +462,29 @@ completion-time check).** Decisions taken under the owner's "complete all steps"
 - Not done: `EXPLAIN` checks from section 11 on production-sized data; name search uses `ilike` without a trigram
   index, fine at today's size.
 - Next: Step 10 (admin web).
+
+**Step 10 done (2026-11-21): `admin-web/`, 28 unit tests and 9 Playwright e2e tests green against a local backend.**
+- Next.js 16.4 static export, React 19.3, visx 4 (scales and shapes), TypeScript 5.9 and ESLint 9 kept on the same
+  majors as `web-viewer` (TypeScript 7 and ESLint 10 are toolchain jumps for their own phase).
+- Styles ported from `docs/design/admin/admin-kit.js` (AK.css) as CSS variables, light and dark. Fonts self-hosted
+  via `next/font` (Archivo, Inter, IBM Plex Mono) and the `material-symbols` package (rounded, 5.2 MB, cached).
+- Routes: `/signin/`, `/` overview, `/reports/`, `/reports/view/?id=`, `/leagues/`, `/leagues/view/?id=`,
+  `/users/`, `/users/view/?id=`, `/suspended/`, `/audit/`. Ids in the query string (static export can't pre-render
+  ids).
+- Sign-in: Google Identity Services draws its own button (Google's branding rules), so the board's custom button is
+  replaced by Google's; the rest of S1 is as designed. `next` after sign-in accepts same-site paths only.
+- API client: cookie credentials on every call, `X-Crichere-Admin: 1` on changes, any 401 opens "Your session
+  ended". Lists keep the previous page faded while loading. Every chart has the Table switch.
+- Overview summaries are generated from the same numbers as the charts (`lib/overview.ts`), counts instead of
+  percentages under 20. Deviations from O1: per-auction live cards are three totals (no per-auction API); the State
+  and District filter chips are left out (history isn't split by place except users by district); SMS card says the
+  cap resets at 05:30 IST, which is when the backend resets it.
+- Live stream: the backend's quiet keep-alive is now a `ping` event every 10 s (EventSource ignores comments); the
+  site marks the stream stale after 15 s without an event and closes it when the tab is hidden.
+- Host: `Dockerfile` (build, then Caddy). `npm run build:host` writes `deploy/Caddyfile` with a CSP that allows the
+  exported inline scripts by SHA-256 only, plus Google's sign-in script and frame; `X-Frame-Options: DENY`, HSTS,
+  `X-Robots-Tag: noindex`, `robots.txt` disallow, no referrer.
+- e2e: Google sign-in can't run unattended, so `e2e/fixtures.ts` inserts an `admin_sessions` row for the local
+  allowlisted e2e email and sets its cookie; no test-only path exists in the backend.
+- Not verified: listed under DESIGN-REVIEW Follow-ups (Phase 20 admin web).
+- Next: Step 11 (deploy), which needs the owner (Railway service, DNS, IAM, variables, PR #4 merged first).

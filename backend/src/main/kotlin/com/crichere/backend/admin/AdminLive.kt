@@ -366,7 +366,7 @@ class AdminLiveStream(private val metrics: LiveMetrics, private val clock: Clock
             lastSent = snapshot
             subscribers.forEach { send(it, snapshot) }
         } else if (++quietTicks >= KEEP_ALIVE_TICKS) {
-            // Keeps proxies from closing a quiet stream.
+            // Keeps proxies from closing a quiet stream, and tells the site the stream is alive.
             quietTicks = 0
             subscribers.forEach { keepAlive(it) }
         }
@@ -395,7 +395,9 @@ class AdminLiveStream(private val metrics: LiveMetrics, private val clock: Clock
 
     private fun keepAlive(subscriber: Subscriber) {
         try {
-            subscriber.emitter.send(SseEmitter.event().comment("keep-alive"))
+            // A named event, not a comment: EventSource never surfaces comments, and the admin site
+            // marks the stream stale after 15 s without any event.
+            subscriber.emitter.send(SseEmitter.event().name("ping").data(clock.instant().toString()))
         } catch (e: Exception) {
             subscribers.remove(subscriber)
         }
@@ -403,7 +405,7 @@ class AdminLiveStream(private val metrics: LiveMetrics, private val clock: Clock
 
     companion object {
         const val MAX_PER_SESSION = 3
-        private const val KEEP_ALIVE_TICKS = 3
+        private const val KEEP_ALIVE_TICKS = 2
     }
 }
 
