@@ -557,3 +557,22 @@ Step 11 update (2026-11-21, 21:25 IST):
   can't read IAM, so not checkable here) then the sign-in alert email, client IP shown in the session/audit log, a
   test report dismissed and seen in the audit log, owner and reviewer numbers marked internal (O7), Play Data safety
   change (O8).
+
+Step 11 update (2026-11-21, 21:30 IST): first real sign-in.
+- Owner added the SES inline policy (`ses:GetSendStatistics` checked from the CLI, same IAM user). Owner signed in
+  with Google at 15:57:52 UTC: `POST /api/v1/admin/session` 200, then session, insights, health and live all 200.
+  The Google popup opened as a background tab once in the owner's Chrome and as a normal popup later; the site
+  asks for a proper popup (features + user activation, checked in Chrome), so that was the browser, not the site.
+- Bug found in production logs and fixed: when an admin live stream (SSE) ends, the container re-dispatches the
+  request (`DispatcherType.ASYNC`); `AdminAuthenticationFilter` (a `OncePerRequestFilter`) doesn't run on it, so the
+  dispatch was anonymous and `hasRole("ADMIN")` threw "Access Denied ... response is already committed" (ERROR
+  log with stack trace on every stream end). Fix: the admin chain permits `DispatcherType.ASYNC` (it only finishes
+  an already-authorized request). Test: `AdminLiveIntegrationTest` "a closed stream's async dispatch is not denied"
+  (failed with the production message before the fix). Backend 628/628 tests pass.
+- Follow-up, not reproduced: two CORS preflights `OPTIONS /api/v1/admin/session` got 403 (15:53:38 and 15:57:13
+  UTC, Chrome UA, owner's IP). Preflights from `https://admin.crichere.com` for GET/POST/DELETE with
+  `content-type, x-crichere-admin` all return 200; only `Origin: null` gets 403. A normal page load sends no
+  preflight (CDP check). Sign-in unaffected. Railway HTTP logs don't show the Origin, so the sender is unknown
+  (possibly a browser extension).
+- Still to check: alert email in the inbox, client IP the backend recorded, a test report dismissed and seen in the
+  audit log, O7, O8.

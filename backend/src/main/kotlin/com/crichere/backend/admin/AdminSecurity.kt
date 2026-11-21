@@ -1,6 +1,7 @@
 package com.crichere.backend.admin
 
 import com.crichere.backend.common.ProblemDetails
+import jakarta.servlet.DispatcherType
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -61,6 +62,9 @@ class AdminSecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { registry ->
                 registry
+                    // An async dispatch only finishes a request that was already authorized (the live stream
+                    // closing); the session filter doesn't run on it, so it would otherwise count as anonymous.
+                    .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                     .requestMatchers(HttpMethod.OPTIONS, ADMIN_PATHS).permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/admin/session").permitAll()
                     .anyRequest().hasRole("ADMIN")
