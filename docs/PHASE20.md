@@ -587,3 +587,17 @@ Step 11 update (2026-11-21, 21:30 IST): first real sign-in.
 - After deploy: the admin session should show the owner's real IP; spoof check = 11 sign-in POSTs from one machine
   with a different `X-Forwarded-For` each must reach 429 (if Railway passed client headers through unchanged and
   appended nothing, they wouldn't).
+
+Step 11 update (2026-11-21, 21:50 IST): client IP, second try.
+- PR #7 merged (`5f51233`), backend deployed. Production check failed: 25 refused admin sign-ins from one machine
+  (11 with a different made-up `X-Forwarded-For` each, 11 with one constant made-up value, 3 with none) never
+  reached the 10-attempt limit. So the resolved IP differed on every request: Railway's `X-Forwarded-For` evidently
+  ends with an address outside 100.64.0.0/10 that changes per request. Per-IP limits were effectively off from this
+  deploy until the next (per-phone limits and the daily OTP cap still applied).
+- Railway's docs (Networking > Specs & Limits, Request Headers) name `X-Real-IP` "for identifying client's remote
+  IP" and say nothing about `X-Forwarded-For`. Decided with the owner: read `X-Real-IP` instead
+  (`server.tomcat.remoteip.remote-ip-header: x-real-ip`, still trusted only from 100.64.0.0/10), and log the IP on
+  every refused or rate-limited admin sign-in so production is observable. `ClientIpIntegrationTest` now also
+  checks that `X-Forwarded-For` is ignored. 630/630 pass.
+- After deploy: 11 refused sign-ins, each with a different made-up `X-Real-IP`, must reach 429 (shows Railway
+  overwrites a client-sent `X-Real-IP`), and the logged IP must be the owner's 103.182.167.128.

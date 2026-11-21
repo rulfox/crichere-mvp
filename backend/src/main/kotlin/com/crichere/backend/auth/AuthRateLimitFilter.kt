@@ -27,7 +27,7 @@ import kotlin.math.max
  * The key is `ServletRequest.getRemoteAddr()`, never an `X-Forwarded-For` header. A header is
  * caller-supplied: honouring it unconditionally would let anyone bypass the limit entirely by
  * varying one string. Behind Railway's proxy, `server.forward-headers-strategy: native` in
- * application.yml makes the container itself resolve `remoteAddr` from X-Forwarded-For, trusting
+ * application.yml makes the container itself resolve `remoteAddr` from Railway's X-Real-IP, trusting
  * only the proxy's 100.64.0.0/10 range (docs/PHASE20.md Step 11) -- never read the header here.
  *
  * ## Why it responds directly
