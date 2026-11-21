@@ -103,6 +103,13 @@ crichere:
     # Comma-separated CORS allowlist for the public web viewer (docs/PHASE6.md). Blank means CORS
     # is entirely off -- see SecurityConfig.webViewerCorsConfigurationSource.
     origins: ${WEB_VIEWER_ORIGINS:}
+  admin:
+    # Admin web (docs/PHASE20.md). Every blank default fails closed: nobody can sign in and no
+    # browser can call /api/v1/admin/**.
+    emails: ${ADMIN_EMAILS:}
+    google-client-id: ${GOOGLE_ADMIN_CLIENT_ID:}
+    origin: ${ADMIN_ORIGIN:}
+    cookie-secure: ${ADMIN_COOKIE_SECURE:true}
 
 ---
 # local profile: developer machine, Postgres via backend/docker-compose.yml
@@ -139,6 +146,11 @@ crichere:
     # Dev fallback so a locally-run web-viewer (`npm run dev`, port 3000) can call this backend
     # without setting WEB_VIEWER_ORIGINS -- an env var always overrides.
     origins: ${WEB_VIEWER_ORIGINS:http://localhost:3000}
+  admin:
+    # Local admin site (`npm run dev` in admin-web, port 3001) over plain http. Sign-in still needs
+    # a real Google ID token for GOOGLE_ADMIN_CLIENT_ID and an email in ADMIN_EMAILS.
+    origin: ${ADMIN_ORIGIN:http://localhost:3001}
+    cookie-secure: ${ADMIN_COOKIE_SECURE:false}
 
 ---
 # test profile: used by Testcontainers-backed integration tests. Datasource is normally
@@ -166,3 +178,7 @@ crichere:
   media-sweep:
     # Tests call MediaSweepService directly.
     enabled: false
+  admin:
+    emails: admin@example.com, Second.Admin@example.com
+    google-client-id: test-admin-client.apps.googleusercontent.com
+    origin: https://admin.test

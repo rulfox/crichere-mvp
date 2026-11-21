@@ -272,3 +272,28 @@ Step 6 deploys.
   `010901a1fcf9287a-84841c13-b7d5-41c6-812e-029432776e7c-000000`). Sender for alerts: `alerts@crichere.com`.
   Owner removes `crichere-ses-setup-temp` next. Step 4 adds a permanent `ses:SendEmail` grant for the backend,
   limited to the `crichere.com` identity in ap-south-1.
+
+## 13. Build progress
+
+**Steps 1 and 2 done (2026-11-21), tests green (569 backend tests, 17 new).**
+- V26 (`V26__admin.sql`): `moderation_actions.admin_email`, `admin_sessions`, `users.is_internal`,
+  `user_activity_days`, `metrics_daily`, `release_markers`, `job_runs`, BRIN indexes on `users.created_at`,
+  `leagues.created_at`, `league_players.joined_at`, `auction_bids.placed_at`, keyset indexes on users and leagues.
+- Admin sign-in (`backend/.../admin/`): its own Spring Security chain for `/api/v1/admin/**`, ordered before the app
+  chain; app bearer tokens are never read there and the admin cookie is never read on app routes.
+  - `POST /api/v1/admin/session` takes the Google ID token (`credential`), checks RS256 against Google's JWKS
+    (cached), issuer, audience = `GOOGLE_ADMIN_CLIENT_ID`, expiry, `email_verified`, then the `ADMIN_EMAILS`
+    allowlist (case-insensitive). One refusal message for every failure. 10 attempts per IP per 15 minutes.
+  - Session: an opaque 256-bit random token (decided over a JWT: nothing to sign or rotate, and revocation is a row
+    update), stored only as SHA-256 in `admin_sessions`. Cookie `crichere_admin`: HttpOnly, Secure, SameSite=Strict,
+    host-only, `Path=/api/v1/admin`, 30 minutes, no refresh. A session also stops working if its email leaves the
+    allowlist.
+  - `GET` current session, `DELETE` sign out, `POST /sign-out-everywhere`. Sign-in and sign-outs are audited in
+    `moderation_actions` with the admin's email.
+  - Every non-GET admin request needs `Origin` = `ADMIN_ORIGIN` and `X-Crichere-Admin: 1`. CORS with credentials only
+    for `ADMIN_ORIGIN`.
+- Backend settings (Railway, at deploy): `ADMIN_EMAILS=aranyventures@gmail.com`,
+  `GOOGLE_ADMIN_CLIENT_ID=111016291164-885leerfs3tqgc4g2mkh2c4k1pn5jlrj.apps.googleusercontent.com`,
+  `ADMIN_ORIGIN=https://admin.crichere.com`. Local profile defaults: origin `http://localhost:3001`, non-secure cookie.
+- Not verified yet: a real Google sign-in end to end (needs the admin site, Step 10); the sign-in email alert comes
+  with Step 4.
