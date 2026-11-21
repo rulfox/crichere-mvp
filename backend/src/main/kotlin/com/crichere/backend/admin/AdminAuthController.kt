@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -36,11 +37,21 @@ class AdminAuthController(
     private val rateLimiter: AdminSignInRateLimiter,
     private val properties: AdminProperties,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     @PostMapping
     fun signIn(@Valid @RequestBody body: AdminSignInRequest, request: HttpServletRequest): ResponseEntity<AdminSessionResponse> {
         val clientIp = request.remoteAddr ?: "unknown"
-        if (!rateLimiter.tryConsume(clientIp)) throw AdminSignInRateLimitedException()
-        val issued = sessions.signIn(body.credential, request.getHeader(HttpHeaders.USER_AGENT), clientIp)
+        if (!rateLimiter.tryConsume(clientIp)) {
+            log.warn("Admin sign-in rate limited for {}", clientIp)
+            throw AdminSignInRateLimitedException()
+        }
+        val issued = try {
+            sessions.signIn(body.credential, request.getHeader(HttpHeaders.USER_AGENT), clientIp)
+        } catch (e: AdminSignInFailedException) {
+            log.info("Admin sign-in refused from {}", clientIp)
+            throw e
+        }
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, adminCookie(properties, issued.rawToken, properties.sessionTtl).toString())
             .header(HttpHeaders.CACHE_CONTROL, "no-store")

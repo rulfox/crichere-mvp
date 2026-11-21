@@ -15,7 +15,8 @@ import kotlin.test.assertNotEquals
 
 /**
  * The client IP behind a proxy (docs/PHASE20.md Step 11). Needs a real Tomcat: MockMvc doesn't run the
- * RemoteIpValve. Loopback stands in for Railway's proxy range here; production trusts only 100.64.0.0/10.
+ * RemoteIpValve. Loopback stands in for Railway's proxy range here; production trusts only 100.64.0.0/10. Whether Railway
+ * overwrites a client-sent X-Real-IP can only be checked against production (docs/PHASE20.md Step 11).
  * The admin sign-in limiter is keyed by the resolved IP, so it shows which IP the backend saw.
  */
 @SpringBootTest(
@@ -36,23 +37,27 @@ class ClientIpIntegrationTest : AbstractWebIntegrationTest() {
     fun resetLimiter() = limiter.reset()
 
     @Test
-    fun `the IP comes from the proxy's X-Forwarded-For entry, not from the proxy or the client's own claim`() {
+    fun `the IP comes from the proxy's X-Real-IP, so each client has its own limit`() {
         repeat(2) { assertNotEquals(429, signIn("203.0.113.9")) }
         assertEquals(429, signIn("203.0.113.9"), "same client, limit reached")
-
         assertNotEquals(429, signIn("203.0.113.10"), "another client has its own limit, so the proxy's address isn't the key")
-
-        // A client that sends its own X-Forwarded-For: the proxy appends the real address, and only that one counts.
-        assertEquals(429, signIn("203.0.113.10, 203.0.113.9"), "a claimed address doesn't escape the limit")
     }
 
-    private fun signIn(forwardedFor: String): Int =
+    @Test
+    fun `X-Forwarded-For is not used`() {
+        // Railway's X-Forwarded-For ends with a different address on every request; keying on it disabled the limits.
+        repeat(2) { i -> assertNotEquals(429, signIn("203.0.113.20", forwardedFor = "203.0.113.20, 10.9.9.$i")) }
+        assertEquals(429, signIn("203.0.113.20", forwardedFor = "203.0.113.20, 10.9.9.7"))
+    }
+
+    private fun signIn(realIp: String, forwardedFor: String? = null): Int =
         http.send(
             HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/v1/admin/session"))
                 .header("Origin", ORIGIN)
                 .header(ADMIN_HEADER, "1")
                 .header("Content-Type", "application/json")
-                .header("X-Forwarded-For", forwardedFor)
+                .header("X-Real-IP", realIp)
+                .apply { if (forwardedFor != null) header("X-Forwarded-For", forwardedFor) }
                 .POST(HttpRequest.BodyPublishers.ofString("""{"credential":"not.a.token"}"""))
                 .build(),
             HttpResponse.BodyHandlers.discarding(),
