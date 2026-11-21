@@ -10,7 +10,10 @@ export function safeNext(next: string | null, origin = typeof window === "undefi
   try {
     const url = new URL(next, origin);
     if (url.origin !== origin) return "/";
-    return url.pathname + url.search + url.hash;
+    // Check the normalised result too: "/.//evil.example.com" resolves to the path "//evil.example.com".
+    const out = url.pathname + url.search + url.hash;
+    if (!out.startsWith("/") || out.startsWith("//") || out.startsWith("/\\")) return "/";
+    return out;
   } catch {
     return "/";
   }

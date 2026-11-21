@@ -48,6 +48,9 @@ describe("sign-in helpers", () => {
     expect(safeNext("/\t/evil.example.com")).toBe("/");
     expect(safeNext("/\n/evil.example.com")).toBe("/");
     expect(safeNext("javascript:alert(1)")).toBe("/");
+    expect(safeNext("/.//evil.example.com")).toBe("/");
+    expect(safeNext("/%2e//evil.example.com")).toBe("/");
+    expect(safeNext("/a/../reports/")).toBe("/reports/");
     expect(safeNext(null)).toBe("/");
   });
 
