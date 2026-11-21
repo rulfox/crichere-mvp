@@ -1,5 +1,6 @@
 package com.crichere.backend.league
 
+import com.crichere.backend.admin.LiveEvent
 import com.crichere.backend.auction.AuctionInProgressException
 import com.crichere.backend.common.ContentRateLimitExceededException
 import com.crichere.backend.common.ContentRateLimiter
@@ -20,10 +21,11 @@ import com.crichere.backend.moderation.BlockService
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.player.toResponse
 import com.crichere.backend.profile.ProfileRepository
-import java.time.Instant
-import java.util.UUID
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import java.util.UUID
 
 @Service
 class LeagueService(
@@ -41,6 +43,8 @@ class LeagueService(
     private val screenshotSigner: PaymentScreenshotUrlSigner,
     private val mediaUrlPolicy: MediaUrlPolicy,
     private val blockService: BlockService,
+    /** Live admin counters (docs/PHASE20.md Step 6); counted after commit. */
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher { },
 ) {
 
     /**
@@ -108,6 +112,7 @@ class LeagueService(
             organizerUpiId = request.organizerUpiId,
         )
         val saved = leagueRepository.save(league)
+        events.publishEvent(LiveEvent.LeagueCreated(saved.organizerUserId, saved.district))
 
         val initialAwards = request.awards.orEmpty().mapIndexed { index, awardRequest ->
             LeagueAwardEntity(

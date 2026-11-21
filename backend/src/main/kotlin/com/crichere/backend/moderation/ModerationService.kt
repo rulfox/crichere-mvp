@@ -1,5 +1,6 @@
 package com.crichere.backend.moderation
 
+import com.crichere.backend.admin.LiveEvent
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.ContentRateLimiter
 import com.crichere.backend.franchise.FranchiseRepository
@@ -10,6 +11,7 @@ import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.profile.ProfileRepository
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -116,6 +118,8 @@ class ReportService(
     private val rateLimiter: ContentRateLimiter,
     private val objectMapper: ObjectMapper,
     private val clock: Clock,
+    /** Live admin counters (docs/PHASE20.md Step 6); counted after commit. */
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher { },
 ) {
 
     fun report(callerId: UUID, request: ReportRequest) {
@@ -130,6 +134,7 @@ class ReportService(
         }
         try {
             reportRepository.saveAndFlush(report)
+            events.publishEvent(LiveEvent.ReportFiled(callerId))
         } catch (_: DataIntegrityViolationException) {
             // Two sends at once: the unique index decides, and the loser gets the same answer as a later one.
             throw ReportAlreadyOpenException()

@@ -46,6 +46,9 @@ class AuctionBroadcastService {
         return emitter
     }
 
+    /** Everyone watching any auction right now, for the admin live view (docs/PHASE20.md Step 6). */
+    fun subscriberCount(): Int = emitters.values.sumOf { it.size }
+
     fun broadcast(leagueId: UUID, state: AuctionStateResponse) {
         val list = emitters[leagueId] ?: return
         lastState[leagueId] = state

@@ -1,5 +1,6 @@
 package com.crichere.backend.auction
 
+import com.crichere.backend.admin.LiveEvent
 import com.crichere.backend.auction.dto.AuctionBidTickerResponse
 import com.crichere.backend.auction.dto.AuctionLastResultResponse
 import com.crichere.backend.auction.dto.AuctionResultsResponse
@@ -24,6 +25,7 @@ import com.crichere.backend.player.LeaguePlayerNotFoundException
 import com.crichere.backend.player.PlayerEntity
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.profile.ProfileRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -46,6 +48,8 @@ class AuctionService(
     private val broadcastService: AuctionBroadcastService,
     private val leagueAuthorization: LeagueAuthorization,
     private val fcmSender: FcmSender,
+    /** Live admin counters (docs/PHASE20.md Step 6); counted after commit. */
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher { },
 ) {
 
     /**
@@ -188,6 +192,7 @@ class AuctionService(
         league.auctionLastActionType = AuctionLastActionType.BID
         league.auctionLastActionBidId = bid.id
         league.auctionLastActionPlayerId = currentPlayerId
+        events.publishEvent(LiveEvent.BidPlaced(callerId))
         return saveAndBroadcast(league)
     }
 
@@ -382,6 +387,15 @@ class AuctionService(
         val saved = leagueRepository.save(league)
         val state = saved.toStateResponse()
         broadcastService.broadcast(requireNotNull(saved.id), state)
+        events.publishEvent(
+            LiveEvent.AuctionState(
+                actorId = saved.organizerUserId,
+                leagueId = requireNotNull(saved.id),
+                live = saved.auctionStatus == AuctionStatus.IN_PROGRESS,
+                completed = saved.auctionStatus == AuctionStatus.COMPLETED,
+                district = saved.district,
+            ),
+        )
         return state
     }
 

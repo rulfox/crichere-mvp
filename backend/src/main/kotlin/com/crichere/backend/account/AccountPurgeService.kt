@@ -1,14 +1,10 @@
 package com.crichere.backend.account
 
+import com.crichere.backend.admin.ActivityTracker
 import com.crichere.backend.auth.OtpChallengeRepository
 import com.crichere.backend.auth.RefreshTokenRepository
 import com.crichere.backend.auth.UserRepository
 import com.crichere.backend.common.ObjectDeleter
-import com.crichere.backend.moderation.ModerationNoticeRepository
-import com.crichere.backend.moderation.ReportRepository
-import com.crichere.backend.moderation.SuspendedPhoneHashEntity
-import com.crichere.backend.moderation.SuspendedPhoneHashRepository
-import com.crichere.backend.moderation.UserBlockRepository
 import com.crichere.backend.common.PhotoUploadService
 import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.league.AuctionStatus
@@ -16,6 +12,11 @@ import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueFollowRepository
 import com.crichere.backend.league.LeagueRepository
 import com.crichere.backend.league.LeagueRoleRepository
+import com.crichere.backend.moderation.ModerationNoticeRepository
+import com.crichere.backend.moderation.ReportRepository
+import com.crichere.backend.moderation.SuspendedPhoneHashEntity
+import com.crichere.backend.moderation.SuspendedPhoneHashRepository
+import com.crichere.backend.moderation.UserBlockRepository
 import com.crichere.backend.notification.DeviceTokenRepository
 import com.crichere.backend.notification.FcmSender
 import com.crichere.backend.player.PlayerRepository
@@ -75,6 +76,8 @@ class AccountPurgeService(
     private val transactionTemplate: TransactionTemplate,
     private val properties: AccountDeletionProperties,
     private val clock: Clock,
+    /** Null only in unit tests that don't cover activity. */
+    private val activityTracker: ActivityTracker? = null,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -188,6 +191,8 @@ class AccountPurgeService(
         userBlockRepository.deleteAllInvolving(userId)
         reportRepository.clearReporter(userId)
         moderationNoticeRepository.deleteByUserId(userId)
+        // The users row stays, so its cascade never removes these (docs/PHASE20.md Step 5).
+        activityTracker?.erase(userId)
         // The number is freed below, so a suspended account leaves its hash behind (docs/PHASE18.md).
         if (user.suspendedAt != null) {
             user.phoneLookupHash?.let { suspendedPhoneHashRepository.save(SuspendedPhoneHashEntity(it, now)) }

@@ -371,3 +371,27 @@ Step 6 deploys.
   (sign-ins, views, lookups) after 24 months. Step 6 deploys only after PR #4 is merged and live, and the Data
   safety change is submitted.
 - Next: Step 6 (live data and activity). Merge `master` into this branch after PR #4.
+
+**Step 6 done (2026-11-21), tests green (609 backend tests, 12 new in `AdminLiveIntegrationTest`). Not deployable
+until PR #4 is live and the Data safety change is submitted.**
+- Decided with the owner: an active day is any successful signed-in app request (backend only, no app release);
+  feed lines are event type and district only (no names, league names or ids); internal accounts are left out of
+  today's counters, matching the nightly history.
+- `ActivityFilter` (app chain, after `SuspensionFilter`) marks the day only when the response is below 400, so
+  refused, suspended or failed requests don't count. `ActivityTracker` keeps today's ids in memory and writes new
+  ones every 5 minutes (and at shutdown) as one `insert ... select from users ... on conflict do nothing`; a failed
+  flush keeps the ids for the next try. Today's ids reload from the table at startup.
+- Account erase: `AccountPurgeService` calls `ActivityTracker.erase` (rows and in-memory trace).
+- `LiveEvent`s published by the services (sign-up, OTP send, league created, player joined, report filed, bid,
+  auction state from `saveAndBroadcast`) are counted by `LiveMetrics` after commit; counting errors are logged and
+  never reach the request. Counters reseed from the database at startup and 00:00 IST; at the day change they reset
+  first. Internal ids are loaded at reseed; Step 9's flag calls `LiveMetrics.setInternal`.
+- Feed: last 50 of sign-up, league created, player joined, report filed, auction started, auction finished. Bids
+  appear only as a count per minute (one line per bid would flood it).
+- Snapshot: today (sign-ups, leagues, joins, reports, OTP sends, bids, active users), now (live auctions, bids in the
+  last minute, auction viewers from `AuctionBroadcastService.subscriberCount`), feed.
+- `GET /api/v1/admin/live` (SSE, `no-store`, `X-Accel-Buffering: no`): snapshot on connect, then every 5 s only if it
+  changed, keep-alive comment every 15 s otherwise; nothing built with no subscriber. At most 3 streams per session
+  (429 after). A stream times out at its session's expiry and closes at once on sign-out or sign-out everywhere
+  (no database check per tick). An admin removed from `ADMIN_EMAILS` loses streams at the restart that applies it.
+- Next: Step 7 (nightly job and retention).

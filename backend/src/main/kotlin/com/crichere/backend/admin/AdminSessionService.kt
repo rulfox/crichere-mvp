@@ -126,12 +126,14 @@ class AdminSessionService(
     fun signOut(principal: AdminPrincipal) {
         repository.findById(principal.sessionId).ifPresent { if (it.revokedAt == null) it.revokedAt = clock.instant() }
         audit.record("ADMIN_SIGN_OUT", principal.email)
+        events.publishEvent(AdminSessionsEnded(sessionId = principal.sessionId))
     }
 
     @Transactional
     fun signOutEverywhere(principal: AdminPrincipal): Int {
         val ended = repository.revokeAllFor(principal.email, clock.instant())
         audit.record("ADMIN_SIGN_OUT_ALL", principal.email, "$ended sessions ended")
+        events.publishEvent(AdminSessionsEnded(email = principal.email))
         return ended
     }
 
