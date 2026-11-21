@@ -182,6 +182,9 @@ Privacy Policy says so.
 
 **Step 4: email (SES).**
 - New-report alert, at most one per 15 minutes, count and link only. Sign-in alert. Bounce count for system health.
+- Decided 2026-11-21 (owner): the 15-minute limit is kept in a database row checked every minute (not in memory);
+  bounces come from SES `GetSendStatistics` (v2 `GetAccount` has no bounce numbers); the sign-in email shows the
+  admin's email, time in IST, IP address and browser.
 
 **Step 5: Privacy Policy and Data safety.** Activity days, admin access, SES, retention. Live on the web before
 Step 6 deploys.
@@ -224,7 +227,7 @@ Step 6 deploys.
 | O1 | Turn on 2-Step Verification or a passkey for `aranyventures@gmail.com` | Before Step 2 |
 | O2 | Google Cloud (Firebase project): create an OAuth client, type Web, origins `https://admin.crichere.com` and `http://localhost:3001`. Send me the client ID (no secret needed) | Before Step 2 |
 | O3 | AWS SES, same region as the bucket: verify domain `crichere.com` (Easy DKIM, 3 CNAMEs), verify `aranyventures@gmail.com` as recipient (sandbox is enough) | Before Step 4 |
-| O4 | AWS IAM for the backend user: `ses:SendEmail` limited to that identity, `ses:GetAccount`; confirm `s3:DeleteObject` on the media bucket | Before Step 4 |
+| O4 | AWS IAM for the backend user: `ses:SendEmail` limited to that identity (policy in section 13, Step 4), `ses:GetSendStatistics`; confirm `s3:DeleteObject` on the media bucket | Before Step 11 deploy |
 | O5 | Hostinger DNS: SES DKIM CNAMEs; DMARC TXT if missing; later CNAME `admin` to Railway | Step 4, Step 11 |
 | O6 | Railway: new service for `admin-web`, custom domain; backend variables `ADMIN_EMAILS`, `GOOGLE_ADMIN_CLIENT_ID`, `ADMIN_ORIGIN`, `SES_REGION`, `ALERT_FROM`, `ALERT_TO` | Step 11 |
 | O7 | List the internal accounts (your numbers, reviewer number, test numbers) | Step 9 |
@@ -309,4 +312,46 @@ Step 6 deploys.
   used, not owned, unknown location) plus league logo and owner notice; suspend/unsuspend (tokens revoked, device
   tokens dropped, listed with admin and note), live-auction guard and its override; release number; audit log
   filters (`script` rows) and paging.
-- Next: Step 4 (SES alerts).
+
+**Step 4 done (2026-11-21), tests green (597 backend tests, 12 new).**
+- `AdminAlerts.kt`: `AlertMailer` and `SesStatistics`, both served by `SesAlertGateway` on the classic SES API
+  (`software.amazon.awssdk:ses`). Settings `crichere.alerts.*`: `SES_REGION`, `ALERT_FROM`, `ALERT_TO`
+  (comma-separated). Any of them blank (local, CI) means alerts are logged and skipped, never sent.
+- New-report alert (`ReportAlertService`, `ReportAlertJob` every minute): V27 `alert_state` holds the last send time
+  and a watermark, locked with `for update skip locked`. Counts reports created after the watermark and up to 10
+  seconds ago (so a report still committing is counted next run, not lost). The email goes out before the row's
+  update commits: a failed send changes nothing and retries next minute. Body: new count, open total, link to
+  `ADMIN_ORIGIN/reports`. No names, reasons or details. Starts from the migration time; older reports were
+  handled with the script.
+- Sign-in alert: `AdminSessionService.signIn` publishes `AdminSignedIn`; sent after commit on the async executor,
+  so a refused sign-in sends nothing and a failed send never affects the sign-in. Browser string is cleaned
+  (control and invisible formatting characters removed, 200 characters). Spring Security's firewall already
+  rejects CR/LF in headers. The IP is `remoteAddr`, like the rate limiters: behind Railway's proxy it may be the
+  proxy's address until `server.forward-headers-strategy` is set (existing note in `AuthRateLimitFilter`).
+- Bounces: `SesStatistics.lastTwoWeeks()` (delivery attempts, bounces, complaints, rejects); shown in Step 8.
+- Owner, before the Step 11 deploy: add this inline policy to the backend IAM user. In the SES sandbox, sending
+  also needs the verified recipient identity in `Resource`.
+
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "SendAdminAlerts",
+        "Effect": "Allow",
+        "Action": "ses:SendEmail",
+        "Resource": [
+          "arn:aws:ses:ap-south-1:533848567884:identity/crichere.com",
+          "arn:aws:ses:ap-south-1:533848567884:identity/aranyventures@gmail.com"
+        ],
+        "Condition": { "StringEquals": { "ses:FromAddress": "alerts@crichere.com" } }
+      },
+      { "Sid": "ReadSendStatistics", "Effect": "Allow", "Action": "ses:GetSendStatistics", "Resource": "*" }
+    ]
+  }
+  ```
+
+  Railway backend variables: `SES_REGION=ap-south-1`, `ALERT_FROM=Crichere Admin <alerts@crichere.com>`,
+  `ALERT_TO=aranyventures@gmail.com`.
+- Not verified yet: a real SES send from the backend (needs the policy above); checked at deploy (Step 11).
+- Next: Step 5 (Privacy Policy and Data safety).

@@ -110,6 +110,14 @@ crichere:
     google-client-id: ${GOOGLE_ADMIN_CLIENT_ID:}
     origin: ${ADMIN_ORIGIN:}
     cookie-secure: ${ADMIN_COOKIE_SECURE:true}
+  alerts:
+    # Admin email alerts through Amazon SES (docs/PHASE20.md Step 4). Any of the three blank means
+    # alerts are logged and skipped, never sent. Needs ses:SendEmail for ALERT_FROM's identity.
+    ses-region: ${SES_REGION:}
+    from: ${ALERT_FROM:}
+    # Comma-separated. Only ever from here, never from a request.
+    to: ${ALERT_TO:}
+    report-job-enabled: ${REPORT_ALERT_JOB_ENABLED:true}
 
 ---
 # local profile: developer machine, Postgres via backend/docker-compose.yml
@@ -182,3 +190,6 @@ crichere:
     emails: admin@example.com, Second.Admin@example.com
     google-client-id: test-admin-client.apps.googleusercontent.com
     origin: https://admin.test
+  alerts:
+    # Tests call ReportAlertService directly.
+    report-job-enabled: false

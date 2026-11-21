@@ -46,6 +46,8 @@ dependencies {
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 	implementation("com.google.firebase:firebase-admin:9.9.0")
 	implementation("software.amazon.awssdk:s3")
+	// Admin alerts and send statistics (docs/PHASE20.md Step 4). Classic SES API: GetSendStatistics has no v2 equivalent.
+	implementation("software.amazon.awssdk:ses")
 	implementation("com.bucket4j:bucket4j-core:8.10.1")
 
 	// Added in Task 3 (auth feature): HS256 access-token signing/verification. Version is

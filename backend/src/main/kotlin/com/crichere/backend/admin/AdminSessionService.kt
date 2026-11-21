@@ -2,6 +2,7 @@ package com.crichere.backend.admin
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -80,12 +81,13 @@ class AdminSessionService(
     private val repository: AdminSessionRepository,
     private val verifier: GoogleIdTokenVerifier,
     private val audit: AdminAuditWriter,
+    private val events: ApplicationEventPublisher,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val random = SecureRandom()
 
     @Transactional
-    fun signIn(idToken: String, userAgent: String?): IssuedAdminSession {
+    fun signIn(idToken: String, userAgent: String?, clientIp: String?): IssuedAdminSession {
         val email = verifier.verifiedEmail(idToken) ?: throw AdminSignInFailedException()
         if (email !in properties.emailSet) throw AdminSignInFailedException()
 
@@ -103,6 +105,8 @@ class AdminSessionService(
             ),
         )
         audit.record("ADMIN_SIGN_IN", email, userAgent)
+        // Emailed after commit (AdminSignInAlertListener), so a failed sign-in never sends one.
+        events.publishEvent(AdminSignedIn(email, now, clientIp, userAgent))
         return IssuedAdminSession(raw, email, expiresAt)
     }
 

@@ -38,8 +38,9 @@ class AdminAuthController(
 ) {
     @PostMapping
     fun signIn(@Valid @RequestBody body: AdminSignInRequest, request: HttpServletRequest): ResponseEntity<AdminSessionResponse> {
-        if (!rateLimiter.tryConsume(request.remoteAddr ?: "unknown")) throw AdminSignInRateLimitedException()
-        val issued = sessions.signIn(body.credential, request.getHeader(HttpHeaders.USER_AGENT))
+        val clientIp = request.remoteAddr ?: "unknown"
+        if (!rateLimiter.tryConsume(clientIp)) throw AdminSignInRateLimitedException()
+        val issued = sessions.signIn(body.credential, request.getHeader(HttpHeaders.USER_AGENT), clientIp)
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, adminCookie(properties, issued.rawToken, properties.sessionTtl).toString())
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
