@@ -509,9 +509,42 @@ completion-time check).** Decisions taken under the owner's "complete all steps"
    dismissed, audit log shows it, `curl -I https://admin.crichere.com` shows the headers.
 8. Mark the owner and reviewer numbers internal (O7) from the user page.
 
-Step 11 status (2026-11-21): PR #5 (`admin-web` into `master`) opened, owner merges. Backend variables in step 3 set
-on Railway (production, backend service) by Claude with the owner's approval, with deploys skipped, so they take
-effect when PR #5 deploys. Waiting on the owner: Data safety (1), SES IAM policy (2), merging PR #5 (4). Then Claude
-creates the `admin-web` Railway service and the DNS record (5, 6), each confirmed first, runs the checks (7), and
-looks at what client IP the backend sees behind Railway before proposing any forward-headers change (owner choice:
-check on production first).
+Step 11 status (2026-11-21, 12:45 IST):
+- PR #5 merged by the owner (`0205db9`). Backend deployed; Flyway applied V26, V27 and V28 on production.
+  Checked: `/api/v1/admin/session` without a cookie is 401, the CORS preflight allows only
+  `https://admin.crichere.com` with credentials (other origins 403), app API still answers.
+- Railway service `admin-web` created by Claude with the owner's approval (id `ead9618b-97a2-46bd-a46b-de4c95e72b7a`,
+  root `/admin-web`, Dockerfile, watch `/admin-web/**`, build variables `NEXT_PUBLIC_API_BASE`,
+  `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_ENV_LABEL`), deployed. Custom domain `admin.crichere.com` attached.
+- Still to do: Hostinger DNS records Railway asked for, CNAME `admin` to `32aoxk02.up.railway.app` and TXT
+  `_railway-verify.admin` = `railway-verify=c3dd56b331237aed008810aaea6639bdba72beae0de5797b4efcfae10484c630`
+  (Claude via the Playwright browser after a restart, owner signed in to hPanel); then certificate, headers, sign-in
+  page, a real Google sign-in and its alert email, and the client IP the backend sees. Owner: Data safety change and
+  SES IAM policy (until the policy is added, alert emails fail and are logged; nothing else is affected).
+
+Step 11 update (2026-11-21, 18:35 IST):
+- DNS added in Hostinger by Claude (Playwright, owner signed in): CNAME `admin` -> `32aoxk02.up.railway.app`, TXT
+  `_railway-verify.admin`. Both resolve; Railway issued the certificate.
+- https://admin.crichere.com is live: CSP, `X-Frame-Options: DENY`, HSTS, `X-Robots-Tag`, nosniff present;
+  `robots.txt` disallows all; unknown paths 404; every route loads with no CSP violation (`e2e/host.spec.ts`).
+- Blocker found: Google's button fails with "The given origin is not allowed for the given client ID". The OAuth
+  client does list `https://admin.crichere.com` and `http://localhost:3001`. Cause: `Referrer-Policy: no-referrer`
+  (header and Next.js metadata), so the browser sends Google no Referer (seen as `referer: null` on the
+  `/gsi/button` request) and Google can't check the origin. Fix on branch `phase20-deploy`: `strict-origin` in
+  `admin-web/app/layout.tsx` and `deploy/Caddyfile.template` (origin only, never a path), plus `app/icon.svg`
+  (favicon 404). Not yet proven: a local check on port 3001 timed out loading the page. Next session: confirm the
+  `/gsi/button` request now carries a Referer and returns 200, open a PR, owner merges, then the real Google sign-in,
+  the alert email (after the SES policy) and the client IP check.
+
+Step 11 update (2026-11-21, late):
+- Fix proven before merge. The static build (live client ID) was loaded in Chromium under the real origin
+  `https://admin.crichere.com` (Playwright route serving `out/`, so no deploy needed): `/gsi/client`, `/gsi/style`
+  and `/gsi/button` all carry `referer: https://admin.crichere.com/` and return 200, no GSI console error, and the
+  "Sign in with Google" button renders. Same check on the live (old) build: `referer: null`, `/gsi/button` 400,
+  "The given origin is not allowed for the given client ID".
+- A check on `http://localhost:3001` still gets 403 even with the Referer present: Google wants `http://localhost`
+  (no port) listed as well for local testing. Not needed for production; add it to the OAuth client only if local
+  sign-in testing is wanted.
+- The Playwright MCP browser hangs on navigation in this environment; a standalone `@playwright/test` script works.
+- Next: PR `phase20-deploy` to master, owner merges (Railway redeploys admin-web), then the real Google sign-in, the
+  alert email (after the SES policy) and the client IP check.
