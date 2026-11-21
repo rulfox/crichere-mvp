@@ -535,3 +535,16 @@ Step 11 update (2026-11-21, 18:35 IST):
   (favicon 404). Not yet proven: a local check on port 3001 timed out loading the page. Next session: confirm the
   `/gsi/button` request now carries a Referer and returns 200, open a PR, owner merges, then the real Google sign-in,
   the alert email (after the SES policy) and the client IP check.
+
+Step 11 update (2026-11-21, late):
+- Fix proven before merge. The static build (live client ID) was loaded in Chromium under the real origin
+  `https://admin.crichere.com` (Playwright route serving `out/`, so no deploy needed): `/gsi/client`, `/gsi/style`
+  and `/gsi/button` all carry `referer: https://admin.crichere.com/` and return 200, no GSI console error, and the
+  "Sign in with Google" button renders. Same check on the live (old) build: `referer: null`, `/gsi/button` 400,
+  "The given origin is not allowed for the given client ID".
+- A check on `http://localhost:3001` still gets 403 even with the Referer present: Google wants `http://localhost`
+  (no port) listed as well for local testing. Not needed for production; add it to the OAuth client only if local
+  sign-in testing is wanted.
+- The Playwright MCP browser hangs on navigation in this environment; a standalone `@playwright/test` script works.
+- Next: PR `phase20-deploy` to master, owner merges (Railway redeploys admin-web), then the real Google sign-in, the
+  alert email (after the SES policy) and the client IP check.
