@@ -244,4 +244,4 @@ class AuthService(
 }
 
 /** The Terms and Privacy Policy version a sign-in accepts. Change it when the legal text changes materially. */
-const val TERMS_VERSION = "2026-11-04"
+const val TERMS_VERSION = "2026-11-21"

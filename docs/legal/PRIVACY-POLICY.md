@@ -1,7 +1,9 @@
 # Crichere Privacy Policy
 
-**Effective date:** 9 November 2026
-**Last updated:** 9 November 2026
+**Effective date:** 21 November 2026
+**Last updated:** 21 November 2026
+
+**What changed on 21 November 2026:** we now record which days you use the app (section 1), the Crichere team uses a private admin website to review reports and run the service (section 3), and section 4 says how long we keep these records.
 
 Crichere ("Crichere", "we", "us") runs a mobile app and website (crichere.com) for organising cricket leagues, player auctions and franchise teams. This policy explains what personal data we collect, why, who we share it with, and the choices you have. It is written to meet India's Digital Personal Data Protection Act, 2023 (DPDP Act), the Information Technology Act, 2000 and Google Play's User Data policy.
 
@@ -36,6 +38,7 @@ By creating an account you agree to this policy. If you do not agree, do not use
 - **Technical data** such as IP address, device and app version, and request logs, kept for security, abuse prevention and debugging.
 - **Crash reports** (Firebase Crashlytics, Android app): when the app crashes it sends the error details, device model, operating system and app version, and a random ID for this app install. Crash reports do not include your name, mobile number or account ID. Used only to find and fix bugs.
 - **Search text** you type in the ground search is sent to Google Places to return suggestions (see section 3).
+- **Days you use the app.** When you use Crichere we record the date against your account: only the day, not the time or what you did. We use it to count how many people use Crichere each day and how many come back, and the team can see it when reviewing your account, for example after a report.
 
 **We do not collect** your contacts, SMS inbox, call log, microphone recordings, precise background location, government ID, or bank / card / UPI credentials. Crichere does not process payments: league fees are paid directly between you and the organiser outside the app, and you upload a screenshot as proof. Cover or crop anything in the screenshot you do not want the organiser to see.
 
@@ -47,8 +50,9 @@ By creating an account you agree to this policy. If you do not agree, do not use
 - Let organisers verify league-fee payments.
 - Show leagues near you.
 - Prevent fraud and abuse, enforce our Terms, comply with law, and fix bugs.
+- Understand how Crichere is used (for example sign-ups, active users and leagues created each day) so we can improve it. We look at this as totals.
 
-We do not sell your personal data and we do not use it for third-party advertising. We do not run advertising or analytics SDKs in the app.
+We do not sell your personal data and we do not use it for third-party advertising. We do not run advertising or third-party analytics SDKs in the app; usage totals are counted on our own servers.
 
 ## 3. Who sees your data
 
@@ -56,7 +60,9 @@ We do not sell your personal data and we do not use it for third-party advertisi
 
 **Other users.** Your name, photo, state, district, playing details and league activity (including auction bids and results) are visible to organisers and participants of the leagues you join. Public league pages and shared links (crichere.com) can show a league's name, ground, district, state and live auction results to anyone with the link.
 
-**Payment screenshots** are visible only to you and the organiser of that league. They are stored privately and served through short-lived links.
+**Payment screenshots** are visible only to you, the organiser of that league and, when needed to check a report or a dispute, the Crichere team. They are stored privately and served through short-lived links.
+
+**The Crichere team.** A small number of authorised team members can see account, profile, league and moderation data through a private admin website, to review reports, act on them, keep users safe and run the service. They sign in with a Google account on an approved list. Every moderation action, every view of a payment screenshot and every lookup by mobile number is logged. Mobile numbers are never shown there: the team can only check whether a full number they type belongs to an account. Charts and statistics on the site are totals, not individual profiles.
 
 **Service providers (processors)** that handle data on our behalf:
 
@@ -67,6 +73,7 @@ We do not sell your personal data and we do not use it for third-party advertisi
 | Google Firebase (Crashlytics) | Crash reports | Error details, device model, OS and app version, install ID |
 | Google Maps and Places | Map display and ground search | Search text, map coordinates, device and app identifiers as per Google's policy |
 | Amazon Web Services (S3) | Stores photos, logos, banners and payment screenshots | Uploaded images |
+| Amazon Web Services (SES) | Sends alert emails to the Crichere team | None of your personal data: counts of new reports and a link only |
 | Railway | Hosts our servers and database | All account and league data |
 
 These providers may process data outside India. We share only what each needs.
@@ -82,6 +89,8 @@ These providers may process data outside India. We share only what each needs.
 - Server logs: up to 90 days.
 - Crash reports: 90 days in Firebase Crashlytics, then deleted by Google.
 - Reports and moderation records: 24 months after the report is closed, then deleted. Evidence in an open report is kept until it is closed, even if the account involved is deleted.
+- Days you used the app: 13 months, then deleted. Totals made from them (for example the number of active users on a day) contain no personal data and are kept.
+- Logs of the team's actions and lookups on the admin website: 24 months, then deleted.
 - If an account is suspended and later deleted, we keep a one-way hash of its mobile number so that number cannot sign up again.
 - After you delete your account (section 5) there is a 14-day grace period, then we erase your personal data, normally within a day. We may keep limited records longer where law requires. League history other people rely on (auction results, rosters of leagues that already ran) stays, with your name replaced by "Deleted user".
 
@@ -91,7 +100,7 @@ Under the DPDP Act you may:
 
 - **Access** the personal data we hold about you (most of it is visible in My Profile).
 - **Correct or update** it (Edit profile in the app).
-- **Delete** your account and data: in the app, open My Profile, tap Delete account and type DELETE to confirm. You are signed out on every device straight away. If you sign in again within 14 days the deletion is cancelled; after 14 days we erase your phone number, profile details, photo, payment screenshots, notification tokens and follows. If you cannot use the app, email hello@crichere.com with your registered mobile number and the subject "Delete my account"; we act within 30 days. Details: https://crichere.com/delete-account
+- **Delete** your account and data: in the app, open My Profile, tap Delete account and type DELETE to confirm. You are signed out on every device straight away. If you sign in again within 14 days the deletion is cancelled; after 14 days we erase your phone number, profile details, photo, payment screenshots, notification tokens, follows and the record of days you used the app. If you cannot use the app, email hello@crichere.com with your registered mobile number and the subject "Delete my account"; we act within 30 days. Details: https://crichere.com/delete-account
   - If you organise a league that isn't completed, it passes to its earliest co-organiser when your account is erased; you need at least one co-organiser (or to mark the league completed) before you can delete. You cannot delete while an auction you take part in is running.
 - **Withdraw consent** (for example turn off location or notifications in device settings, or delete your account). Withdrawal does not affect earlier lawful processing.
 - **Nominate** another person to exercise your rights if you die or cannot act.
@@ -99,7 +108,7 @@ Under the DPDP Act you may:
 
 ## 6. Security
 
-Traffic uses HTTPS. Sign-in uses OTP and short-lived tokens. Payment screenshots are private. Access to servers and storage is restricted. No system is perfectly secure; if a breach affecting you occurs we will notify you and the authorities as the law requires.
+Traffic uses HTTPS. Sign-in uses OTP and short-lived tokens. Payment screenshots are private. Access to servers and storage is restricted. The team's admin website needs a Google sign-in on an approved list, its sessions end after 30 minutes, and actions there are logged. No system is perfectly secure; if a breach affecting you occurs we will notify you and the authorities as the law requires.
 
 ## 7. Children
 
