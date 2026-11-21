@@ -11,7 +11,9 @@ const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600
 export const metadata: Metadata = {
   title: { default: "Crichere Admin", template: "%s · Crichere Admin" },
   robots: { index: false, follow: false, nocache: true },
-  referrer: "no-referrer",
+  // Google Sign-In checks the page origin from the Referer header; strict-origin sends only the origin,
+  // never a path or the ids in it.
+  referrer: "strict-origin",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

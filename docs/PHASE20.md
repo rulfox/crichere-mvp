@@ -521,3 +521,17 @@ Step 11 status (2026-11-21, 12:45 IST):
   (Claude via the Playwright browser after a restart, owner signed in to hPanel); then certificate, headers, sign-in
   page, a real Google sign-in and its alert email, and the client IP the backend sees. Owner: Data safety change and
   SES IAM policy (until the policy is added, alert emails fail and are logged; nothing else is affected).
+
+Step 11 update (2026-11-21, 18:35 IST):
+- DNS added in Hostinger by Claude (Playwright, owner signed in): CNAME `admin` -> `32aoxk02.up.railway.app`, TXT
+  `_railway-verify.admin`. Both resolve; Railway issued the certificate.
+- https://admin.crichere.com is live: CSP, `X-Frame-Options: DENY`, HSTS, `X-Robots-Tag`, nosniff present;
+  `robots.txt` disallows all; unknown paths 404; every route loads with no CSP violation (`e2e/host.spec.ts`).
+- Blocker found: Google's button fails with "The given origin is not allowed for the given client ID". The OAuth
+  client does list `https://admin.crichere.com` and `http://localhost:3001`. Cause: `Referrer-Policy: no-referrer`
+  (header and Next.js metadata), so the browser sends Google no Referer (seen as `referer: null` on the
+  `/gsi/button` request) and Google can't check the origin. Fix on branch `phase20-deploy`: `strict-origin` in
+  `admin-web/app/layout.tsx` and `deploy/Caddyfile.template` (origin only, never a path), plus `app/icon.svg`
+  (favicon 404). Not yet proven: a local check on port 3001 timed out loading the page. Next session: confirm the
+  `/gsi/button` request now carries a Referer and returns 200, open a PR, owner merges, then the real Google sign-in,
+  the alert email (after the SES policy) and the client IP check.
