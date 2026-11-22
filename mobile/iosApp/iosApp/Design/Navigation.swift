@@ -38,18 +38,36 @@ extension View {
     }
 }
 
+/// Counts the screens currently asking for white icons; the window is dark-styled while any do. A
+/// counter, not last-writer-wins, so a parent's "light" can't undo a child's request on appear order.
+@MainActor
+private enum StatusBarCoordinator {
+    static var lightRequests = 0
+
+    static func update(_ delta: Int) {
+        lightRequests = max(0, lightRequests + delta)
+        let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+        for window in windows { window.overrideUserInterfaceStyle = lightRequests > 0 ? .dark : .light }
+    }
+}
+
 private struct StatusBarStyleModifier: ViewModifier {
     let light: Bool
+    @State private var holding = false
 
     func body(content: Content) -> some View {
         content
-            .onAppear { apply(light) }
-            .onChange(of: light) { _, value in apply(value) }
-            .onDisappear { apply(false) }
+            .onAppear { set(light) }
+            .onChange(of: light) { _, value in set(value) }
+            .onDisappear { set(false) }
     }
 
-    private func apply(_ light: Bool) {
-        let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
-        for window in windows { window.overrideUserInterfaceStyle = light ? .dark : .light }
+    private func set(_ wanted: Bool) {
+        if wanted != holding {
+            holding = wanted
+            StatusBarCoordinator.update(wanted ? 1 : -1)
+        } else {
+            StatusBarCoordinator.update(0)
+        }
     }
 }

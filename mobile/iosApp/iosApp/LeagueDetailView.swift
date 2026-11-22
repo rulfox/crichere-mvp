@@ -215,7 +215,7 @@ struct LeagueDetailView: View {
             if league.showHandoverNotice {
                 Section {
                     DismissibleNotice(
-                        systemImage: "person.badge.shield.checkmark",
+                        icon: "ic_admin_panel_settings",
                         text: "The previous organizer deleted their account. You're now the organizer of \(league.name).",
                         container: NoticeColors.greenContainer,
                         ink: NoticeColors.onGreenContainer,

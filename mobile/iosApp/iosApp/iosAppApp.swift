@@ -33,6 +33,8 @@ struct IosAppApp: App {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-gallery") {
                 DesignGallery()
+            } else if let board = ParityGallery.requestedBoard {
+                ParityGallery.view(for: board).lightStatusBarIcons(false)
             } else {
                 root
             }

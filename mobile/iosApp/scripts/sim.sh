@@ -4,6 +4,7 @@
 #   scripts/sim.sh build                 xcodebuild Debug for the simulator; prints errors only
 #   scripts/sim.sh run [launch args…]    install + relaunch, e.g. `run -gallery` or `run -parity A1`
 #   scripts/sim.sh shot <file.png>       screenshot the booted simulator
+#   scripts/sim.sh parity <board>…       capture each DEBUG parity board to docs/ios-parity/ios/<board>.png
 #
 # DEVICE overrides the simulator (default "iPhone 17 Pro"). Run from anywhere.
 set -eu
@@ -18,7 +19,7 @@ build)
     /opt/homebrew/bin/xcodegen generate --quiet
     xcodebuild -project iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator \
         -destination "platform=iOS Simulator,name=$DEVICE" -derivedDataPath build \
-        CODE_SIGNING_ALLOWED=NO -skipMacroValidation build >"$LOG" 2>&1 && status=0 || status=$?
+        CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO -skipMacroValidation build >"$LOG" 2>&1 && status=0 || status=$?
     grep -E "error:" "$LOG" | sort -u | head -40 || true
     grep -E "BUILD SUCCEEDED|BUILD FAILED" "$LOG" || echo "(no result line; see $LOG)"
     exit "$status"
@@ -35,8 +36,21 @@ shot)
     xcrun simctl io "$DEVICE" screenshot "${2:?file.png}" >/dev/null 2>&1
     echo "${2}"
     ;;
+parity)
+    shift
+    out=../../docs/ios-parity/ios
+    mkdir -p "$out"
+    for board in "$@"; do
+        "$0" run -parity "$board" >/dev/null
+        sleep 3
+        xcrun simctl io "$DEVICE" screenshot "$out/$board.png" >/dev/null 2>&1
+        # Half resolution: enough to compare, small enough to keep in git.
+        sips -Z 1311 "$out/$board.png" >/dev/null
+        echo "$out/$board.png"
+    done
+    ;;
 *)
-    sed -n '2,8p' "$0"
+    sed -n '2,9p' "$0"
     exit 2
     ;;
 esac

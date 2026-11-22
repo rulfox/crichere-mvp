@@ -331,23 +331,7 @@ struct DeletedUserAvatar: View {
 }
 
 /// D7 / D9: a tinted notice with a close button.
-struct DismissibleNotice: View {
-    let systemImage: String
-    let text: String
-    let container: Color
-    let ink: Color
-    let onDismiss: () -> Void
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage).foregroundColor(ink)
-            Text(text).font(.system(size: 13.5, weight: .medium)).foregroundColor(ink).frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: onDismiss) { Image(systemName: "xmark").foregroundColor(ink) }.accessibilityLabel("Dismiss")
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16).fill(container))
-    }
-}
+// DismissibleNotice lives in Design/Components/Basics.swift (Android AccountDeletionUi.kt).
 
 /// D7 amber and D9 green, shared with the other views.
 enum NoticeColors {

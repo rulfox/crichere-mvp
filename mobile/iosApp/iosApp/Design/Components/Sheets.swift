@@ -95,6 +95,8 @@ struct CrichereCheckbox: View {
     var checkedColor: Color = CrichereColor.primary
     var uncheckedColor: Color = CrichereColor.inkSubtle
     var label: String = ""
+    /// 48 = Material's minimum touch target; 24 = a checkbox drawn inside a row that does the toggling.
+    var size: CGFloat = 48
     let onChange: (Bool) -> Void
 
     var body: some View {
@@ -114,7 +116,7 @@ struct CrichereCheckbox: View {
                 }
             }
             .frame(width: 18, height: 18)
-            .frame(width: 48, height: 48)
+            .frame(width: size, height: size)
         }
         .buttonStyle(.pressCircle)
         .accessibilityLabel(label)

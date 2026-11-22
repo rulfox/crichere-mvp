@@ -46,11 +46,19 @@ enum MainTab: Hashable {
 ///  - `.main` (My Profile tab) -> `.profileSetup(isEditMode: true)` / `.phoneEntry` (logout): real.
 private enum AuthDestination {
     case starting
-    case phoneEntry
+    /// [lockedOut]: bounced back after 5 wrong OTP attempts (design B6).
+    case phoneEntry(lockedOut: Bool)
     case otpVerify(phoneNumber: String, verificationId: String, resendToken: Any?)
     case profileSetup(isEditMode: Bool)
     case main(initialTab: MainTab)
     case suspended
+}
+
+/// Holds the Sign in wrapper so it can be kept (back) or replaced (fresh entry).
+@MainActor
+final class PhoneEntryHolder: ObservableObject {
+    @Published private(set) var wrapper = PhoneEntryViewModelWrapper()
+    func reset() { wrapper = PhoneEntryViewModelWrapper() }
 }
 
 /// Root of the app (see `iosAppApp.swift`). `pendingDeepLinkLeagueId` (a `crichere://leagues/{id}`
@@ -65,6 +73,9 @@ struct AppRootView: View {
     @Binding var pendingDeepLinkLeagueId: String?
 
     @State private var destination: AuthDestination = .starting
+    /// Sign in's state outlives the screen, like an Android back-stack entry: a voluntary back from OTP
+    /// Verify finds the typed number; lockout / logout / suspension start a fresh one (`replaceAll`).
+    @StateObject private var phoneEntry = PhoneEntryHolder()
     @StateObject private var accountNotices = AccountNoticesWrapper()
 
     var body: some View {
@@ -73,7 +84,8 @@ struct AppRootView: View {
             case .suspended:
                 SuspendedView(maskedPhone: accountNotices.suspendedPhone) {
                     accountNotices.dismissSuspended()
-                    destination = .phoneEntry
+                    phoneEntry.reset()
+                    destination = .phoneEntry(lockedOut: false)
                 }
 
             case .starting:
@@ -81,23 +93,26 @@ struct AppRootView: View {
                     // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
                     guard !accountNotices.isSuspended else { return }
                     switch onEnum(of: resolved) {
-                    case .phoneEntry: destination = .phoneEntry
+                    case .phoneEntry: destination = .phoneEntry(lockedOut: false)
                     case .profileSetup: destination = .profileSetup(isEditMode: false)
                     case .main: destination = .main(initialTab: .dashboard)
                     }
                 }
 
-            case .phoneEntry:
-                PhoneEntryView { phoneNumber, verificationId, resendToken in
+            case let .phoneEntry(lockedOut):
+                PhoneEntryView(wrapper: phoneEntry.wrapper, showLockoutNotice: lockedOut) { phoneNumber, verificationId, resendToken in
                     destination = .otpVerify(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken)
                 }
 
             case let .otpVerify(phoneNumber, verificationId, resendToken):
-                OtpVerifyView(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken) { event in
+                OtpVerifyView(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken) { event, lockedOut in
                     switch onEnum(of: event) {
                     case .navigateToProfileSetup: destination = .profileSetup(isEditMode: false)
                     case .navigateToOwnProfile: destination = .main(initialTab: .dashboard)
-                    case .navigateToPhoneEntry: destination = .phoneEntry
+                    case .navigateToPhoneEntry:
+                        // The on-screen "Edit" is a back (number kept); the lockout gets a fresh Sign in with its notice.
+                        if lockedOut { phoneEntry.reset() }
+                        destination = .phoneEntry(lockedOut: lockedOut)
                     }
                 }
 
@@ -117,7 +132,10 @@ struct AppRootView: View {
                     initialTab: initialTab,
                     pendingLeagueId: $pendingDeepLinkLeagueId,
                     onNavigateToEditProfile: { destination = .profileSetup(isEditMode: true) },
-                    onNavigateToPhoneEntry: { destination = .phoneEntry }
+                    onNavigateToPhoneEntry: {
+                        phoneEntry.reset()
+                        destination = .phoneEntry(lockedOut: false)
+                    }
                 )
             }
         }

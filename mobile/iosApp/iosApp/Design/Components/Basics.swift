@@ -307,3 +307,26 @@ struct BackArrowButton: View {
         .accessibilityLabel(label)
     }
 }
+
+/// A notice the user can close (design D7, androidApp `AccountDeletionUi.kt`): 22 pt icon, Medium
+/// 13.5/18.9 text, 20 pt close, 14 pt padding, 16 pt corners.
+struct DismissibleNotice: View {
+    let icon: String
+    let text: String
+    let container: Color
+    let ink: Color
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            CrIcon(icon, size: 22, tint: ink)
+            Text(text).crichere(.sans(13.5, .medium, lineHeight: 18.9), ink).frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: onDismiss) { CrIcon("ic_close", size: 20, tint: ink) }
+                .buttonStyle(.pressCircle)
+                .accessibilityLabel("Dismiss")
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(container, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}

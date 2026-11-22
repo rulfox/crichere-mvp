@@ -41,11 +41,12 @@ final class OtpVerifyViewModelWrapper: ObservableObject {
 /// (Profile Setup / Own Profile / forced-back-to-Phone-Entry) is handled by the caller
 /// (`AppRootView`) via `wrapper.navigationEvent`.
 struct OtpVerifyView: View {
-    let onNavigate: (AuthNavigationEvent) -> Void
+    /// The second argument is true for the 5-wrong-attempts lockout (Android's `OtpVerifyRoute`).
+    let onNavigate: (AuthNavigationEvent, Bool) -> Void
 
     @StateObject private var wrapper: OtpVerifyViewModelWrapper
 
-    init(phoneNumber: String, verificationId: String, resendToken: Any?, onNavigate: @escaping (AuthNavigationEvent) -> Void) {
+    init(phoneNumber: String, verificationId: String, resendToken: Any?, onNavigate: @escaping (AuthNavigationEvent, Bool) -> Void) {
         self.onNavigate = onNavigate
         _wrapper = StateObject(wrappedValue: OtpVerifyViewModelWrapper(
             phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken
@@ -96,7 +97,7 @@ struct OtpVerifyView: View {
         .onReceive(wrapper.$navigationEvent) { event in
             // Existential `AuthNavigationEvent` isn't `Equatable`, so observe the `@Published`
             // publisher rather than `onChange(of:)`; the switch over it happens in `onNavigate`.
-            if let event { onNavigate(event) }
+            if let event { onNavigate(event, wrapper.state.attemptsRemaining == 0) }
         }
     }
 }
