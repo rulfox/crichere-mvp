@@ -3,8 +3,7 @@ import Shared
 import PhotosUI
 
 /// Mirrors `JoinLeagueViewModel`'s shared `StateFlow<JoinLeagueState>` -- same pattern
-/// `OwnProfileViewModelWrapper` documents. **Authored but unverified, not wired into any
-/// navigation** -- see docs/PHASE2.md Section 5 / docs/PHASE3.md.
+/// `OwnProfileViewModelWrapper` documents.
 @MainActor
 final class JoinLeagueViewModelWrapper: ObservableObject {
     @Published var state: JoinLeagueState

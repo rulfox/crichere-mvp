@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// Mirrors `LeagueDashboardViewModel`'s shared `StateFlow<LeagueDashboardState>` -- same pattern
-/// `OwnProfileViewModelWrapper` documents. **Authored but unverified** -- see docs/PHASE9.md.
+/// `OwnProfileViewModelWrapper` documents.
 @MainActor
 final class LeagueDashboardViewModelWrapper: ObservableObject {
     @Published var state: LeagueDashboardState

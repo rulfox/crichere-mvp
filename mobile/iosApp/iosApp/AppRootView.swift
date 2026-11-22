@@ -3,7 +3,7 @@ import Shared
 
 /// Mirrors `AppStartViewModel`'s shared `StateFlow<AppStartDestination?>` -- `nil` while the
 /// silent app-start session check is in flight. Same pattern `OwnProfileViewModelWrapper`
-/// documents. **Authored but unverified** -- see docs/PHASE9.md.
+/// documents.
 @MainActor
 final class AppStartViewModelWrapper: ObservableObject {
     @Published var destination: AppStartDestination?

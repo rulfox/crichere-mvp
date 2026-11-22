@@ -6,9 +6,6 @@ import Shared
 /// SwiftUI can bind to -- same pattern `ToolchainProofViewModelWrapper` documents. Also forwards
 /// `navigationEvents` (SKIE's `Flow` -> `AsyncSequence` bridging) into a plain `@Published`
 /// one-shot flag `iosAppApp`'s navigation host can observe.
-///
-/// **Authored but unverified**: this environment has no Mac/Xcode to compile/link/run Swift code
-/// (same standing note as every other `iosApp` file in this repo) -- see task-7-report.md.
 @MainActor
 final class ProfileSetupViewModelWrapper: ObservableObject {
     @Published var state: ProfileSetupState

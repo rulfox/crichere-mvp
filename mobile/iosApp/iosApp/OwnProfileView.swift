@@ -4,8 +4,6 @@ import Shared
 
 /// Mirrors `OwnProfileViewModel`'s shared `StateFlow<OwnProfileState>` and `navigationEvents`
 /// into SwiftUI-observable state -- same pattern `ProfileSetupViewModelWrapper` documents.
-///
-/// **Authored but unverified** -- see task-7-report.md.
 @MainActor
 final class OwnProfileViewModelWrapper: ObservableObject {
     @Published var state: OwnProfileState

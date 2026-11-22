@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// Mirrors `OtpVerifyViewModel`'s shared `StateFlow<OtpVerifyState>` -- same pattern
-/// `OwnProfileViewModelWrapper` documents. **Authored but unverified** -- see docs/PHASE9.md.
+/// `OwnProfileViewModelWrapper` documents.
 @MainActor
 final class OtpVerifyViewModelWrapper: ObservableObject {
     @Published var state: OtpVerifyState
