@@ -384,7 +384,7 @@ private fun ErrorBanner(notice: RoleNotice) {
 
 /** K3 / K5: the board's 314dp dialog. */
 @Composable
-private fun ConfirmDialog(title: String, body: String, confirmLabel: String, confirmColor: Color, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+internal fun ConfirmDialog(title: String, body: String, confirmLabel: String, confirmColor: Color, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),

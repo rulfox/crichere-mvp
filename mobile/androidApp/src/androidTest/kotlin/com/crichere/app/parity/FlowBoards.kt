@@ -31,15 +31,15 @@ import com.crichere.app.ui.ManageRolesScreen
 
 // F Join as player
 
-private fun joinState(league: LeagueDto? = ParityFixtures.league(), uploading: Float? = null, attached: Boolean = false, failed: Boolean = false,
+internal fun joinState(league: LeagueDto? = ParityFixtures.league(), uploading: Float? = null, attached: Boolean = false, failed: Boolean = false,
                       errorTitle: String? = null, error: String? = null, loadFailed: Boolean = false) = JoinLeagueState(
-    isLoading = false, league = league, loadFailed = loadFailed, screenshotUrl = if (attached) "https://fixtures.invalid/proof.jpg" else null,
+    isLoading = false, league = league, loadFailed = loadFailed, screenshotUrl = if (attached) SamplePhoto.url else null,
     isUploadingScreenshot = uploading != null, uploadProgress = uploading ?: 0f, uploadFileName = "payment-proof.jpg", uploadSizeBytes = 421_000,
     uploadFailed = failed, isSubmitting = false, errorTitle = errorTitle, errorMessage = error, joined = false,
     viewerName = "Aarav Pawar", viewerRole = PlayingRole.ALL_ROUNDER, viewerBatting = BattingStyle.RIGHT_HAND,
 )
 
-private fun join(state: JoinLeagueState): @Composable () -> Unit = {
+internal fun join(state: JoinLeagueState): @Composable () -> Unit = {
     JoinLeagueScreen(state = state, viewModel = JoinLeagueViewModel("league-kpl", FakeLeagueRepository(), FakePlayerRepository()), onCancel = {})
 }
 
@@ -56,7 +56,7 @@ fun joinBoards(): Map<String, @Composable () -> Unit> = mapOf(
 
 // J Auction settings
 
-private fun auctionState(squadMin: String = "8", squadMax: String = "12", scheduledAt: String? = "2026-10-11T13:30:00Z", scheduleError: String? = null,
+internal fun auctionState(squadMin: String = "8", squadMax: String = "12", scheduledAt: String? = "2026-10-11T13:30:00Z", scheduleError: String? = null,
                          passed: Boolean = false, touched: Set<AuctionField> = emptySet(), saving: Boolean = false, saveError: AuctionSaveError? = null,
                          saved: Boolean = false, loadFailed: Boolean = false) = AuctionSettingsState(
     isLoading = false, loadFailed = loadFailed, league = if (loadFailed) null else ParityFixtures.league(), basePrice = "1000", purse = "100000",
@@ -64,7 +64,7 @@ private fun auctionState(squadMin: String = "8", squadMax: String = "12", schedu
     scheduledAtPassed = passed, touched = touched, isSaving = saving, saveError = saveError, showSavedNotice = saved,
 )
 
-private fun auction(state: AuctionSettingsState): @Composable () -> Unit = {
+internal fun auction(state: AuctionSettingsState): @Composable () -> Unit = {
     AuctionSettingsScreen(state = state, viewModel = AuctionSettingsViewModel("league-kpl", FakeLeagueRepository()), onBack = {})
 }
 
@@ -87,7 +87,7 @@ private val coOrganizers = listOf(
     LeagueRoleDto(id = "r2", userId = "u-2", name = "Pranav More", grantedAt = "2026-09-21T10:00:00Z"),
 )
 
-private fun rolesState(phone: String = "", lookingUp: Boolean = false, found: Boolean = false, granting: Boolean = false, lookupError: String? = null,
+internal fun rolesState(phone: String = "", lookingUp: Boolean = false, found: Boolean = false, granting: Boolean = false, lookupError: String? = null,
                        grantError: RoleNotice? = null, revoking: Set<String> = emptySet(), roles: List<LeagueRoleDto> = coOrganizers,
                        loadFailed: Boolean = false) = ManageRolesState(
     isLoading = false, loadFailed = loadFailed, league = if (loadFailed) null else ParityFixtures.league(coOrganizers = roles),
@@ -95,7 +95,7 @@ private fun rolesState(phone: String = "", lookingUp: Boolean = false, found: Bo
     lookupError = lookupError, isGranting = granting, grantError = grantError, revokingRoleIds = revoking, currentUserId = "u-me",
 )
 
-private fun roles(state: ManageRolesState): @Composable () -> Unit = {
+internal fun roles(state: ManageRolesState): @Composable () -> Unit = {
     ManageRolesScreen(state = state, viewModel = ManageRolesViewModel("league-kpl", FakeLeagueRepository(), FakeRoleRepository()), onBack = {})
 }
 

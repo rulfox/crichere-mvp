@@ -95,7 +95,7 @@ private fun verify(code: String = ""): @Composable () -> Unit = {
 
 private fun profileSetup(edit: Boolean): @Composable () -> Unit = {
     val viewModel = remember {
-        val profile = if (edit) ProfileDto(userId = "u1", name = "Aarav Pawar", country = "IN", state = "Maharashtra", district = "Kolhapur",
+        val profile = if (edit) ProfileDto(userId = "u1", name = "Aarav Pawar", photoUrl = SamplePhoto.url, country = "IN", state = "Maharashtra", district = "Kolhapur",
             playingRole = PlayingRole.ALL_ROUNDER, battingStyle = BattingStyle.RIGHT_HAND, bowlingStyle = BowlingStyle.LEFT_ARM_ORTHODOX,
             profileComplete = true) else ProfileDto(userId = "u1")
         ProfileSetupViewModel(edit, FakeProfileRepository(profile), FakeReferenceRepository(states, mapOf("MH" to districts)), FakeLocationProvider()).also { it.retry() }
@@ -142,7 +142,7 @@ private fun myLeagues(state: MyLeaguesState): @Composable () -> Unit = {
 
 private fun ownProfile(photo: Boolean): @Composable () -> Unit = {
     val viewModel = remember {
-        OwnProfileViewModel(FakeProfileRepository(ProfileDto(userId = "u1", name = "Aarav Pawar", photoUrl = if (photo) "https://fixtures.invalid/photo.jpg" else null,
+        OwnProfileViewModel(FakeProfileRepository(ProfileDto(userId = "u1", name = "Aarav Pawar", photoUrl = if (photo) SamplePhoto.url else null,
             country = "IN", state = "Maharashtra", district = "Kolhapur", playingRole = PlayingRole.ALL_ROUNDER, battingStyle = BattingStyle.RIGHT_HAND,
             bowlingStyle = BowlingStyle.LEFT_ARM_ORTHODOX, profileComplete = true)), FakeAuthRepository("u1")).also { it.retry() }
     }
@@ -153,7 +153,7 @@ private fun ownProfile(photo: Boolean): @Composable () -> Unit = {
 
 private val noActions = LeagueDetailActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
 
-private fun detail(league: LeagueDto?, me: String? = "u-visitor", organizer: Boolean = false, loading: Boolean = false,
+internal fun detail(league: LeagueDto?, me: String? = "u-visitor", organizer: Boolean = false, loading: Boolean = false,
                    removing: Set<String> = emptySet(), blocked: Set<String> = emptySet()): @Composable () -> Unit = {
     LeagueDetailScreen(
         state = LeagueDetailState(isLoading = loading, league = league, currentUserId = me, isOrganizer = organizer, removingIds = removing),
@@ -169,7 +169,7 @@ private val grounds = listOf(
     GroundDto("g3", "Shastri Nagar Maidan", "Maharashtra", "Kolhapur", 16.71, 74.22),
 )
 
-private fun creationState(edit: Boolean = false, dirty: Boolean = false, validation: Boolean = false, name: String = "", located: Boolean = false,
+internal fun creationState(edit: Boolean = false, dirty: Boolean = false, validation: Boolean = false, name: String = "", located: Boolean = false,
                           ground: Boolean = false, groundQuery: String = "", registering: Boolean = false, newGroundName: String = "",
                           pin: Boolean = false, groundError: Boolean = false, startsOn: String? = null, format: String = "", other: Boolean = false,
                           fees: Boolean = false, upi: String = "", awards: List<AwardDraft> = emptyList(), bannerProgress: Float? = null,
@@ -191,7 +191,7 @@ private fun creationState(edit: Boolean = false, dirty: Boolean = false, validat
     isSaving = saving, errorMessage = error,
 )
 
-private fun creation(state: LeagueCreationState): @Composable () -> Unit = {
+internal fun creation(state: LeagueCreationState): @Composable () -> Unit = {
     val viewModel = remember { LeagueCreationViewModel(null, FakeLeagueRepository(), FakeGroundRepository(), FakeReferenceRepository(), FakeLocationProvider()) }
     LeagueCreationScreen(state = state, viewModel = viewModel, onCancel = {})
 }

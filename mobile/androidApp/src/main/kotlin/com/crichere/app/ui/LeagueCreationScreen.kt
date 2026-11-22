@@ -863,7 +863,7 @@ private fun AwardsSection(awards: List<AwardDraft>, viewModel: LeagueCreationVie
 /** I6: Material date picker in the board's colours. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StartDatePicker(startsOn: String?, onDismiss: () -> Unit, onPicked: (String) -> Unit) {
+internal fun StartDatePicker(startsOn: String?, onDismiss: () -> Unit, onPicked: (String) -> Unit) {
     val initial = startsOn?.let { runCatching { LocalDate.parse(it).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull() }
     val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial)
     val colors = MaterialTheme.colorScheme

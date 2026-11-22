@@ -274,7 +274,7 @@ private fun ScheduledAtField(state: AuctionSettingsState, onChange: (String?) ->
 /** J10: M3 date dialog titled "Auction date"; days before today can't be picked; Next opens the time. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPicked: (LocalDate) -> Unit) {
+internal fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPicked: (LocalDate) -> Unit) {
     val today = LocalDate.now()
     val pickerState = rememberDatePickerState(
         initialSelectedDateMillis = initial?.takeIf { !it.isBefore(today) }?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli(),
@@ -333,7 +333,7 @@ private fun ScheduleDatePicker(initial: LocalDate?, onDismiss: () -> Unit, onPic
 /** J11: M3 time picker in a dialog, 12- or 24-hour as the phone is set; Back returns to the date (kept). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ScheduleTimePicker(date: LocalDate, initial: LocalTime, onBack: () -> Unit, onDismiss: () -> Unit, onPicked: (LocalTime) -> Unit) {
+internal fun ScheduleTimePicker(date: LocalDate, initial: LocalTime, onBack: () -> Unit, onDismiss: () -> Unit, onPicked: (LocalTime) -> Unit) {
     val context = LocalContext.current
     val pickerState = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = DateFormat.is24HourFormat(context))
     val colors = MaterialTheme.colorScheme

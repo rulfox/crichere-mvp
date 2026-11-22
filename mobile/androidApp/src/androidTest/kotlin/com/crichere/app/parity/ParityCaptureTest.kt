@@ -38,6 +38,11 @@ class ParityCaptureTest(private val board: String) {
         }
         composeRule.setContent { CrichereTheme { content() } }
         composeRule.waitForIdle()
+        if (hasBoardAction(board)) {
+            Thread.sleep(1_000)  // let the screen's own first effects (scroll to the first error) run first
+            composeRule.runBoardAction(board)
+        }
+        composeRule.waitForIdle()
         Thread.sleep(1_500)
         composeRule.waitForIdle()
         val shot: Bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
@@ -58,6 +63,6 @@ class ParityCaptureTest(private val board: String) {
 /** Board id → screen state. Same ids as `iosApp/Design/Debug/ParityGallery.swift`. */
 object ParityBoards {
     val all: Map<String, @Composable () -> Unit> by lazy {
-        joinBoards() + claimBoards() + auctionSettingsBoards() + rolesBoards() + deletionBoards() + auctionBoards() + shellBoards() + forcedBoards()
+        joinBoards() + claimBoards() + auctionSettingsBoards() + rolesBoards() + deletionBoards() + auctionBoards() + shellBoards() + forcedBoards() + dialogBoards() + actionBoardContents()
     }
 }

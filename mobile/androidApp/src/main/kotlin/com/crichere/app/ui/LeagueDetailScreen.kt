@@ -1168,7 +1168,7 @@ internal fun LoadError(onRetry: () -> Unit, title: String = "Couldn't load this 
 
 /** Design E2: confirm before asking the organizer to let you leave. */
 @Composable
-private fun LeaveDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+internal fun LeaveDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFFF1F4EE),

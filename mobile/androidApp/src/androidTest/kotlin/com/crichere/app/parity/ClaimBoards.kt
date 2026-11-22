@@ -8,7 +8,7 @@ import com.crichere.app.league.FakeLeagueRepository
 import com.crichere.app.league.LeagueDto
 import com.crichere.app.ui.ClaimFranchiseScreen
 
-private fun claimState(
+internal fun claimState(
     league: LeagueDto? = ParityFixtures.league(),
     name: String = "",
     nameError: Boolean = false,
@@ -23,13 +23,13 @@ private fun claimState(
     loadFailed: Boolean = false,
 ) = ClaimFranchiseState(
     isLoading = false, league = league, loadFailed = loadFailed, name = name, nameError = nameError,
-    logoUrl = if (logo) "https://fixtures.invalid/logo.jpg" else null, isUploadingLogo = uploadingLogo,
-    screenshotUrl = if (attached) "https://fixtures.invalid/proof.jpg" else null, isUploadingScreenshot = uploading != null,
+    logoUrl = if (logo) SamplePhoto.url else null, isUploadingLogo = uploadingLogo,
+    screenshotUrl = if (attached) SamplePhoto.url else null, isUploadingScreenshot = uploading != null,
     uploadProgress = uploading ?: 0f, uploadFileName = "payment-proof.jpg", uploadSizeBytes = 397_000,
     uploadFailed = failed, isSubmitting = submitting, errorTitle = errorTitle, errorMessage = error,
 )
 
-private fun claim(state: ClaimFranchiseState): @Composable () -> Unit = {
+internal fun claim(state: ClaimFranchiseState): @Composable () -> Unit = {
     val viewModel = ClaimFranchiseViewModel("league-kpl", FakeLeagueRepository(), FakeFranchiseRepository())
     ClaimFranchiseScreen(state = state, viewModel = viewModel, onCancel = {})
 }

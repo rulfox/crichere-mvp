@@ -74,7 +74,7 @@ private fun <T> ViewModel.force(state: T) {
  * refuses to move while submitting can't open straight into that state).
  */
 @Composable
-private fun <V : ViewModel, T> forced(state: T, opening: T? = null, make: () -> V): V {
+internal fun <V : ViewModel, T> forced(state: T, opening: T? = null, make: () -> V): V {
     val viewModel = remember { make().also { it.force(opening ?: state) } }
     LaunchedEffect(Unit) {
         if (opening != null) delay(300)
@@ -105,7 +105,7 @@ private val districts = listOf(DistrictDto("d1", "Kolhapur"), DistrictDto("d2", 
 private fun profile(name: String = "", photo: Boolean = false, place: Boolean = false, role: PlayingRole? = null, batting: BattingStyle? = null,
                     bowling: BowlingStyle? = null, uploading: Float? = null, uploadError: String? = null, saving: Boolean = false,
                     error: String? = null, nameError: String? = null) = ProfileSetupState(
-    isLoading = false, name = name, photoUrl = if (photo) "https://fixtures.invalid/photo.jpg" else null,
+    isLoading = false, name = name, photoUrl = if (photo) SamplePhoto.url else null,
     state = if (place) "Maharashtra" else null, district = if (place) "Kolhapur" else null,
     playingRole = role, battingStyle = batting, bowlingStyle = bowling, states = states, districts = if (place) districts else emptyList(),
     isUploadingPhoto = uploading != null, photoUploadProgress = uploading ?: 0f,
@@ -126,7 +126,7 @@ private fun profileSetup(state: ProfileSetupState): @Composable () -> Unit = {
 
 private fun own(photo: Boolean = true, uploading: Float? = null, photoError: String? = null, failed: Boolean = false, loading: Boolean = false) =
     OwnProfileState(isLoading = loading, name = if (failed || loading) null else "Aarav Pawar",
-        photoUrl = if (photo) "https://fixtures.invalid/photo.jpg" else null, country = "IN", state = "Maharashtra", district = "Kolhapur",
+        photoUrl = if (photo) SamplePhoto.url else null, country = "IN", state = "Maharashtra", district = "Kolhapur",
         playingRole = PlayingRole.ALL_ROUNDER, battingStyle = BattingStyle.RIGHT_HAND, bowlingStyle = BowlingStyle.LEFT_ARM_ORTHODOX,
         loadFailed = failed, isUploadingPhoto = uploading != null, photoUploadProgress = uploading ?: 0f, photoError = photoError)
 
@@ -157,6 +157,7 @@ private val blockedRows = listOf(
 fun forcedBoards(): Map<String, @Composable () -> Unit> = mapOf(
     "A4" to signIn(PhoneEntryState(phoneNumber = "98765", errorMessage = "Enter a valid 10-digit mobile number.", termsAccepted = true)),
     "A5" to signIn(PhoneEntryState(phoneNumber = "9876543210", isSubmitting = true, termsAccepted = true)),
+    "B1" to verify(otp()),
     "B3" to verify(otp("482910", error = "Incorrect code. 4 attempts remaining.", attempts = 4)),
     "B4" to verify(otp("482913", verifying = true)),
     "B5" to verify(otp(cooldown = 0, canResend = true)),
