@@ -256,7 +256,7 @@ organizer controls, exceed-purse switch, Sold / End buttons), end-auction dialog
 
 ### Phase 8 — QA and docs (M)
 
-**Status (2026-11-22):** done. Side-by-side against 146 Android captures (see §5). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
+**Status (2026-11-22):** done. Side-by-side against 171 Android captures (see §5). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
 
 - Side-by-side pass over every state in the inventory below; fix drift.
 - Small-screen check (iPhone SE size) and largest iPhone; Dynamic Type at default only
@@ -294,22 +294,23 @@ completed, organizer menu, leave dialog, R9a/R9b · F1–F7, F9 · G1–G6 · H1
 J1–J14 · K1–K9 · L1–L10 + U4 A2–A6 + end dialog/failure · deletion D1–D10 · R1–R13.
 
 **iOS captures (2026-11-22):** 174 boards in `docs/ios-parity/ios/`, rendered by the DEBUG parity
-gallery from fixtures (no login needed). **Android captures: 146** in `docs/ios-parity/android/`, from
+gallery from fixtures (no login needed). **Android captures: 171** in `docs/ios-parity/android/`, from
 the instrumented harness (`androidApp/src/androidTest/.../parity/`, run with `androidApp/scripts/parity.sh`
 on an emulator set to 402 dp wide, the iPhone 17 Pro's width in points). Screens that take only a
-ViewModel are shown by setting the ViewModel's state directly (`ForcedBoards.kt`).
+ViewModel are shown by setting its state (`ForcedBoards.kt`); dialogs and sheets a screen keeps to itself
+are drawn over that screen (`DialogBoards.kt`); the rest are reached by tapping, scrolling or pinching the
+real screen (`ActionBoards.kt`). Photo, logo and proof fixtures load the same sample image on both sides.
 
-**Android can't render from state (iOS-only captures, compared against the Android source):**
-- Dialogs and sheets held in a screen's own `remember` state: I6 / I10 (date picker, discard), J10 / J11
-  (date and time dialogs), J9-cleared (undo after clearing the time), K3 / K9 (grant / remove-self
-  confirms), E2-leave / E10 (leave and organizer dialogs), N2 / N-logout (photo sheet, log-out confirm),
-  F3 / G2 (screenshot check sheet), R7d (block Undo bar, shown by League detail's snackbar host).
-- Local image previews (a picked photo never leaves the screen): I1-filled, I3, I4-selected, H2 (zoomed);
-  F2 / G3-noupi (the "no UPI app" note is also screen state). In other boards Android shows an empty
-  tile where iOS shows the gallery's sample photo (C2, C7, C8, F5-attached, G3, G5, N1).
-- Keyboard focus on entry: A2, B1. B5b ("code resent" snackbar, a one-off event). S1 / S2 (the
-  app-start route is private to `AuthNavHost.kt` and resolves on its own).
-- Scroll positions of a captured screen: I7-fees, I8, I9 (same state as I7 / I1, scrolled to a section).
+**Android can't render (iOS-only captures, compared against the Android source):** I1-filled, I3 and
+I4-selected show a logo and banner the user has just picked; Android keeps those previews inside the
+screen and never reads them from state. Likewise the payment-proof thumbnails (F5-attached, G3, G5) are
+blank on Android because they only come from the picked bitmap.
+
+**Allowed differences in the captures:** the native pickers inside the date / time dialogs (I6, J10,
+J11: iOS calendar and wheel vs Material's), the keyboard (A2, B1, AD6), Android's clipboard chip after
+Copy (F2, G3-noupi), the Google map with no Maps key on the emulator (I5, I11, I16), H2's zoom level
+(a pinch reaches 2.0x where the iOS board starts at 2.4x), and lines that sit within a point of the width
+wrapping one word differently (measured text widths agree to within 1%).
 
 **Not reachable here (need the owner):**
 - Anything needing a real `GoogleService-Info.plist` and a signed-in test account: live sign-in / OTP
