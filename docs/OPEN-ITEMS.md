@@ -13,10 +13,10 @@ were answered by update #5 (PHASE15 8).
 | Privacy and Terms text | Drafts in `docs/legal/` (copies in Downloads), now also on /privacy and /terms (2026-10-11, still `noindex`, not in the footer). Owner details filled 2026-11-09 (Aswin A S, Alappuzha, Kerala 688538; grievance officer the owner; courts at Alappuzha, Kerala; draft retention periods and Rs. 1,000 cap kept; effective 9 November 2026). Left: lawyer review, then flip `LEGAL_PAGES_LINKED`. Pages must exist before launch (store listings). Decided 2026-10-04: template with placeholder text at /privacy and /terms, `noindex`, not linked until the real text arrives. | PHASE15 8, DESIGN-REVIEW web |
 | Old bucket `crichere-media-dev` still serves a payment screenshot publicly | Prod bucket fixed 2026-10-05. Owner approved deleting it (2026-10-05); `crichere-claude` lacks delete rights, so delete it in the S3 console (empty, then delete). Also remove the temporary `crichere-media-move-temp` IAM policy. | SECURITY-AUDIT 1 |
 | S3 permissions for the media sweep | Done 2026-11-07: `s3:DeleteObject` added on `crichere-media-prod/users/*` and `leagues/*`; list and delete tested with non-existent keys. The sweep and purge themselves have not run yet: check the logs after 04:00 IST on 2026-11-08. Read-only check 2026-11-07: all 6 stored image URLs match an S3 key, so they stay. The first run should delete 7 orphans (a deleted league's logo, banner and 2 franchise logos; 3 profile photos of 2 deleted users and 1 user with no saved photo). Payment proofs are never candidates. **The backend IAM user is `crichere-claude`, the same key as the local CLI.** Split them: a dedicated backend user, then reduce `crichere-claude` and drop its migration permissions. | SECURITY-AUDIT 6 |
-| Account deletion: iOS check, Play Console | S3 grant done 2026-11-07 (row above). Backend, `/delete-account` and Android done (PHASE16); iOS written, never compiled. Play Console: Data safety deletion URL = https://crichere.com/delete-account. | PHASE16 5, 7 |
+| Account deletion: iOS check, Play Console | S3 grant done 2026-11-07 (row above). Backend, `/delete-account` and Android done (PHASE16); iOS rebuilt to match Android and builds (PHASE21), not yet run end to end. Play Console: Data safety deletion URL = https://crichere.com/delete-account. | PHASE16 5, 7 |
 | Image URLs saved before 2026-10-11 | The backend now only accepts our-bucket image URLs (SECURITY-AUDIT Finding 4), but existing rows aren't rechecked. Run once on production: `SELECT 'profile', user_id::text, photo_url FROM profiles WHERE photo_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'league', id::text, logo_url FROM leagues WHERE logo_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'banner', id::text, banner_url FROM leagues WHERE banner_url NOT LIKE 'https://crichere-media-prod.s3.%' UNION ALL SELECT 'franchise', id::text, logo_url FROM league_franchises WHERE logo_url NOT LIKE 'https://crichere-media-prod.s3.%'`, then null out anything found. | SECURITY-AUDIT 4 |
 | Official store badge artwork + store URLs | Badges use mock glyphs and show "Coming soon" until `NEXT_PUBLIC_PLAY_STORE_URL` / `NEXT_PUBLIC_APP_STORE_URL` are set. | DESIGN-REVIEW web |
-| Report and block (Google Play User Generated Content policy) | Live on production since 2026-11-06 (docs/PHASE18.md): backend, shared, Android and web tested; iOS written, never compiled. Backend and web deployed; mobile release not shipped. Block organizer link added 2026-11-06 for organizers with no roster row. | PHASE18 |
+| Report and block (Google Play User Generated Content policy) | Live on production since 2026-11-06 (docs/PHASE18.md): backend, shared, Android and web tested; iOS rebuilt to match Android and builds (PHASE21), not yet run against the backend. Backend and web deployed; mobile release not shipped. Block organizer link added 2026-11-06 for organizers with no roster row. | PHASE18 |
 | Terms acceptance and auction money note | Backend live since 2026-11-06, before the mobile release, so installed older apps can't create accounts until it ships. Existing accounts are unaffected. | PHASE18 |
 | MSG91 before launch | Check the production widget: keep one demo number for the Play reviewer (non-obvious OTP if possible, plain sample account), remove the others. Rotate the Auth Key and widget token. Test real SMS on Jio, Airtel and Vi. | PHASE12 6, PHASE18 |
 | Android release: Data safety and other App content forms, store listing | App created in Play Console 2026-11-10 (`com.crichere.app`, en-IN, free); 1.0.0 (1) uploaded to internal testing. Play signing SHA-1 on the Maps key, SHA-256 in `assetlinks.json`. | PHASE19 |
@@ -34,11 +34,11 @@ were answered by update #5 (PHASE15 8).
 ## 2. Decided (2026-10-04)
 
 - Contact: `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com`; the Contact link shows only when it is set.
-- iOS direction: native iOS (update #5 C). This round: fonts + theme, live auction and league detail restyle; other
-  screens later.
+- iOS direction: ~~native iOS (update #5 C)~~ superseded 2026-11-22: iOS looks exactly like the Android app
+  (docs/IOS-REDESIGN-PLAN.md, PHASE21), keeping only platform behaviour native.
 - Update #5 L23 (owner dock between lots) dropped.
 
-Update #5 is built on every platform (PHASE15 8); iOS is unverified until a first Xcode build. Set `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com` on the web deploy.
+Update #5 is built on every platform (PHASE15 8); iOS now builds and matches Android (PHASE21). Set `NEXT_PUBLIC_CONTACT_EMAIL=hello@crichere.com` on the web deploy.
 
 ## 3. Bugs and engineering risks
 
@@ -46,7 +46,7 @@ Update #5 is built on every platform (PHASE15 8); iOS is unverified until a firs
 |---|---|---|
 | `JwtServiceTest` "accepted one second before it expires" was reported flaky | Could not reproduce on 2026-11-06: 8 forced runs passed, and the test already uses a fixed clock, so no change made. Cause unknown; reopen if it fails again. | backend tests |
 | iOS test target doesn't compile | `:shared:compileTestKotlinIosSimulatorArm64` rejects 53 test names in `commonTest` that contain a comma (Kotlin/Native rule). Android tests and the iOS app are unaffected. Rename them before running iOS tests. | shared tests |
-| Swift code never compiled | Every iOS file, including the update #4 port and PHASE17's image upload shrink + cache, needs a first Xcode build (expect fixes). | PHASE15 7.5, PHASE17 7, iosApp/README |
+| iOS not run end to end | The app builds and every screen renders in the DEBUG parity gallery (PHASE21), but nothing has run against the backend: needs a real `GoogleService-Info.plist`, a signed-in test account and seeded test leagues. Android reference captures for the side-by-side are blocked by disk space (~5-8 GB needed). | PHASE21, IOS-REDESIGN-PLAN |
 | Backend deploy carries new auction fields + own-lead rule + heartbeat | Watch the first live auction on Railway after the pushes of 2026-10-04. | PHASE15 6, 7.1 |
 
 ## 4. Not yet verified

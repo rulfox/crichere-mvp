@@ -1,15 +1,24 @@
 # iosApp
 
-Swift sources plus an XcodeGen spec (`project.yml`) -- no `.xcodeproj` is checked in (it's a
-fragile, mostly-binary-shaped project file this environment, with no Mac/Xcode, cannot safely
-hand-author or validate). Per Phase 9 (docs/PHASE9.md), project-file generation is automatable
-text instead of a manual "open Xcode, add each file to the target" chore: `xcodegen generate`
-produces a real `.xcodeproj` from `project.yml`, and re-running it after adding/removing Swift
-files keeps the project in sync with no Xcode-side project surgery. The Kotlin/`commonMain`/
-`iosMain` side is **compile-verified for real** (`./gradlew :shared:compileKotlinIosArm64
-:shared:compileKotlinIosSimulatorArm64` all succeed, using the
-Kotlin/Native cross-compiler's Windows-hosted klib toolchain). What's still unverified is every
-Swift file and the final framework link/run -- both need Xcode's Apple SDKs.
+Swift sources plus an XcodeGen spec (`project.yml`). No `.xcodeproj` is checked in (it's
+gitignored); `xcodegen generate` produces it, and `project.yml` also generates `Info.plist`
+(`info.properties`: fonts, URL scheme, portrait lock, location string), so regenerating is safe.
+
+The app builds on a Mac with Xcode and runs on the simulator. Every screen is drawn to match the
+Android app exactly (docs/IOS-REDESIGN-PLAN.md, docs/PHASE21.md): the design system is in
+`iosApp/Design/`, and Android's composables are the source of truth for sizes, colours and copy.
+
+## Everyday commands
+
+From this directory:
+
+- `scripts/sim.sh build`: regenerate the project and build for the iPhone 17 Pro simulator
+  (`DEVICE="iPhone 16e" scripts/sim.sh …` for another one).
+- `scripts/sim.sh run [launch args]`: install and launch.
+- `scripts/sim.sh parity <board>…`: launch the DEBUG parity gallery on each design board
+  (`-parity G3`, `-parity L16-lost`, …) and save a half-resolution capture to
+  `docs/ios-parity/ios/<board>.png`. Boards are defined in `iosApp/Design/Debug/ParityGallery.swift`
+  from fixtures, so no sign-in is needed. `-gallery 1|2|3` shows the component gallery.
 
 ## To stand this up on a Mac
 
@@ -46,9 +55,8 @@ neither this environment nor this repo has:
    added to the Xcode project's target -- the iOS equivalent of Android's `google-services.json`
    (also not present in this environment; see `androidApp/build.gradle.kts`).
 
-Until that file exists, `FirebaseApp.configure()` in `iosAppApp.swift` will crash at launch (as it
-should -- there is no real Firebase project connected client-side in this environment, same as
-the Android side). `FirebasePhoneAuthBridgeImpl` has never been compiled here.
+Until that file exists, sign-in can't send a code. Never commit a stub `GoogleService-Info.plist`
+(it's gitignored).
 
 ## Navigation (Phase 9, see docs/PHASE9.md)
 
@@ -57,7 +65,7 @@ the Android side). `FirebasePhoneAuthBridgeImpl` has never been compiled here.
 same transitions), replacing `iosAppApp.swift`'s previous hardcoded single screen. `MainTabView`
 (same file) is the 3-tab bottom-nav shell (Dashboard/My Leagues/My Profile) plus the pushed
 destinations (League Detail/Creation/Join/Claim/Screenshot Viewer/Auction Settings/Live/Manage
-Co-Organizers) via one shared `NavigationStack` wrapping the whole `TabView` -- see that file's own
+Co-Organizers) via one shared `NavigationStack` wrapping the whole tab shell (a custom bottom bar matching Android's `MainBottomBar`) -- see that file's own
 doc comment for why a single shared stack, not one per tab, is the faithful port of Android's
 "pushed destinations replace the entire tab scaffold" behavior.
 
@@ -68,7 +76,6 @@ never existed before Phase 9 (`PhoneEntryView`, `OtpVerifyView`) and the main po
 (`LeagueDashboardView`, `LeagueCreationView` with a real MapKit ground-picker,
 `GroundMapPickerView.swift`).
 
-Like every other Swift/`iosMain`-`actual` file in this repo, **none of this has been compiled** --
-no Mac/Xcode available here. What **is** compile-verified for real: every shared `ViewModel` this
-navigation host and these screens depend on builds successfully for all three iOS klib targets
-(`:shared:compileKotlinIosArm64`/`compileKotlinIosSimulatorArm64`; no `iosX64` since 2026-10-02, see docs/PHASE10.md).
+Every pushed screen hides the system navigation bar and draws its own top bar, as on Android;
+edge-swipe back still works (`Design/Navigation.swift`), and is turned off only while a form has
+unsaved edits (its close button asks "Discard changes?" instead).

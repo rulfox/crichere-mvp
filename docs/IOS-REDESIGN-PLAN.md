@@ -184,6 +184,9 @@ screen uses it any more (`CrichereSelectField` replaced it).
 - A debug-only gallery screen showing every component, to compare with Android quickly.
 
 ### Phase 2 — Sign-in flow (M–L)
+
+**Status (2026-11-22):** done (A/T1/B6/D7, B, S1/S2, C).
+
 1. **A Sign in** — hero (first launch, empty + unfocused) collapsing to wordmark header, phone
    field (10 digits, mono), T1 terms checkbox with links, lockout notice, send button states.
 2. **B Verify code** — sent-to row with Edit, 6-box code field, error row, resend countdown row,
@@ -193,6 +196,9 @@ screen uses it any more (`CrichereSelectField` replaced it).
    C5 dropdowns (state, district, role, batting, bowling), location pill, save bar, discard dialog.
 
 ### Phase 3 — Main shell (L)
+
+**Status (2026-11-22):** done (tab bar, D, M, N).
+
 1. **Tab bar** — `MainBottomBar`: tinted bar, pill indicator, filled icon when selected.
 2. **D Dashboard** — viewer avatar header, near-me pill (idle/locating/active), area chips +
    D2 picker sheet, clear filters / refresh row, league cards (tile, date, format, fee, players
@@ -202,6 +208,9 @@ screen uses it any more (`CrichereSelectField` replaced it).
    profile / Log out, blocked people link, delete account link, deletion-cancelled snackbar.
 
 ### Phase 4 — League pages (XL)
+
+**Status (2026-11-22):** done (E incl. R1-R3/R9/D9, F, G, H; H takes an optional title, "Profile photo" from N).
+
 1. **E League detail** — banner header + compact header on scroll, league facts, capacity/fees
    card, follow pill, join/claim block (E1), registered card (E2) + leave dialog, organizer menu
    (E4) incl. Mark completed states (E14), live-in-progress pill, roster cards with player /
@@ -215,6 +224,9 @@ screen uses it any more (`CrichereSelectField` replaced it).
 4. **H Screenshot viewer** — top bar / back pill, zoom chip, H2 minimap, H3 load failed.
 
 ### Phase 5 — Organizer tools (XL)
+
+**Status (2026-11-22):** done (I incl. I5/I11/I16 MapKit registration with place search, J incl. J10/J11 dialogs, K incl. K9). Date/time pickers: Material dialog shell + tinted native picker (`Design/Components/DateTimeDialogs.swift`).
+
 1. **I Create / edit league** — top bar with Save pill (I1/I10/I12), error summary (I7/I9),
    "How it will look" preview with logo + 16:9 banner crops and upload progress (I3), basics,
    I9 location section, I4 ground search + rows, I5 map picker screen (align `GroundMapPicker`),
@@ -225,12 +237,18 @@ screen uses it any more (`CrichereSelectField` replaced it).
    avatars and "You" tag, K8 red banner, K3/K5 confirm dialog.
 
 ### Phase 6 — Live auction (L)
+
+**Status (2026-11-22):** done (rebuilt from `AuctionLiveScreen.kt`; boards L1-L21).
+
 Already a custom dark canvas built to the iOS U5 boards. Align to Android: top bar, status chip
 and connection pill, block card geometry (225/251), empty / dead-end cards with breakdown, recent
 bids, results cards (L5, over-purse lines), dock (bid form, status tiles, amount field states,
 organizer controls, exceed-purse switch, Sold / End buttons), end-auction dialog in dark tokens.
 
 ### Phase 7 — Account and moderation (L)
+
+**Status (2026-11-22):** done (deletion boards keyed `AD*` because `D*` is the Dashboard; R4-R13).
+
 1. **Account deletion** D1–D10 — top bar, heading/lead, can-delete / blocked / error states,
    handover rows, bottom bar, delete pill, confirm dialog (`DeleteAccountConfirmDialog.kt`).
 2. **Moderation** R1–R13 — row ⋮ menu, report sheet (reason / details / outcome), block dialog
@@ -238,6 +256,9 @@ organizer controls, exceed-purse switch, Sold / End buttons), end-auction dialog
    neutral logo tiles.
 
 ### Phase 8 — QA and docs (M)
+
+**Status (2026-11-22):** done, apart from the Android side-by-side (blocked, see Phase 0). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
+
 - Side-by-side pass over every state in the inventory below; fix drift.
 - Small-screen check (iPhone SE size) and largest iPhone; Dynamic Type at default only
   (Android doesn't scale beyond system font size either — confirm with owner).
@@ -273,9 +294,21 @@ D2 sheet, near me locating/active, empty, location off) · M1–M3 · N1–N5 ·
 completed, organizer menu, leave dialog, R9a/R9b · F1–F7, F9 · G1–G6 · H1–H3 · I1–I15 ·
 J1–J14 · K1–K9 · L1–L10 + U4 A2–A6 + end dialog/failure · deletion D1–D10 · R1–R13.
 
-## 6. Compile fixes already made (2026-11-22, uncommitted)
+**iOS captures (2026-11-22):** 174 boards in `docs/ios-parity/ios/`, rendered by the DEBUG parity
+gallery from fixtures (no login needed). **Android captures: 0** (blocked by disk space).
 
-First successful iOS build. Commit these before the redesign starts:
+**Not reachable here (need the owner):**
+- Android reference captures for every board (SDK + emulator, ~5-8 GB free disk, or owner screenshots).
+- Anything needing a real `GoogleService-Info.plist` and a signed-in test account: live sign-in / OTP
+  send and verify, photo / logo / screenshot uploads, UPI app hand-off, the live auction stream
+  (reconnect / lost timing), ground registration and place search against real data, account deletion
+  end to end, removed-image notices and suspension as served by the backend.
+- Test leagues seeded in each state (announced, auction live, completed, dead end, over purse).
+- An iPhone SE-size runtime (only the iPhone 16e, 390 pt, is installed; checked there).
+
+## 6. Compile fixes (2026-11-22, committed in `05844e2`)
+
+First successful iOS build:
 
 - `LocationPermission.swift`: `ObservableObject` conformance.
 - `iosAppApp.swift`: `KoinInitKt.doInitKoinIos()`.
