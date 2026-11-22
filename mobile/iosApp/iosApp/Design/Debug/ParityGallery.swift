@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles, live].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles, live, deletion].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -615,6 +615,40 @@ enum ParityGallery {
         "L21": { live(liveState(auctionDto(playerUp: false), organizer: true, endFailure: .network)) },
         "L-loading": { live(liveState(nil)) },
         "L-error": { live(liveState(nil, loadFailed: true)) },
+    ]
+    // MARK: - Account deletion D2-D6, keyed AD* (D* is the Dashboard) (DeleteAccountScreen.kt, DeleteAccountConfirmDialog.kt)
+
+    private static let canDelete = DeleteAccountScreenStateCanDelete(erasesOn: "2026-12-06T10:00:00Z", handovers: [
+        DeletionHandoverDto(leagueId: "league-kpl", leagueName: "Kolhapur Premier League", leagueLogoUrl: nil, newOrganizerUserId: "u2",
+                            newOrganizerName: "Nikhil Desai"),
+    ])
+
+    private static func deletion(_ screen: DeleteAccountScreenState) -> AnyView { AnyView(DeleteAccountContent(screen: screen)) }
+
+    private static func confirm(_ input: String, submitting: Bool = false, failed: Bool = false) -> AnyView {
+        AnyView(ZStack {
+            deletion(canDelete)
+            ParityDialogPreview {
+                DeleteAccountConfirmDialog(state: DeleteAccountDialogState(input: input, isSubmitting: submitting, failed: failed),
+                                           erasesOn: "6 Dec 2026", onInputChange: { _ in }, onDismiss: {}, onConfirm: {})
+            }
+        })
+    }
+
+    @MainActor private static let deletion: [String: () -> AnyView] = [
+        "AD2": { deletion(DeleteAccountScreenStateLoading.shared) },
+        "AD3": { deletion(DeleteAccountScreenStateCanDelete(erasesOn: "2026-12-06T10:00:00Z", handovers: [])) },
+        "AD3b": { deletion(canDelete) },
+        "AD4": { deletion(DeleteAccountScreenStateBlocked(blockers: [
+            DeletionBlockerDto(leagueId: "league-kpl", leagueName: "Kolhapur Premier League", reason: .auctionLive, leagueLogoUrl: nil),
+            DeletionBlockerDto(leagueId: "league-scl", leagueName: "Sangli Champions League", reason: .noCoOrganizer, leagueLogoUrl: nil),
+        ])) },
+        "AD5": { deletion(DeleteAccountScreenStateError.shared) },
+        "AD6a": { confirm("") },
+        "AD6b": { confirm("delete") },
+        "AD6c": { confirm("DELETE") },
+        "AD6d": { confirm("DELETE", submitting: true) },
+        "AD6e": { confirm("DELETE", failed: true) },
     ]
 }
 

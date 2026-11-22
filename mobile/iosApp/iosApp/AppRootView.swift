@@ -349,6 +349,7 @@ struct MainTabView: View {
 
         case .deleteAccount:
             DeleteAccountView(
+                onBack: { if !path.isEmpty { path.removeLast() } },
                 onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
                 // D7: the session is gone; back to Sign in, which shows the one-time notice.
                 onSignedOut: onNavigateToPhoneEntry
