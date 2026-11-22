@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -485,6 +485,56 @@ enum ParityGallery {
         },
         "J12": { auction(auctionState(scheduleError: "Pick a time after the league's registrations close.")) },
         "J-error": { auction(auctionState(loadFailed: true)) },
+    ]
+    // MARK: - K Co-organizers (ManageRolesScreen.kt)
+
+    private static let coOrganizers = [
+        LeagueRoleDto(id: "r1", userId: "u-me", name: "Nikhil Desai", grantedAt: "2026-09-20T10:00:00Z", deleted: false, photoUrl: nil, photoRemoved: false),
+        LeagueRoleDto(id: "r2", userId: "u-2", name: "Pranav More", grantedAt: "2026-09-21T10:00:00Z", deleted: false, photoUrl: nil, photoRemoved: false),
+    ]
+
+    private static func rolesState(phone: String = "", lookingUp: Bool = false, found: Bool = false, granting: Bool = false,
+                                   lookupError: String? = nil, grantError: RoleNotice? = nil, revoking: Set<String> = [],
+                                   roles: [LeagueRoleDto] = coOrganizers, loadFailed: Bool = false) -> ManageRolesState {
+        ManageRolesState(isLoading: false, loadFailed: loadFailed, league: loadFailed ? nil : Fixtures.league(coOrganizers: roles),
+                         phoneNumberInput: phone, isLookingUp: lookingUp,
+                         lookupResult: found ? RoleLookupResultDto(userId: "u-9", name: "Omkar Shinde") : nil, lookupError: lookupError,
+                         isGranting: granting, grantError: grantError, revokingRoleIds: revoking, revokeError: nil, accessRevoked: false,
+                         currentUserId: "u-me")
+    }
+
+    private static func roles(_ state: ManageRolesState) -> AnyView { AnyView(ManageRolesContent(state: state)) }
+
+    @MainActor private static let roles: [String: () -> AnyView] = [
+        "K1": { roles(rolesState(roles: [])) },
+        "K2": { roles(rolesState(phone: "9876543210", lookingUp: true)) },
+        "K3": {
+            AnyView(ZStack {
+                roles(rolesState(phone: "9876543210", found: true))
+                ParityDialogPreview {
+                    RoleConfirmDialog(title: "Grant co-organizer access?",
+                                      message: "Omkar Shinde will be able to do everything you can do for this league, including editing it and running the auction.",
+                                      confirmLabel: "Grant", confirmColor: CrichereColor.primary, onDismiss: {}, onConfirm: {})
+                }
+            })
+        },
+        "K4": { roles(rolesState(phone: "9876543210", found: true)) },
+        "K4-granting": { roles(rolesState(phone: "9876543210", found: true, granting: true)) },
+        "K5": { roles(rolesState(revoking: ["r2"])) },
+        "K6": { roles(rolesState(phone: "9876543210", lookupError: "No Crichere account uses this number.")) },
+        "K8": { roles(rolesState(phone: "9876543210", found: true,
+                                 grantError: RoleNotice(title: "Couldn't grant access", message: "Check your connection and try again."))) },
+        "K9": {
+            AnyView(ZStack {
+                roles(rolesState())
+                ParityDialogPreview {
+                    DestructiveConfirmDialog(title: "Remove your own access?",
+                                             message: "You'll stop being a co-organizer of Kolhapur Premier League right away. You won't be able to edit the league or run the auction. Only an organizer can add you back.",
+                                             confirmLabel: "Remove me", submittingLabel: "Removing…", submitting: false, onDismiss: {}, onConfirm: {})
+                }
+            })
+        },
+        "K-error": { roles(rolesState(loadFailed: true)) },
     ]
 }
 

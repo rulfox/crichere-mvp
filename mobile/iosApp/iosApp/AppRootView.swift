@@ -397,6 +397,7 @@ struct MainTabView: View {
         case .manageRoles(let leagueId):
             ManageRolesView(
                 leagueId: leagueId,
+                onBack: { if !path.isEmpty { path.removeLast() } },
                 onAccessRevoked: { leagueName in
                     leagueNotices[leagueId] = "You're no longer a co-organizer of \(leagueName)."
                     if !path.isEmpty { path.removeLast() }

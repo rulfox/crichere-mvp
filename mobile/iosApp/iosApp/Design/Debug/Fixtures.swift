@@ -53,7 +53,8 @@ enum Fixtures {
         banner: Bool = false,
         awards: [LeagueAwardDto] = [],
         auctionStatus: AuctionStatus? = nil,
-        handover: Bool = false
+        handover: Bool = false,
+        coOrganizers: [LeagueRoleDto] = []
     ) -> LeagueDto {
         LeagueDto(
             id: id, organizerUserId: organizer, organizerName: organizerName, organizerDeleted: false, name: name,
@@ -65,7 +66,7 @@ enum Fixtures {
             playerFee: playerFee.map { KotlinDouble(value: $0) }, organizerUpiId: upiId, status: status, awards: awards,
             players: players, franchises: franchises, isFollowing: following, auctionBasePrice: KotlinDouble(value: 1000),
             auctionPurse: KotlinDouble(value: 100000), auctionSquadMin: KotlinInt(value: 8), auctionSquadMax: KotlinInt(value: 12),
-            auctionBidIncrement: KotlinDouble(value: 500), auctionSquadMaxWarning: false, coOrganizers: [], auctionScheduledAt: nil,
+            auctionBidIncrement: KotlinDouble(value: 500), auctionSquadMaxWarning: false, coOrganizers: coOrganizers, auctionScheduledAt: nil,
             auctionStatus: auctionStatus, organizerHandoverAt: nil, showHandoverNotice: handover)
     }
 
