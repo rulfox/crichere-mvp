@@ -104,13 +104,24 @@ struct CrichereDialog<Body: View>: View {
     var titleColor: Color = CrichereColor.ink
     var surface: Color = CrichereColor.dialogSurface
     var radius: CGFloat = 28
+    /// Material's optional top icon (24 pt slot, 16 pt above the title); with one, the title centres.
+    var icon: String? = nil
+    var iconTint: Color = CrichereColor.primary
+    var iconSize: CGFloat = 24
     var buttons: [DialogButton]
     @ViewBuilder var content: () -> Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if let icon {
+                CrIcon(icon, size: iconSize, tint: iconTint)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 16)
+            }
             Text(title)
                 .crichere(titleStyle, titleColor)
+                .multilineTextAlignment(icon != nil ? .center : .leading)
+                .frame(maxWidth: .infinity, alignment: icon != nil ? .center : .leading)
                 .accessibilityAddTraits(.isHeader)
             content()
                 .padding(.top, 16)
@@ -144,8 +155,9 @@ struct CrichereDialog<Body: View>: View {
 
 extension CrichereDialog where Body == AnyView {
     /// Title + body text, the common case.
-    init(title: String, message: String, buttons: [DialogButton]) {
-        self.init(title: title, buttons: buttons) {
+    init(title: String, message: String, icon: String? = nil, iconTint: Color = CrichereColor.primary, iconSize: CGFloat = 24,
+         buttons: [DialogButton]) {
+        self.init(title: title, icon: icon, iconTint: iconTint, iconSize: iconSize, buttons: buttons) {
             AnyView(Text(message).crichere(.sans(13.5, lineHeight: 19.575), CrichereColor.dialogBody).fixedSize(horizontal: false, vertical: true))
         }
     }

@@ -49,20 +49,31 @@ enum Fixtures {
         players: [LeaguePlayerDto] = Fixtures.players,
         franchises: [LeagueFranchiseDto] = Fixtures.franchises,
         following: Bool = false,
-        logoRemoved: Bool = false
+        logoRemoved: Bool = false,
+        banner: Bool = false,
+        awards: [LeagueAwardDto] = [],
+        auctionStatus: AuctionStatus? = nil,
+        handover: Bool = false
     ) -> LeagueDto {
         LeagueDto(
             id: id, organizerUserId: organizer, organizerName: organizerName, organizerDeleted: false, name: name,
-            description: "Twelve-over league for Kolhapur district clubs.", logoUrl: nil, bannerUrl: nil, logoRemoved: logoRemoved,
+            description: "Twelve-over league for Kolhapur district clubs.", logoUrl: nil,
+            bannerUrl: banner ? "https://fixtures.invalid/banner.jpg" : nil, logoRemoved: logoRemoved,
             bannerRemoved: false, country: "IN", state: "Maharashtra", district: district, groundId: "g1", groundName: ground,
             startsOn: startsOn, format: format, franchisesRequired: franchisesRequired.map { KotlinInt(value: $0) },
             playersRequired: playersRequired.map { KotlinInt(value: $0) }, franchiseFee: franchiseFee.map { KotlinDouble(value: $0) },
-            playerFee: playerFee.map { KotlinDouble(value: $0) }, organizerUpiId: upiId, status: status, awards: [],
+            playerFee: playerFee.map { KotlinDouble(value: $0) }, organizerUpiId: upiId, status: status, awards: awards,
             players: players, franchises: franchises, isFollowing: following, auctionBasePrice: KotlinDouble(value: 1000),
             auctionPurse: KotlinDouble(value: 100000), auctionSquadMin: KotlinInt(value: 8), auctionSquadMax: KotlinInt(value: 12),
             auctionBidIncrement: KotlinDouble(value: 500), auctionSquadMaxWarning: false, coOrganizers: [], auctionScheduledAt: nil,
-            auctionStatus: nil, organizerHandoverAt: nil, showHandoverNotice: false)
+            auctionStatus: auctionStatus, organizerHandoverAt: nil, showHandoverNotice: handover)
     }
+
+    static let awards: [LeagueAwardDto] = [
+        LeagueAwardDto(id: "a1", name: "Winners", cashAmount: KotlinDouble(value: 25000), hasTrophy: true, displayOrder: 0),
+        LeagueAwardDto(id: "a2", name: "Runners-up", cashAmount: KotlinDouble(value: 11000), hasTrophy: true, displayOrder: 1),
+        LeagueAwardDto(id: "a3", name: "Player of the tournament", cashAmount: nil, hasTrophy: true, displayOrder: 2),
+    ]
 
     /// The dashboard list: varied names (tile colours), formats, fees and fill levels.
     static let dashboardLeagues: [LeagueDto] = [

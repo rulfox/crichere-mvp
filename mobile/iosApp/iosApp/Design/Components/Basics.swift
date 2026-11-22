@@ -355,3 +355,14 @@ struct LoadErrorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+/// The system share sheet (native on both platforms -- Android uses its chooser) with plain text.
+@MainActor
+func presentShareSheet(text: String) {
+    let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+    guard var top = windows.first(where: \.isKeyWindow)?.rootViewController else { return }
+    while let presented = top.presentedViewController { top = presented }
+    let sheet = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+    sheet.popoverPresentationController?.sourceView = top.view
+    top.present(sheet, animated: true)
+}

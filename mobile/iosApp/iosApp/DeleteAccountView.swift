@@ -318,18 +318,6 @@ struct DeleteAccountConfirmSheet: View {
 }
 
 /// Design D10: a deleted user never shows a photo or initials.
-struct DeletedUserAvatar: View {
-    let size: CGFloat
-    var body: some View {
-        Image(systemName: "person.fill")
-            .font(.system(size: size * 0.5))
-            .foregroundColor(Color(hex: 0x8A948C))
-            .frame(width: size, height: size)
-            .background(Circle().fill(Color(hex: 0xE3E8DD)))
-            .accessibilityLabel("Deleted user")
-    }
-}
-
 /// D7 / D9: a tinted notice with a close button.
 // DismissibleNotice lives in Design/Components/Basics.swift (Android AccountDeletionUi.kt).
 

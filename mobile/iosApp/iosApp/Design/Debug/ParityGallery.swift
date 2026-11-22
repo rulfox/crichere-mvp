@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -202,6 +202,64 @@ enum ParityGallery {
                     CrichereDialog(title: "Log out of Crichere?", message: "You'll need an SMS code to sign back in.", buttons: [
                         DialogButton(label: "Cancel") {}, DialogButton(label: "Log out", color: CrichereColor.errorStrong) {},
                     ])
+                }
+            })
+        },
+    ]
+
+    // MARK: - E League detail (LeagueDetailScreen.kt)
+
+    private static func detailState(_ league: LeagueDto?, me: String? = "u-visitor", organizer: Bool = false, loading: Bool = false,
+                                    completing: Bool = false, removing: Set<String> = []) -> LeagueDetailState {
+        LeagueDetailState(isLoading: loading, league: league, currentUserId: me, isOrganizer: organizer, isCompleting: completing,
+                          isJoining: false, isClaiming: false, isTogglingFollow: false, isLeaveRequesting: false, removingIds: removing,
+                          respondingToLeaveRequestIds: [], errorMessage: nil, completionNotice: nil)
+    }
+
+    private static func detailScreen(_ state: LeagueDetailState, blocked: Set<String> = []) -> AnyView {
+        AnyView(LeagueDetailContent(state: state, blocked: blocked))
+    }
+
+    @MainActor private static let leagueDetail: [String: () -> AnyView] = [
+        "E1": { detailScreen(detailState(Fixtures.league(banner: true, awards: Fixtures.awards))) },
+        "E1-compact": { detailScreen(detailState(Fixtures.league())) },
+        "E2": { detailScreen(detailState(Fixtures.league(banner: true), me: "u1")) },
+        "E3": {
+            var players = Fixtures.players
+            players[0] = Fixtures.player(1, name: "Aarav Pawar", role: .allRounder, screenshot: true, leaveRequested: true)
+            return detailScreen(detailState(Fixtures.league(players: players, banner: true), me: "u1"))
+        },
+        "E4": {
+            var players = Fixtures.players
+            players[2] = Fixtures.player(3, name: "Sahil Kulkarni", role: .bowler, leaveRequested: true)
+            return detailScreen(detailState(Fixtures.league(players: players), me: "u-organizer", organizer: true, removing: ["p4"]))
+        },
+        "E14": { detailScreen(detailState(Fixtures.league(auctionStatus: .inProgress), me: "u-organizer", organizer: true)) },
+        "E5": { detailScreen(detailState(Fixtures.league(playersRequired: 5, franchisesRequired: 2, following: true))) },
+        "E13": { detailScreen(detailState(Fixtures.league(status: .completed, awards: Fixtures.awards), me: "u-organizer", organizer: true)) },
+        "D9": { detailScreen(detailState(Fixtures.league(handover: true), me: "u-organizer", organizer: true)) },
+        "R9a": { detailScreen(detailState(Fixtures.league()), blocked: ["u-organizer"]) },
+        "R9b": { detailScreen(detailState(Fixtures.league(banner: true), me: "u1"), blocked: ["u-organizer"]) },
+        "E-loading": { detailScreen(detailState(nil, loading: true)) },
+        "E-error": { detailScreen(detailState(nil)) },
+        "E2-leave": {
+            AnyView(ZStack {
+                detailScreen(detailState(Fixtures.league(banner: true), me: "u1"))
+                ParityDialogPreview {
+                    CrichereDialog(title: "Request to leave?",
+                                   message: "The organizer can approve or dismiss it. Any refund is between you and the organizer; Crichere doesn't handle payments.",
+                                   icon: "ic_logout", iconTint: CrichereColor.errorStrong, iconSize: 26,
+                                   buttons: [DialogButton(label: "Cancel") {}, DialogButton(label: "Send request", color: CrichereColor.errorStrong) {}])
+                }
+            })
+        },
+        "E10": {
+            AnyView(ZStack {
+                detailScreen(detailState(Fixtures.league(), me: "u-organizer", organizer: true))
+                ParityDialogPreview {
+                    DestructiveConfirmDialog(title: "Mark Kolhapur Premier League as completed?",
+                                             message: "This can't be undone. Rosters, auction results and awards stay visible to everyone. Nobody can join, edit the league or run the auction again.",
+                                             confirmLabel: "Mark completed", submittingLabel: "Completing…", submitting: false, onDismiss: {}, onConfirm: {})
                 }
             })
         },
