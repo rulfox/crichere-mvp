@@ -248,7 +248,7 @@ struct EndAuctionDialog: View {
                     Button(action: onDismiss) { Text("Cancel").crichere(.sans(14, .semiBold, lineHeight: 20).tight, textSoft) }
                         .buttonStyle(.plain)
                         .opacity(ending ? 0.38 : 1)
-                        .disabled(ending)
+                        .allowsHitTesting(!ending)  // .disabled would dim a .plain button a second time
                     Button(action: onConfirm) {
                         HStack(spacing: 8) {
                             if ending { CrichereSpinner(color: coral, track: coral.opacity(0.25), lineWidth: 2, size: 16) }
@@ -256,7 +256,7 @@ struct EndAuctionDialog: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .disabled(ending)
+                    .allowsHitTesting(!ending)
                 }
             }
             .padding(25)
@@ -1116,7 +1116,7 @@ private struct ExceedPurseSwitch: View {
             .animation(.easeOut(duration: 0.15), value: allow)
         }
         .buttonStyle(.plain)
-        .disabled(!enabled)
+        .allowsHitTesting(enabled)  // .disabled would dim a .plain button on top of the 38%
         .opacity(enabled ? 1 : 0.38)
         .accessibilityLabel("Allow exceeding purse")
         .accessibilityValue(allow ? "On" : "Off")
