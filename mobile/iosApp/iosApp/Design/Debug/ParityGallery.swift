@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -340,6 +340,18 @@ enum ParityGallery {
                                        error: "Another team claimed the last spot. Ask the organizer if more franchises open."), thumb: true) },
         "G7": { claimScreen(claimState(nil, loadFailed: true)) },
         "G9": { claimScreen(claimState(Fixtures.league(upiId: nil), name: "Kolhapur Kings")) },
+    ]
+    // MARK: - H Screenshot viewer (ScreenshotViewerScreen.kt)
+
+    private static func viewerBoard(_ view: ScreenshotViewerContent) -> AnyView { AnyView(view.lightStatusBarIcons(true)) }
+
+    @MainActor private static let viewer: [String: () -> AnyView] = [
+        "H1": { viewerBoard(ScreenshotViewerContent(image: DesignGallery.samplePhoto.image, failed: false)) },
+        "H1-profile": { viewerBoard(ScreenshotViewerContent(image: DesignGallery.samplePhoto.image, failed: false, title: "Profile photo")) },
+        "H2": { viewerBoard(ScreenshotViewerContent(image: DesignGallery.samplePhoto.image, failed: false, initialScale: 2.4,
+                                                initialOffset: CGSize(width: 120, height: -60))) },
+        "H3": { viewerBoard(ScreenshotViewerContent(image: nil, failed: true)) },
+        "H-loading": { viewerBoard(ScreenshotViewerContent(image: nil, failed: false)) },
     ]
 }
 

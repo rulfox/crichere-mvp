@@ -223,7 +223,7 @@ private enum MainDestination: Hashable {
     case leagueCreation(String?)
     case joinLeague(String)
     case claimFranchise(String)
-    case screenshotViewer(String)
+    case screenshotViewer(String, title: String = "Payment screenshot")
     case auctionSettings(String)
     case auctionLive(String)
     case manageRoles(String)
@@ -328,7 +328,7 @@ struct MainTabView: View {
             OwnProfileView(
                 onNavigateToEditProfile: onNavigateToEditProfile,
                 onNavigateToPhoneEntry: onNavigateToPhoneEntry,
-                onViewPhoto: { path.append(MainDestination.screenshotViewer($0)) },
+                onViewPhoto: { path.append(MainDestination.screenshotViewer($0, title: "Profile photo")) },
                 onDeleteAccount: { path.append(MainDestination.deleteAccount) },
                 onBlockedPeople: { path.append(MainDestination.blockedPeople) }
             )
@@ -385,8 +385,8 @@ struct MainTabView: View {
         case .claimFranchise(let leagueId):
             ClaimFranchiseView(leagueId: leagueId, onDone: { if !path.isEmpty { path.removeLast() } })
 
-        case .screenshotViewer(let imageUrl):
-            ScreenshotViewerView(imageUrl: imageUrl)
+        case let .screenshotViewer(imageUrl, title):
+            ScreenshotViewerView(imageUrl: imageUrl, title: title, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .auctionSettings(let leagueId):
             AuctionSettingsView(leagueId: leagueId)
