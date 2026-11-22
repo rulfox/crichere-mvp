@@ -8,7 +8,8 @@
 #
 # DEVICE overrides the simulator (default "iPhone 17 Pro"). Run from anywhere.
 set -eu
-cd "$(dirname "$0")/.."
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+cd "$(dirname "$SELF")/.."
 DEVICE="${DEVICE:-iPhone 17 Pro}"
 APP=build/Build/Products/Debug-iphonesimulator/iosApp.app
 LOG="${TMPDIR:-/tmp}/crichere-iosbuild.log"
@@ -41,7 +42,7 @@ parity)
     out=../../docs/ios-parity/ios
     mkdir -p "$out"
     for board in "$@"; do
-        "$0" run -parity "$board" >/dev/null
+        "$SELF" run -parity "$board" >/dev/null
         sleep 3
         xcrun simctl io "$DEVICE" screenshot "$out/$board.png" >/dev/null 2>&1
         # Half resolution: enough to compare, small enough to keep in git.
