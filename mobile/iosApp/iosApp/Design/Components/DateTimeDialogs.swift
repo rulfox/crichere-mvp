@@ -34,29 +34,59 @@ func formatIsoDay(_ iso: String, _ pattern: String) -> String {
     return utcDateFormatter(pattern).string(from: date)
 }
 
-/// Material `DatePickerDialog`: title ("Select start date"), the picked day as an Archivo headline
-/// ("Mon, 12 Oct", or "Pick a date"), a divider, the graphical picker, Cancel / OK.
+/// How a date dialog's header reads: Create league's I6 (Archivo 26) or the auction's J10 (sans 30/36).
+struct DateDialogStyle {
+    var titleColor: Color = CrichereColor.onSurfaceVariant
+    var headline: CrichereTextStyle = .archivo(26, .bold, lineHeight: 26)
+    var headlineTop: CGFloat = 36
+    var headlineBottom: CGFloat = 12
+    /// "Pick a date" in this colour until a day is tapped (nil: the ink colour either way).
+    var emptyHeadlineColor: Color? = nil
+    var confirmLabel: String = "OK"
+    /// U5 J13: the confirm button stays at 38% until a day is picked.
+    var confirmNeedsPick: Bool = false
+
+    static let league = DateDialogStyle()
+    static let auction = DateDialogStyle(titleColor: Color(hex: 0x3E4A41), headline: .sans(30, lineHeight: 36), headlineTop: 22,
+                                         headlineBottom: 14, emptyHeadlineColor: CrichereColor.onSurfaceVariant, confirmLabel: "Next",
+                                         confirmNeedsPick: true)
+}
+
+/// Material `DatePickerDialog`: title, the picked day as the headline ("Mon, 12 Oct", or "Pick a
+/// date"), a divider, the graphical picker (days before [minimum] disabled), Cancel / OK.
 struct CrichereDatePickerDialog: View {
     let title: String
     let initial: Date?
     var minimum: Date? = nil
+    var style: DateDialogStyle = .league
     let onDismiss: () -> Void
     let onPicked: (Date) -> Void
 
     @State private var selection: Date?
 
-    init(title: String, initial: Date?, minimum: Date? = nil, onDismiss: @escaping () -> Void, onPicked: @escaping (Date) -> Void) {
+    init(title: String, initial: Date?, minimum: Date? = nil, style: DateDialogStyle = .league, onDismiss: @escaping () -> Void,
+         onPicked: @escaping (Date) -> Void) {
         self.title = title
         self.initial = initial
         self.minimum = minimum
+        self.style = style
         self.onDismiss = onDismiss
         self.onPicked = onPicked
         _selection = State(initialValue: initial)
     }
 
     var body: some View {
-        PickerDialogShell(title: title, headline: selection.map { utcDateFormatter("EEE, d MMM").string(from: $0) } ?? "Pick a date",
-                          onDismiss: onDismiss, onConfirm: { if let selection { onPicked(selection) } else { onDismiss() } }) {
+        let picked = selection != nil
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title).crichere(.sans(12, .medium, lineHeight: 12), style.titleColor)
+                .padding(.leading, 24)
+                .padding(.top, 20)
+            Text(selection.map { utcDateFormatter("EEE, d MMM").string(from: $0) } ?? "Pick a date")
+                .crichere(style.headline, picked ? CrichereColor.onBackground : (style.emptyHeadlineColor ?? CrichereColor.onBackground))
+                .padding(.leading, 24)
+                .padding(.top, style.headlineTop)
+                .padding(.bottom, style.headlineBottom)
+            Rectangle().fill(CrichereColor.outlineVariant).frame(height: 1)
             DatePicker("", selection: Binding(get: { selection ?? initial ?? minimum ?? Date() }, set: { selection = $0 }),
                        in: (minimum ?? .distantPast)..., displayedComponents: .date)
                 .datePickerStyle(.graphical)
@@ -64,68 +94,18 @@ struct CrichereDatePickerDialog: View {
                 .tint(CrichereColor.primary)
                 .environment(\.calendar, utcCalendar)
                 .environment(\.timeZone, TimeZone(identifier: "UTC")!)
+                // iOS's calendar always shows a selected day and doesn't report a tap on it, so any tap
+                // in the calendar counts as the pick (J13's "Pick a date" until then).
+                .simultaneousGesture(TapGesture().onEnded {
+                    if selection == nil { selection = initial ?? minimum ?? utcCalendar.startOfDay(for: Date()) }
+                })
                 .padding(.horizontal, 12)
-        }
-    }
-}
-
-/// Material `TimePicker` dialog: title, the picked time as the headline, the native wheel, Cancel / OK.
-/// [selection] is a wall-clock time in the device's zone.
-struct CrichereTimePickerDialog: View {
-    let title: String
-    let initial: Date
-    let onDismiss: () -> Void
-    let onPicked: (Date) -> Void
-
-    @State private var selection: Date
-
-    init(title: String, initial: Date, onDismiss: @escaping () -> Void, onPicked: @escaping (Date) -> Void) {
-        self.title = title
-        self.initial = initial
-        self.onDismiss = onDismiss
-        self.onPicked = onPicked
-        _selection = State(initialValue: initial)
-    }
-
-    var body: some View {
-        let headline: DateFormatter = {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.dateFormat = "h:mm a"
-            return formatter
-        }()
-        PickerDialogShell(title: title, headline: headline.string(from: selection), onDismiss: onDismiss, onConfirm: { onPicked(selection) }) {
-            DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
-                .datePickerStyle(.wheel)
-                .labelsHidden()
-                .tint(CrichereColor.primary)
-                .frame(maxWidth: .infinity)
-        }
-    }
-}
-
-private struct PickerDialogShell<Picker: View>: View {
-    let title: String
-    let headline: String
-    let onDismiss: () -> Void
-    let onConfirm: () -> Void
-    @ViewBuilder let picker: () -> Picker
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(title).crichere(.sans(12, .medium), CrichereColor.onSurfaceVariant)
-                .padding(.leading, 24)
-                .padding(.top, 20)
-            Text(headline).crichere(.archivo(26, .bold, lineHeight: 26), CrichereColor.onBackground)
-                .padding(.leading, 24)
-                .padding(.top, 36)
-                .padding(.bottom, 12)
-            Rectangle().fill(CrichereColor.outlineVariant).frame(height: 1)
-            picker()
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
-                textButton("Cancel", action: onDismiss)
-                textButton("OK", action: onConfirm)
+                DialogTextButton(label: "Cancel", action: onDismiss)
+                DialogTextButton(label: style.confirmLabel, enabled: picked || !style.confirmNeedsPick) {
+                    if let selection { onPicked(selection) } else { onDismiss() }
+                }
             }
             .padding(.trailing, 6)
             .padding(.bottom, 8)
@@ -135,11 +115,53 @@ private struct PickerDialogShell<Picker: View>: View {
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }
+}
 
-    private func textButton(_ label: String, action: @escaping () -> Void) -> some View {
+/// J11: a Material AlertDialog around the native time wheel -- [title] ("Auction time · 12 Oct 2026"),
+/// Back (to the date) / OK. Hours and minutes are wall-clock time in the phone's zone.
+struct CrichereTimePickerDialog: View {
+    let title: String
+    let initial: Date
+    let onBack: () -> Void
+    let onPicked: (Date) -> Void
+
+    @State private var selection: Date
+
+    init(title: String, initial: Date, onBack: @escaping () -> Void, onPicked: @escaping (Date) -> Void) {
+        self.title = title
+        self.initial = initial
+        self.onBack = onBack
+        self.onPicked = onPicked
+        _selection = State(initialValue: initial)
+    }
+
+    var body: some View {
+        CrichereDialog(title: title, titleStyle: .sans(12, .medium, lineHeight: 12), titleColor: Color(hex: 0x3E4A41), buttons: [
+            DialogButton(label: "Back", action: onBack),
+            DialogButton(label: "OK") { onPicked(selection) },
+        ]) {
+            DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .tint(CrichereColor.primary)
+                .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: 360)
+    }
+}
+
+/// Material `TextButton` in a dialog: SemiBold 14 green, 38% when disabled.
+struct DialogTextButton: View {
+    let label: String
+    var enabled: Bool = true
+    let action: () -> Void
+
+    var body: some View {
         Button(action: action) {
-            Text(label).crichere(.sans(14, .semiBold), CrichereColor.primary).padding(.horizontal, 12).frame(minHeight: 40)
+            Text(label).crichere(.sans(14, .semiBold), CrichereColor.primary.opacity(enabled ? 1 : 0.38))
+                .padding(.horizontal, 12).frame(minHeight: 40)
         }
         .buttonStyle(PressHighlight(shape: Capsule(), color: CrichereColor.primary.opacity(0.1)))
+        .disabled(!enabled)
     }
 }

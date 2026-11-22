@@ -389,7 +389,7 @@ struct MainTabView: View {
             ScreenshotViewerView(imageUrl: imageUrl, title: title, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .auctionSettings(let leagueId):
-            AuctionSettingsView(leagueId: leagueId)
+            AuctionSettingsView(leagueId: leagueId, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .auctionLive(let leagueId):
             AuctionLiveView(leagueId: leagueId)

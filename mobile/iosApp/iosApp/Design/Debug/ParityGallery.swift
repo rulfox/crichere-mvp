@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -438,6 +438,53 @@ enum ParityGallery {
         "I16": { AnyView(GroundRegisterOverlay(state: creationState(dirty: true, registering: true))) },
         "I-error": { creation(creationState(dirty: true, name: "Kolhapur Premier League", located: true, ground: true, startsOn: "2026-10-12",
                                             error: "Couldn't save the league. Check your connection and try again.")) },
+    ]
+    // MARK: - J Auction settings (AuctionSettingsScreen.kt)
+
+    private static func auctionState(squadMin: String = "8", squadMax: String = "12", scheduledAt: String? = "2026-10-11T13:30:00Z",
+                                     scheduleError: String? = nil, passed: Bool = false, touched: Set<AuctionField> = [],
+                                     saving: Bool = false, saveError: AuctionSaveError? = nil, saved: Bool = false,
+                                     loadFailed: Bool = false) -> AuctionSettingsState {
+        AuctionSettingsState(isLoading: false, loadFailed: loadFailed, league: loadFailed ? nil : Fixtures.league(), basePrice: "1000",
+                             purse: "100000", squadMin: squadMin, squadMax: squadMax, bidIncrement: "500", scheduledAt: scheduledAt,
+                             scheduledAtError: scheduleError, scheduledAtPassed: passed, touched: touched, submitAttempted: false,
+                             isSaving: saving, saveError: saveError, showSavedNotice: saved)
+    }
+
+    private static func auction(_ state: AuctionSettingsState, cleared: String? = nil) -> AnyView {
+        AnyView(AuctionSettingsContent(state: state, clearedSchedule: cleared))
+    }
+
+    @MainActor private static let auctionSettings: [String: () -> AnyView] = [
+        "J1": { auction(auctionState(scheduledAt: nil)) },
+        "J1-scheduled": { auction(auctionState()) },
+        "J2": { auction(auctionState(squadMin: "14", squadMax: "25", touched: [.squadMin, .squadMax])) },
+        "J3": { auction(auctionState(saving: true)) },
+        "J4": { auction(auctionState(saved: true)) },
+        "J5": { auction(auctionState(saveError: AuctionSaveError(message: "Couldn't save auction settings. Check your connection.", canRetry: true))) },
+        "J9": { auction(auctionState(scheduledAt: "2026-09-01T13:30:00Z", passed: true)) },
+        "J9-cleared": { auction(auctionState(scheduledAt: nil), cleared: "2026-10-11T13:30:00Z") },
+        "J10": {
+            AnyView(ZStack {
+                auction(auctionState(scheduledAt: nil))
+                ParityDialogPreview {
+                    CrichereDatePickerDialog(title: "Auction date", initial: nil, minimum: parseIsoDay("2026-11-22"), style: .auction,
+                                             onDismiss: {}, onPicked: { _ in })
+                }
+            })
+        },
+        "J11": {
+            AnyView(ZStack {
+                auction(auctionState(scheduledAt: nil))
+                ParityDialogPreview {
+                    CrichereTimePickerDialog(title: "Auction time · 12 Dec 2026",
+                                             initial: Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: Date()) ?? Date(),
+                                             onBack: {}, onPicked: { _ in })
+                }
+            })
+        },
+        "J12": { auction(auctionState(scheduleError: "Pick a time after the league's registrations close.")) },
+        "J-error": { auction(auctionState(loadFailed: true)) },
     ]
 }
 
