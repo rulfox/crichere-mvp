@@ -64,6 +64,8 @@ targets:
         # fabricate.
         DEVELOPMENT_TEAM: ""
         SWIFT_VERSION: "5.0"
+        # No app icon yet (Design/Icons.xcassets holds only the Android UI icons).
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
     dependencies:
       - package: FirebaseIOS
         product: FirebaseAuth

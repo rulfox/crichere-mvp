@@ -30,8 +30,21 @@ struct IosAppApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-gallery") {
+                DesignGallery()
+            } else {
+                root
+            }
+            #else
+            root
+            #endif
+        }
+    }
+
+    private var root: some View {
             AppRootView(pendingDeepLinkLeagueId: $pendingDeepLinkLeagueId)
-                .tint(Brand.primary)
+                .tint(CrichereColor.primary)
                 .onOpenURL { url in
                     // crichere://leagues/{id} -- see docs/PHASE3.md. A URL arriving while the app
                     // is already running updates this same @State, which AppRootView re-reads via
@@ -44,6 +57,5 @@ struct IosAppApp: App {
                     guard let id = url.pathComponents.dropFirst().first, UUID(uuidString: id) != nil else { return }
                     pendingDeepLinkLeagueId = id
                 }
-        }
     }
 }
