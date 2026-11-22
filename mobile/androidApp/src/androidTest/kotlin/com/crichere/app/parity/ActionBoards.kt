@@ -93,7 +93,7 @@ private val actionBoards: Map<String, ActionBoard> by lazy {
         // H2: pinched to about 2.4x, then panned 120 right and 60 up, like the iOS board's initial scale and offset.
         "H2" to ActionBoard(shell.getValue("H1")) {
             onRoot().performTouchInput {
-                pinch(center - Offset(100f, 0f), center - Offset(240f, 0f), center + Offset(100f, 0f), center + Offset(240f, 0f), durationMillis = 600)
+                pinch(center - Offset(100f, 0f), center - Offset(285f, 0f), center + Offset(100f, 0f), center + Offset(285f, 0f), durationMillis = 600)
             }
             waitForIdle()
             onRoot().performTouchInput { swipe(center, center + Offset(120.dp.toPx(), -60.dp.toPx()), durationMillis = 600) }

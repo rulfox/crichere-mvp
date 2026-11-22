@@ -307,8 +307,7 @@ the sample image and accepts the check sheet (`PickedProofBoards.kt`).
 
 **Allowed differences in the captures:** the native pickers inside the date / time dialogs (I6, J10,
 J11: iOS calendar and wheel vs Material's), the keyboard (A2, B1, AD6), Android's clipboard chip after
-Copy (F2, G3-noupi), the Google map with no Maps key on the emulator (I5, I11, I16), H2's zoom level
-(a pinch reaches 2.0x where the iOS board starts at 2.4x), and lines that sit within a point of the width
+Copy (F2, G3-noupi), the Google map with no Maps key on the emulator (I5, I11, I16), and lines that sit within a point of the width
 wrapping one word differently (measured text widths agree to within 1%).
 
 **Not reachable here (need the owner):**
