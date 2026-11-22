@@ -17,7 +17,8 @@ struct RemoteImage: View {
         if let url, let parsed = URL(string: url) {
             AsyncImage(url: parsed) { phase in
                 if let image = phase.image {
-                    image.resizable().scaledToFill()
+                    // Takes the proposed size and crops into it, so it never grows a ZStack it sits in.
+                    Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
                 }
             }
         }

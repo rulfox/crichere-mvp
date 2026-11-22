@@ -232,11 +232,12 @@ struct PaymentProofCard: View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         return ZStack {
             CrichereColor.surfaceVariant
-            if let thumbnail { Image(uiImage: thumbnail).resizable().scaledToFill() }
+            // Pinned to the tile, or a fill-cropped image grows the stack and the badge lands off-tile.
+            if let thumbnail { Image(uiImage: thumbnail).resizable().scaledToFill().frame(width: 70, height: 124) }
             switch state {
             case let .uploading(progress, _):
                 Color(hex: 0x0E1A11, opacity: 0x8C / 255.0)
-                Text("\(Int(progress * 100))%").crichere(.mono(10, .bold), .white)
+                Text("\(Int(progress * 100 + 0.0001))%").crichere(.mono(10, .bold), .white)
                     .frame(width: 32, height: 32)
                     .background(Color(hex: 0x0E1A11, opacity: 0xD9 / 255.0), in: Circle())
             case .failed:

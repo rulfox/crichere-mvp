@@ -237,22 +237,22 @@ struct EndAuctionDialog: View {
         ZStack {
             Color.black.opacity(0.6).ignoresSafeArea().onTapGesture { if !ending { onDismiss() } }
             VStack(alignment: .leading, spacing: 0) {
-                Text("End the auction?").crichere(.sans(19, .semiBold, lineHeight: 22.8), .white)
+                Text("End the auction?").crichere(.sans(19, .semiBold, lineHeight: 22.8).tight, .white)
                 Spacer().frame(height: 12)
                 (Text(body.prefix) + Text(body.emphasis).foregroundColor(.white).font(CrichereTextStyle.sans(13.5, .semiBold).font) + Text(body.suffix))
-                    .crichere(.sans(13.5, lineHeight: 19.6), textDim)
+                    .crichere(.sans(13.5, lineHeight: 19.6).tight, textDim)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer().frame(height: 18)
                 HStack(spacing: 22) {
                     Spacer(minLength: 0)
-                    Button(action: onDismiss) { Text("Cancel").crichere(.sans(14, .semiBold, lineHeight: 20), textSoft) }
+                    Button(action: onDismiss) { Text("Cancel").crichere(.sans(14, .semiBold, lineHeight: 20).tight, textSoft) }
                         .buttonStyle(.plain)
                         .opacity(ending ? 0.38 : 1)
                         .disabled(ending)
                     Button(action: onConfirm) {
                         HStack(spacing: 8) {
                             if ending { CrichereSpinner(color: coral, track: coral.opacity(0.25), lineWidth: 2, size: 16) }
-                            Text(ending ? "Ending…" : "End auction").crichere(.sans(14, .semiBold, lineHeight: 20), coral)
+                            Text(ending ? "Ending…" : "End auction").crichere(.sans(14, .semiBold, lineHeight: 20).tight, coral)
                         }
                     }
                     .buttonStyle(.plain)
@@ -334,15 +334,15 @@ private struct ConnectionPill: View {
             switch phase {
             case .lost:
                 CrIcon("ic_cloud_off", size: 15, tint: coral)
-                Text("Connection lost").crichere(.sans(12, .semiBold, lineHeight: 12), coral)
-                Text("Retry").crichere(.sans(11.5, .bold, lineHeight: 11.5), auctionBg)
+                Text("Connection lost").crichere(.sans(12, .semiBold, lineHeight: 12).tight, coral)
+                Text("Retry").crichere(.sans(11.5, .bold, lineHeight: 11.5).tight, auctionBg)
                     .padding(.horizontal, 9).frame(height: 22).background(coral, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             case .backOnline:
                 CrIcon("ic_check", size: 15, tint: liveFeed)
-                Text("Back online").crichere(.sans(12, .semiBold, lineHeight: 12), liveFeed)
+                Text("Back online").crichere(.sans(12, .semiBold, lineHeight: 12).tight, liveFeed)
             default:
                 CrichereSpinner(color: textDim, lineWidth: 2, size: 12)
-                Text("Reconnecting…").crichere(.sans(12, .semiBold, lineHeight: 12), textDim).padding(.leading, 1)
+                Text("Reconnecting…").crichere(.sans(12, .semiBold, lineHeight: 12).tight, textDim).padding(.leading, 1)
             }
         }
         .padding(.leading, phase == .backOnline ? 8 : 9)
@@ -373,14 +373,14 @@ private struct BlockCard: View {
             Spacer().frame(height: 14)
             hairline.frame(height: 1)
             Spacer().frame(height: 14)
-            Text("Current bid").crichere(.sans(12, .medium, lineHeight: 16), muted)
+            Text("Current bid").crichere(.sans(12, .medium, lineHeight: 16).tight, muted)
             Spacer().frame(height: 4)
             bidRow.frame(height: 40, alignment: .bottom)
             if let minimumNextBid {
                 Spacer().frame(height: 4)
                 (Text(auction.currentBidAmount == nil ? "Opening bid at least " : "Next bid at least ")
                     + Text(rupees(minimumNextBid)).font(CrichereTextStyle.mono(12, .medium).font).foregroundColor(textDim))
-                    .crichere(.sans(12, .medium, lineHeight: 16), muted)
+                    .crichere(.sans(12, .medium, lineHeight: 16).tight, muted)
             }
         }
         .padding(14)
@@ -400,10 +400,10 @@ private struct BlockCard: View {
                 PlayerPhoto(url: auction.currentPlayerPhotoUrl, name: name, size: 88, radius: 20, initialsSize: 30)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("ON THE BLOCK").crichere(.mono(10, .semiBold, lineHeight: 12, tracking: 0.8), gold)
-                Text(name).crichere(.archivo(22, .extraBold, lineHeight: 26), .white).lineLimit(2)
+                Text("ON THE BLOCK").crichere(.mono(10, .semiBold, lineHeight: 12, tracking: 0.8).tight, gold)
+                Text(name).crichere(.archivo(22, .extraBold, lineHeight: 26).tight, .white).lineLimit(2)
                 if let role = auction.currentPlayerRole {
-                    Text(role.label).crichere(.sans(11.5, .semiBold, lineHeight: 11.5), textSoft).lineLimit(1)
+                    Text(role.label).crichere(.sans(11.5, .semiBold, lineHeight: 11.5).tight, textSoft).lineLimit(1)
                         .padding(.horizontal, 9)
                         .frame(height: 22)
                         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Color.white.opacity(0.16), lineWidth: 1))
@@ -417,20 +417,20 @@ private struct BlockCard: View {
         if let amount = auction.currentBidAmount?.doubleValue {
             // The amount never truncates; the leader's name gives way instead.
             HStack(alignment: .bottom, spacing: 10) {
-                Text(rupees(amount)).crichere(.mono(36, .bold, lineHeight: 40, tracking: -0.72), .white).lineLimit(1).fixedSize()
+                Text(rupees(amount)).crichere(.mono(36, .bold, lineHeight: 40, tracking: -0.72).tight, .white).lineLimit(1).fixedSize()
                 if let leaderId = auction.currentLeadingFranchiseId {
                     HStack(spacing: 7) {
                         Spacer(minLength: 0)
                         FranchiseTile(id: leaderId, name: auction.currentLeadingFranchiseName ?? "", franchises: franchises, blockedIds: blockedIds,
                                       size: 20, radius: 6, fontSize: 7)
-                        Text(auction.currentLeadingFranchiseName ?? "").crichere(.sans(13, .semiBold, lineHeight: 16), textSoft).lineLimit(1)
+                        Text(auction.currentLeadingFranchiseName ?? "").crichere(.sans(13, .semiBold, lineHeight: 16).tight, textSoft).lineLimit(1)
                     }
                     .padding(.bottom, 6)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            Text("No bids yet").crichere(.sans(20, .semiBold, lineHeight: 28), textSoft).padding(.bottom, 4)
+            Text("No bids yet").crichere(.sans(20, .semiBold, lineHeight: 28).tight, textSoft).padding(.bottom, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -480,9 +480,9 @@ private struct DeadEndCard: View {
                 .background(isOrganizer ? coral.opacity(0.14) : Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             Spacer().frame(height: 10)
             Text(isOrganizer ? "No franchise can bid on the remaining players" : "Bidding has closed")
-                .crichere(.archivo(18, .bold, lineHeight: 21.6), .white)
+                .crichere(.archivo(18, .bold, lineHeight: 21.6).tight, .white)
             Spacer().frame(height: 10)
-            explanation.crichere(.sans(13, lineHeight: 18.85), textDim).fixedSize(horizontal: false, vertical: true)
+            explanation.crichere(.sans(13, lineHeight: 18.85).tight, textDim).fixedSize(horizontal: false, vertical: true)
             if isOrganizer {
                 Spacer().frame(height: 10)
                 hairline.frame(height: 1)
@@ -495,7 +495,7 @@ private struct DeadEndCard: View {
             }
             if let line = lastResultLine(auction) {
                 Spacer().frame(height: 10)
-                Text(line).crichere(.sans(12, lineHeight: 16.8), muted)
+                Text(line).crichere(.sans(12, lineHeight: 16.8).tight, muted)
             }
         }
         .padding(.horizontal, 17)
@@ -528,8 +528,8 @@ private struct BreakdownRow: View {
 
     var body: some View {
         HStack {
-            Text(label).crichere(.sans(12.5, .medium, lineHeight: 12.5), muted).frame(maxWidth: .infinity, alignment: .leading)
-            Text(value).crichere(.mono(12.5, .medium, lineHeight: 12.5), textSoft)
+            Text(label).crichere(.sans(12.5, .medium, lineHeight: 12.5).tight, muted).frame(maxWidth: .infinity, alignment: .leading)
+            Text(value).crichere(.mono(12.5, .medium, lineHeight: 12.5).tight, textSoft)
         }
     }
 }
@@ -666,13 +666,13 @@ private struct ResultCard: View {
         HStack(spacing: 10) {
             FranchiseTile(id: result.franchiseId, name: result.franchiseName, franchises: franchises, blockedIds: blockedIds, size: 32, radius: 9, fontSize: 12)
             VStack(alignment: .leading, spacing: 5) {
-                Text(result.franchiseName).crichere(.sans(14, .semiBold, lineHeight: 14), .white).lineLimit(1)
-                summary.crichere(.sans(11.5, .medium, lineHeight: 11.5), muted)
+                Text(result.franchiseName).crichere(.sans(14, .semiBold, lineHeight: 14).tight, .white).lineLimit(1)
+                summary.crichere(.sans(11.5, .medium, lineHeight: 11.5).tight, muted)
                 if let over {
                     HStack(spacing: 4) {
                         CrIcon("ic_error", size: 14, tint: coral)
                         (Text(rupees(over)).font(CrichereTextStyle.mono(11.5, .semiBold).font) + Text(" over purse"))
-                            .crichere(.sans(11.5, .semiBold, lineHeight: 11.5), coral)
+                            .crichere(.sans(11.5, .semiBold, lineHeight: 11.5).tight, coral)
                     }
                 }
             }
@@ -725,10 +725,10 @@ private struct ResultCard: View {
                 Color.white.opacity(0.06).frame(height: 1)
                 HStack {
                     (Text("Purse ") + Text(rupees(purse)).font(CrichereTextStyle.mono(12, .medium).font).foregroundColor(textSoft))
-                        .crichere(.sans(12, .medium, lineHeight: 12), muted)
+                        .crichere(.sans(12, .medium, lineHeight: 12).tight, muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     (Text("Spent ") + Text(rupees(result.purseSpent)).font(CrichereTextStyle.mono(12, .medium).font))
-                        .crichere(.sans(12, .medium, lineHeight: 12), coral)
+                        .crichere(.sans(12, .medium, lineHeight: 12).tight, coral)
                 }
                 .frame(height: 31)
             }
@@ -892,8 +892,8 @@ private struct DockStatusTile: View {
         HStack(spacing: 10) {
             CrIcon(icon, size: 20, tint: leading ? gold : muted)
             VStack(alignment: .leading, spacing: 2) {
-                title.crichere(.sans(14, .semiBold, lineHeight: 18), .white).lineLimit(1)
-                subtitle.crichere(.sans(12, lineHeight: 16), muted).lineLimit(1)
+                title.crichere(.sans(14, .semiBold, lineHeight: 18).tight, .white).lineLimit(1)
+                subtitle.crichere(.sans(12, lineHeight: 16).tight, muted).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
@@ -965,7 +965,7 @@ private struct AmountField: View {
                     .disabled(!enabled)
                 if let outbidAmount {
                     (Text("Outbid · ") + Text(rupees(outbidAmount)).font(CrichereTextStyle.mono(11.5, .semiBold).font))
-                        .crichere(.sans(11.5, .semiBold, lineHeight: 11.5), coral)
+                        .crichere(.sans(11.5, .semiBold, lineHeight: 11.5).tight, coral)
                         .padding(.leading, 6)
                         .transition(.opacity)
                 }
@@ -982,7 +982,7 @@ private struct AmountField: View {
             }
             if let error {
                 Spacer().frame(height: 6)
-                Text(error).crichere(.sans(12, .medium, lineHeight: 16), coral).padding(.leading, 4)
+                Text(error).crichere(.sans(12, .medium, lineHeight: 16).tight, coral).padding(.leading, 4)
             }
         }
     }
@@ -1055,9 +1055,9 @@ private struct OrganizerControls: View {
             let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Allow exceeding purse").crichere(.sans(13, .medium, lineHeight: 16.9), .white)
+                    Text("Allow exceeding purse").crichere(.sans(13, .medium, lineHeight: 16.9).tight, .white)
                     Text(auction.purseBelowBase == 1 ? "1 franchise is stopped by its purse" : "\(auction.purseBelowBase) franchises are stopped by their purse")
-                        .crichere(.sans(11.5, lineHeight: 14.95), textDim)
+                        .crichere(.sans(11.5, lineHeight: 14.95).tight, textDim)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 ExceedPurseSwitch(allow: auction.allowExceedPurse, enabled: !acting, onToggle: actions.onToggleExceedPurse)

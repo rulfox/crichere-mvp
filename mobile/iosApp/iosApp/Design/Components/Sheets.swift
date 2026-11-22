@@ -5,11 +5,15 @@ import SwiftUI
 /// scrim to dismiss (unless [dismissable] is false, e.g. while a report is sending -- R5e).
 struct CrichereSheetStyle {
     var background: Color = CrichereColor.background
+    /// `0x800A120C`, what the crop, area-picker and screenshot-check sheets set; see [material].
     var scrim: Color = Color(hex: 0x0A120C, opacity: 0.5)
     var handle: Color = Color(hex: 0xB9C1B4)
     var showHandle: Bool = true
     /// Fill the screen height (minus the status bar) instead of wrapping the content.
     var fullHeight: Bool = false
+
+    /// A `ModalBottomSheet` left on Material3's default scrim (black at 32%): the report sheet, My profile's photo sheet.
+    static let material = CrichereSheetStyle(scrim: Color.black.opacity(0.32))
 }
 
 private struct BottomSheetContainer<Content: View>: View {

@@ -192,7 +192,7 @@ enum ParityGallery {
         "N2": {
             AnyView(ZStack(alignment: .bottom) {
                 ownScreen(ownState())
-                ParitySheetPreview { PhotoSheetPreview() }
+                ParitySheetPreview(scrim: CrichereSheetStyle.material.scrim) { PhotoSheetPreview() }
             })
         },
         "N-logout": {
@@ -660,7 +660,7 @@ enum ParityGallery {
     private static func report(_ state: ReportState) -> AnyView {
         AnyView(ZStack(alignment: .bottom) {
             leagueDetailBackdrop()
-            ParitySheetPreview(background: CrichereColor.surface) { ReportSheetContent(state: state) }
+            ParitySheetPreview(background: CrichereColor.surface, scrim: CrichereSheetStyle.material.scrim) { ReportSheetContent(state: state) }
         })
     }
 
@@ -715,11 +715,12 @@ enum ParityGallery {
 /// A sheet drawn in place (scrim + 28 pt panel + handle) for still captures; the real one animates in.
 struct ParitySheetPreview<Content: View>: View {
     var background: Color = CrichereColor.background
+    var scrim: Color = CrichereSheetStyle().scrim
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(hex: 0x0A120C, opacity: 0.5).ignoresSafeArea()
+            scrim.ignoresSafeArea()
             VStack(spacing: 0) {
                 Capsule().fill(Color(hex: 0xB9C1B4)).frame(width: 32, height: 4).padding(.top, 10)
                 content()
@@ -736,7 +737,7 @@ struct ParityDialogPreview<Content: View>: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.32).ignoresSafeArea()
+            Color.black.opacity(0.6).ignoresSafeArea()
             content().padding(.horizontal, 23)
         }
     }

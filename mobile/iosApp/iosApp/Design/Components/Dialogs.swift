@@ -64,6 +64,10 @@ extension View {
     }
 }
 
+/// How wide Android draws an `AlertDialog` left on the platform default width (the framework's
+/// `config_prefDialogWidth`): Block, Leave, the removed-image notice.
+let platformDialogWidth: CGFloat = 320
+
 private struct DialogScrim<Content: View>: View {
     let dismissable: Bool
     let onDismiss: () -> Void
@@ -71,7 +75,8 @@ private struct DialogScrim<Content: View>: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.32)
+            // Android's dialog window dim: Theme.Material.Light's backgroundDimAmount, 0.6.
+            Color.black.opacity(0.6)
                 .ignoresSafeArea()
                 .onTapGesture { if dismissable { onDismiss() } }
                 .accessibilityAddTraits(.isButton)

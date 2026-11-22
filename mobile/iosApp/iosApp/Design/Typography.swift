@@ -74,6 +74,10 @@ struct CrichereTextStyle {
     var size: CGFloat
     var lineHeight: CGFloat? = nil
     var tracking: CGFloat = 0
+    /// Compose's `LineHeightStyle(Center, Trim.None)` (AuctionLiveScreen's `tight()`): every line, the
+    /// first and last included, is exactly [lineHeight] tall. Off (Compose's default `Trim.Both`), the
+    /// first line's top and the last line's bottom keep the font's own ascent and descent.
+    var boxed: Bool = false
 
     var uiFont: UIFont { CrichereFonts.uiFont(family, weight, size) }
     var font: Font { Font(uiFont) }
@@ -91,6 +95,8 @@ struct CrichereTextStyle {
     }
 
     func weight(_ weight: CrichereWeight) -> Self { var copy = self; copy.weight = weight; return copy }
+    /// This style laid out like Android's `tight()` -- see [boxed].
+    var tight: Self { var copy = self; copy.boxed = true; return copy }
     func size(_ size: CGFloat, lineHeight: CGFloat? = nil) -> Self { var copy = self; copy.size = size; copy.lineHeight = lineHeight; return copy }
 }
 
@@ -122,13 +128,15 @@ private struct CrichereTextModifier: ViewModifier {
     func body(content: Content) -> some View {
         let natural = style.uiFont.lineHeight
         let extra = (style.lineHeight ?? natural) - natural
-        // Compose sizes a text line to its lineHeight, centred; SwiftUI uses the font's own line
-        // height. Line spacing covers the gaps between lines, half the difference above and below.
+        // Compose spaces lines [lineHeight] apart but (default Trim.Both) keeps the font's own ascent
+        // above the first and descent below the last, so a single line is the font's natural height --
+        // which is SwiftUI's line plus line spacing between lines. A boxed style (Trim.None) also
+        // sizes the outer lines to lineHeight, centred: half the difference above and below.
         content
             .font(style.font)
             .tracking(style.tracking)
             .lineSpacing(max(0, extra))
-            .padding(.vertical, extra / 2)
+            .padding(.vertical, style.boxed ? extra / 2 : 0)
     }
 }
 

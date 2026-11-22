@@ -487,7 +487,7 @@ private struct ProofRow: View {
             switch proof {
             case let .uploading(progress, _):
                 Color(hex: 0x0E1A11, opacity: 0x8C / 255.0)
-                Text("\(Int(progress * 100))%").crichere(.mono(10, .bold), .white)
+                Text("\(Int(progress * 100 + 0.0001))%").crichere(.mono(10, .bold), .white)
             case .failed:
                 Color(hex: 0x8C1D12, opacity: 0x8C / 255.0)
                 CrIcon("ic_error", size: 20, tint: .white)

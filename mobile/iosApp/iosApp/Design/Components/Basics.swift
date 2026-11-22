@@ -335,6 +335,17 @@ struct DismissibleNotice: View {
 }
 
 /// Full-screen load failure (androidApp `LeagueDetailScreen.kt` `LoadError`): cloud-off icon, Archivo
+extension View {
+    /// A Compose `Text` with no `textAlign` in a centred column: centred while it fits on one line; once it
+    /// wraps it takes the full width and its lines start at the left.
+    func composeWrap() -> some View {
+        ViewThatFits(in: .horizontal) {
+            fixedSize()
+            multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 /// title, hint, and a green Retry pill.
 struct LoadErrorView: View {
     var title: String = "Couldn't load this league"
@@ -344,10 +355,10 @@ struct LoadErrorView: View {
         VStack(spacing: 0) {
             CrIcon("ic_cloud_off", size: 40, tint: CrichereColor.outline)
             Spacer().frame(height: 10)
-            Text(title).crichere(.archivo(17, .bold), CrichereColor.onBackground).multilineTextAlignment(.center)
+            Text(title).crichere(.archivo(17, .bold), CrichereColor.onBackground).composeWrap()
             Spacer().frame(height: 10)
             Text("Check your connection and try again.").crichere(.sans(13, lineHeight: 18.85), CrichereColor.onSurfaceVariant)
-                .multilineTextAlignment(.center)
+                .composeWrap()
             Spacer().frame(height: 14)
             Button(action: onRetry) {
                 Text("Retry").crichere(.sans(13.5, .semiBold)).padding(.horizontal, 20).frame(height: 40)

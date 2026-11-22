@@ -146,6 +146,7 @@ struct CrichereTimePickerDialog: View {
                 .tint(CrichereColor.primary)
                 .frame(maxWidth: .infinity)
         }
+        // Android's AlertDialog is platformDialogWidth wide, but the native wheel needs more room than that leaves.
         .frame(maxWidth: 360)
     }
 }

@@ -605,7 +605,7 @@ private struct UploadProgress: View {
 
     var body: some View {
         ZStack {
-            Text("Uploading \(Int(progress * 100))%")
+            Text("Uploading \(Int(progress * 100 + 0.0001))%")
                 .crichere(.mono(10.5, .semiBold, lineHeight: 10.5), .white)
                 .padding(.horizontal, 9)
                 .frame(height: 24)
