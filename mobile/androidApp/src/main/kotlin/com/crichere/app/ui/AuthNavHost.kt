@@ -318,7 +318,7 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
 
 /** Bottom navigation per the design board (screen D): tinted bar, pill indicator, filled icon when selected. */
 @Composable
-private fun MainBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
+internal fun MainBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
     val selectedInk = MaterialTheme.colorScheme.onPrimaryContainer
     val unselectedInk = Color(0xFF4A564D)
     NavigationBar(containerColor = Color(0xFFEDF0E8), tonalElevation = 0.dp) {

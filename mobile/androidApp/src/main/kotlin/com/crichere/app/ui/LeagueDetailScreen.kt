@@ -170,7 +170,7 @@ internal fun LeagueDetailRoute(
     )
 }
 
-private class LeagueDetailActions(
+internal class LeagueDetailActions(
     val onBack: () -> Unit,
     val onRetry: () -> Unit,
     val onEditLeague: () -> Unit,
@@ -206,7 +206,7 @@ private sealed interface LeaveTarget {
  * Approve/Dismiss. Rendered above `MainRoute`'s tab `Scaffold`, so it owns its own insets.
  */
 @Composable
-private fun LeagueDetailScreen(state: LeagueDetailState, moderation: LeagueModeration, actions: LeagueDetailActions, notice: String?, onNoticeShown: () -> Unit) {
+internal fun LeagueDetailScreen(state: LeagueDetailState, moderation: LeagueModeration, actions: LeagueDetailActions, notice: String?, onNoticeShown: () -> Unit) {
     val context = LocalContext.current
     var leaveTarget by remember { mutableStateOf<LeaveTarget?>(null) }
     var showCompleteDialog by remember { mutableStateOf(false) }

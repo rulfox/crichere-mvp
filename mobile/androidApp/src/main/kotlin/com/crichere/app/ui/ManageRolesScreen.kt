@@ -97,7 +97,7 @@ internal fun ManageRolesRoute(
  * given what's being handed over or taken away -- not a bare tap.
  */
 @Composable
-private fun ManageRolesScreen(state: ManageRolesState, viewModel: ManageRolesViewModel, onBack: () -> Unit) {
+internal fun ManageRolesScreen(state: ManageRolesState, viewModel: ManageRolesViewModel, onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val focusManager = LocalFocusManager.current
     var showGrantConfirm by remember { mutableStateOf(false) }

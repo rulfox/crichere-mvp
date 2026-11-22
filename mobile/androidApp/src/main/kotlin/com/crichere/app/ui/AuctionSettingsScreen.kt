@@ -110,7 +110,7 @@ internal fun AuctionSettingsRoute(
  * Save sits in a bottom bar; saved / failed show as the dark bar above it.
  */
 @Composable
-private fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel, onBack: () -> Unit) {
+internal fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel, onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     // U4 J9: clearing the auction time is instant; "Auction time cleared" offers Undo for 4 s.
     var clearedSchedule by remember { mutableStateOf<String?>(null) }

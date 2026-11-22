@@ -148,7 +148,7 @@ private enum class ImageTarget { Logo, Banner }
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCreationViewModel, onCancel: () -> Unit) {
+internal fun LeagueCreationScreen(state: LeagueCreationState, viewModel: LeagueCreationViewModel, onCancel: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var target by remember { mutableStateOf(ImageTarget.Logo) }

@@ -72,7 +72,7 @@ internal fun MyLeaguesRoute(onOpenLeague: (String) -> Unit, onBrowseLeagues: () 
  * the last list on screen instead of flashing the spinner.
  */
 @Composable
-private fun MyLeaguesScreen(
+internal fun MyLeaguesScreen(
     state: MyLeaguesState,
     onOpenLeague: (String) -> Unit,
     onRetry: () -> Unit,
