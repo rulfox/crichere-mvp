@@ -23,7 +23,7 @@ struct IosAppApp: App {
     init() {
         FirebaseApp.configure()
         IosPhoneAuthBridgeHolder.shared.bridge = FirebasePhoneAuthBridgeImpl()
-        initKoinIos()
+        KoinInitKt.doInitKoinIos()
         applyCrichereAppearance()
         configureImageCache()
     }

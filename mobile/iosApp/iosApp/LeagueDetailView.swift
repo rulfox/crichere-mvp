@@ -80,10 +80,12 @@ struct LeagueDetailView: View {
         onAuctionLive: @escaping (String) -> Void,
         onManageRoles: @escaping (String) -> Void,
         notice: String? = nil,
-        onNoticeShown: @escaping () -> Void = {}
+        onNoticeShown: @escaping () -> Void = {},
+        onHome: @escaping () -> Void
     ) {
         self.notice = notice
         self.onNoticeShown = onNoticeShown
+        self.onHome = onHome
         self.leagueId = leagueId
         self.onEditLeague = onEditLeague
         self.onJoinLeague = onJoinLeague
@@ -97,79 +99,89 @@ struct LeagueDetailView: View {
 
     private var state: LeagueDetailState { wrapper.state }
 
+    // Split into several computed properties -- as one `Group { … }` plus ~15 chained modifiers
+    // this body exceeded the Swift type-checker's budget ("unable to type-check in reasonable
+    // time"); each `some View` boundary is type-checked independently, keeping every sub-expression
+    // small.
     var body: some View {
-        Group {
-            if state.isLoading {
-                ProgressView()
-            } else if let league = state.league {
-                if hiddenByBlock(league) {
-                    BlockedOrganizerNoticeView(
-                        organizerName: organizerName(league),
-                        onUnblock: { block.unblock(userId: league.organizerUserId, name: organizerName(league)) },
-                        onHome: onHome
-                    )
-                } else {
-                    content(league)
-                }
+        chrome
+            .confirmationDialog(playerActions?.name ?? "Player", isPresented: Binding(get: { playerActions != nil }, set: { if !$0 { playerActions = nil } }), titleVisibility: .visible, presenting: playerActions) { player in
+                playerActionButtons(player)
+            }
+            .confirmationDialog(franchiseActions?.name ?? "Franchise", isPresented: Binding(get: { franchiseActions != nil }, set: { if !$0 { franchiseActions = nil } }), titleVisibility: .visible, presenting: franchiseActions) { franchise in
+                franchiseActionButtons(franchise)
+            }
+    }
+
+    @ViewBuilder private var rootView: some View {
+        if state.isLoading {
+            ProgressView()
+        } else if let league = state.league {
+            if hiddenByBlock(league) {
+                BlockedOrganizerNoticeView(
+                    organizerName: organizerName(league),
+                    onUnblock: { block.unblock(userId: league.organizerUserId, name: organizerName(league)) },
+                    onHome: onHome
+                )
             } else {
-                VStack(spacing: 12) {
-                    Text(state.errorMessage ?? "Couldn't load this league.").foregroundColor(Brand.error)
-                    Button("Retry") { wrapper.retry() }
-                }
+                content(league)
+            }
+        } else {
+            VStack(spacing: 12) {
+                Text(state.errorMessage ?? "Couldn't load this league.").foregroundColor(Brand.error)
+                Button("Retry") { wrapper.retry() }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Brand.background.ignoresSafeArea())
-        .navigationTitle(state.league?.name.trimmingCharacters(in: .whitespaces) ?? "League")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            if let league = state.league {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    ShareLink(item: URL(string: "\(webViewerBaseUrl)/leagues/\(league.id)")!,
-                              message: Text("Join \(league.name.trimmingCharacters(in: .whitespaces)) on Crichere · \(league.district.trimmingCharacters(in: .whitespaces)) · watch the player auction live")) {
-                        Image(systemName: "square.and.arrow.up")
+    }
+
+    private var chrome: some View {
+        rootView
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Brand.background.ignoresSafeArea())
+            .navigationTitle(state.league?.name.trimmingCharacters(in: .whitespaces) ?? "League")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                if let league = state.league {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ShareLink(item: URL(string: "\(webViewerBaseUrl)/leagues/\(league.id)")!,
+                                  message: Text("Join \(league.name.trimmingCharacters(in: .whitespaces)) on Crichere · \(league.district.trimmingCharacters(in: .whitespaces)) · watch the player auction live")) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        .accessibilityLabel("Share league")
                     }
-                    .accessibilityLabel("Share league")
                 }
             }
-        }
-        .onAppear { wrapper.retry() }
-        .blockConfirm(block)
-        .blockToast(block)
-        .sheet(isPresented: Binding(get: { report.state.subject != nil }, set: { if !$0 { report.close() } })) {
-            ReportSheetView(wrapper: report)
-        }
-        .alert(
-            "Mark \(state.league?.name.trimmingCharacters(in: .whitespaces) ?? "this league") as completed?",
-            isPresented: $showCompleteConfirm
-        ) {
-            Button("Cancel", role: .cancel) {}
-            Button("Mark completed", role: .destructive) { wrapper.markCompleted() }
-        } message: {
-            Text("This can't be undone. Rosters, auction results and awards stay visible to everyone. Nobody can join, edit the league or run the auction again.")
-        }
-        .onChange(of: state.completionNotice) { _, notice in
-            guard let notice else { return }
-            showNotice(notice)
-            wrapper.clearCompletionNotice()
-        }
-        .onAppear {
-            if let notice {
-                banner = Notice(message: notice)
-                bannerAction = nil
-                onNoticeShown()
+            .onAppear { wrapper.retry() }
+            .blockConfirm(block)
+            .blockToast(block)
+            .sheet(isPresented: Binding(get: { report.state.subject != nil }, set: { if !$0 { report.close() } })) {
+                ReportSheetView(wrapper: report)
             }
-        }
-        .noticeBanner($banner, onAction: {
-            banner = nil
-            bannerAction?()
-        })
-        .confirmationDialog(playerActions?.name ?? "Player", isPresented: Binding(get: { playerActions != nil }, set: { if !$0 { playerActions = nil } }), titleVisibility: .visible, presenting: playerActions) { player in
-            playerActionButtons(player)
-        }
-        .confirmationDialog(franchiseActions?.name ?? "Franchise", isPresented: Binding(get: { franchiseActions != nil }, set: { if !$0 { franchiseActions = nil } }), titleVisibility: .visible, presenting: franchiseActions) { franchise in
-            franchiseActionButtons(franchise)
-        }
+            .alert(
+                "Mark \(state.league?.name.trimmingCharacters(in: .whitespaces) ?? "this league") as completed?",
+                isPresented: $showCompleteConfirm
+            ) {
+                Button("Cancel", role: .cancel) {}
+                Button("Mark completed", role: .destructive) { wrapper.markCompleted() }
+            } message: {
+                Text("This can't be undone. Rosters, auction results and awards stay visible to everyone. Nobody can join, edit the league or run the auction again.")
+            }
+            .onChange(of: state.completionNotice) { _, notice in
+                guard let notice else { return }
+                showNotice(notice)
+                wrapper.clearCompletionNotice()
+            }
+            .onAppear {
+                if let notice {
+                    banner = Notice(message: notice)
+                    bannerAction = nil
+                    onNoticeShown()
+                }
+            }
+            .noticeBanner($banner, onAction: {
+                banner = nil
+                bannerAction?()
+            })
     }
 
     // MARK: - list

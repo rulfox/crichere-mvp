@@ -24,7 +24,7 @@ final class LeagueCreationViewModelWrapper: ObservableObject {
         Task { [weak self] in
             for await event in viewModel.navigationEvents {
                 switch event {
-                case let saved as LeagueCreationNavigationEvent.Saved:
+                case let saved as LeagueCreationNavigationEventSaved:
                     self?.savedLeagueId = saved.leagueId
                 default:
                     break
@@ -252,8 +252,8 @@ struct LeagueCreationView: View {
                 }
             }
             GroundMapPickerView(
-                initialLatitude: wrapper.state.newGroundLatitude,
-                initialLongitude: wrapper.state.newGroundLongitude,
+                initialLatitude: wrapper.state.newGroundLatitude?.doubleValue,
+                initialLongitude: wrapper.state.newGroundLongitude?.doubleValue,
                 showHint: !groundNameFocused,
                 onPositionChanged: { lat, lon in wrapper.onNewGroundPositionChanged(latitude: lat, longitude: lon) }
             )

@@ -80,7 +80,7 @@ struct AppRootView: View {
                 AppStartRootView { resolved in
                     // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
                     guard !accountNotices.isSuspended else { return }
-                    switch resolved {
+                    switch onEnum(of: resolved) {
                     case .phoneEntry: destination = .phoneEntry
                     case .profileSetup: destination = .profileSetup(isEditMode: false)
                     case .main: destination = .main(initialTab: .dashboard)
@@ -94,7 +94,7 @@ struct AppRootView: View {
 
             case let .otpVerify(phoneNumber, verificationId, resendToken):
                 OtpVerifyView(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken) { event in
-                    switch event {
+                    switch onEnum(of: event) {
                     case .navigateToProfileSetup: destination = .profileSetup(isEditMode: false)
                     case .navigateToOwnProfile: destination = .main(initialTab: .dashboard)
                     case .navigateToPhoneEntry: destination = .phoneEntry
@@ -153,7 +153,9 @@ private struct AppStartRootView: View {
                 ProgressView()
             }
         }
-        .onChange(of: wrapper.destination) { _, resolved in
+        .onReceive(wrapper.$destination) { resolved in
+            // Existential `AppStartDestination` isn't `Equatable`, so observe the `@Published`
+            // publisher rather than `onChange(of:)`.
             if let resolved { onResolved(resolved) }
         }
     }

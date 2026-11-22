@@ -7,7 +7,8 @@ name: iosApp
 options:
   bundleIdPrefix: com.crichere
   deploymentTarget:
-    iOS: "16.0" # matches ProfileSetupView.swift's PhotosPicker usage, iOS 16+ only
+    iOS: "17.0" # the SwiftUI views use the two-param onChange(of:initial:_:), which is iOS 17+
+                # (ProfileSetupView's PhotosPicker needs 16+, so 17 satisfies that too)
 
 packages:
   # Pin an exact version by checking https://github.com/firebase/firebase-ios-sdk/releases at
@@ -22,7 +23,7 @@ targets:
   iosApp:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: iosApp
     info:

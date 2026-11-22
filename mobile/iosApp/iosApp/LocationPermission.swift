@@ -6,7 +6,7 @@ import CoreLocation
 /// into the shared `LocationProvider`-backed ViewModel methods. Used by both League Dashboard's
 /// "near me" toggle and Profile Setup's "use my location" button.
 @MainActor
-final class LocationPermissionRequester: NSObject, CLLocationManagerDelegate {
+final class LocationPermissionRequester: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<Void, Never>?
 

@@ -71,115 +71,16 @@ struct ProfileSetupView: View {
         _wrapper = StateObject(wrappedValue: ProfileSetupViewModelWrapper(isEditMode: isEditMode))
     }
 
+    // Split into per-section computed properties -- as a single `Form { … }` with six sections of
+    // Kotlin-typed Picker bindings plus the trailing modifiers, this body exceeded the Swift
+    // type-checker's budget ("unable to type-check in reasonable time"). Each `some View` boundary
+    // is type-checked independently.
     var body: some View {
         Group {
             if wrapper.state.isLoading {
                 ProgressView()
             } else {
-                Form {
-                    Section {
-                        TextField("Full name", text: Binding(
-                            get: { wrapper.state.name },
-                            set: { wrapper.onNameChanged($0) }
-                        ))
-                    } header: {
-                        // U4 F1: the subtitle stays in every state (it explains why we ask; hiding it made the form jump).
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("So organizers know who's joining their league.")
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-                                .textCase(nil)
-                            Text("Name")
-                        }
-                    } footer: {
-                        // U4 C11: the row is always there (empty when valid), so the error doesn't push the form down.
-                        Text(wrapper.state.nameError ?? " ")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color(red: 0xB3 / 255, green: 0x26 / 255, blue: 0x1E / 255))
-                    }
-
-                    Section("Photo") {
-                        PhotosPicker("Choose a profile photo", selection: $selectedPhotoItem, matching: .images)
-                        if wrapper.state.isUploadingPhoto {
-                            ProgressView("Uploading...")
-                        }
-                        if let error = wrapper.state.photoUploadErrorMessage {
-                            Text(error).foregroundColor(.red)
-                        }
-                    }
-
-                    Section("Location") {
-                        Button(wrapper.state.isLocating ? "Finding your location..." : "Use my location") {
-                            Task {
-                                await locationPermission.requestWhenInUseAuthorization()
-                                wrapper.useMyLocation()
-                            }
-                        }
-                        .disabled(wrapper.state.isLocating)
-
-                        Picker("State", selection: Binding(
-                            get: { wrapper.state.states.first { $0.name == wrapper.state.state } },
-                            set: { newValue in if let newValue { wrapper.onStateSelected(newValue) } }
-                        )) {
-                            ForEach(wrapper.state.states, id: \.code) { stateDto in
-                                Text(stateDto.name).tag(Optional(stateDto))
-                            }
-                        }
-
-                        Picker("District", selection: Binding(
-                            get: { wrapper.state.districts.first { $0.name == wrapper.state.district } },
-                            set: { newValue in if let newValue { wrapper.onDistrictSelected(newValue) } }
-                        )) {
-                            ForEach(wrapper.state.districts, id: \.id) { districtDto in
-                                Text(districtDto.name).tag(Optional(districtDto))
-                            }
-                        }
-                        .disabled(wrapper.state.state == nil)
-
-                    }
-
-                    Section("Playing") {
-                        Picker("Role", selection: Binding(
-                            get: { wrapper.state.playingRole },
-                            set: { newValue in if let newValue { wrapper.onRoleSelected(newValue) } }
-                        )) {
-                            ForEach(PlayingRole.entries, id: \.self) { role in
-                                Text(role.name).tag(Optional(role))
-                            }
-                        }
-
-                        Picker("Batting style", selection: Binding(
-                            get: { wrapper.state.battingStyle },
-                            set: { newValue in if let newValue { wrapper.onBattingStyleSelected(newValue) } }
-                        )) {
-                            ForEach(BattingStyle.entries, id: \.self) { style in
-                                Text(style.name).tag(Optional(style))
-                            }
-                        }
-
-                        if wrapper.state.isBowlingStyleApplicable {
-                            Picker("Bowling style", selection: Binding(
-                                get: { wrapper.state.bowlingStyle },
-                                set: { newValue in if let newValue { wrapper.onBowlingStyleSelected(newValue) } }
-                            )) {
-                                ForEach(BowlingStyle.entries, id: \.self) { style in
-                                    Text(style.name).tag(Optional(style))
-                                }
-                            }
-                        }
-                    }
-
-                    if let error = wrapper.state.errorMessage {
-                        Text(error).foregroundColor(.red)
-                    }
-
-                    Section {
-                        Button(wrapper.state.isSaving ? "Saving..." : "Save") {
-                            wrapper.save()
-                        }
-                        .disabled(!wrapper.state.isSaveEnabled)
-                    }
-                }
+                formBody
             }
         }
         .navigationTitle(onBack == nil ? "Set up your profile" : "Edit profile")
@@ -218,6 +119,127 @@ struct ProfileSetupView: View {
         }
         .onChange(of: wrapper.didCompleteProfile) { _, completed in
             if completed { onProfileComplete() }
+        }
+    }
+
+    private var formBody: some View {
+        Form {
+            nameSection
+            photoSection
+            locationSection
+            playingSection
+            if let error = wrapper.state.errorMessage {
+                Text(error).foregroundColor(.red)
+            }
+            saveSection
+        }
+    }
+
+    private var nameSection: some View {
+        Section {
+            TextField("Full name", text: Binding(
+                get: { wrapper.state.name },
+                set: { wrapper.onNameChanged($0) }
+            ))
+        } header: {
+            // U4 F1: the subtitle stays in every state (it explains why we ask; hiding it made the form jump).
+            VStack(alignment: .leading, spacing: 4) {
+                Text("So organizers know who's joining their league.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .textCase(nil)
+                Text("Name")
+            }
+        } footer: {
+            // U4 C11: the row is always there (empty when valid), so the error doesn't push the form down.
+            Text(wrapper.state.nameError ?? " ")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(Color(red: 0xB3 / 255, green: 0x26 / 255, blue: 0x1E / 255))
+        }
+    }
+
+    @ViewBuilder private var photoSection: some View {
+        Section("Photo") {
+            PhotosPicker("Choose a profile photo", selection: $selectedPhotoItem, matching: .images)
+            if wrapper.state.isUploadingPhoto {
+                ProgressView("Uploading...")
+            }
+            if let error = wrapper.state.photoUploadErrorMessage {
+                Text(error).foregroundColor(.red)
+            }
+        }
+    }
+
+    private var locationSection: some View {
+        Section("Location") {
+            Button(wrapper.state.isLocating ? "Finding your location..." : "Use my location") {
+                Task {
+                    await locationPermission.requestWhenInUseAuthorization()
+                    wrapper.useMyLocation()
+                }
+            }
+            .disabled(wrapper.state.isLocating)
+
+            Picker("State", selection: Binding(
+                get: { wrapper.state.states.first { $0.name == wrapper.state.state } },
+                set: { newValue in if let newValue { wrapper.onStateSelected(newValue) } }
+            )) {
+                ForEach(wrapper.state.states, id: \.code) { stateDto in
+                    Text(stateDto.name).tag(Optional(stateDto))
+                }
+            }
+
+            Picker("District", selection: Binding(
+                get: { wrapper.state.districts.first { $0.name == wrapper.state.district } },
+                set: { newValue in if let newValue { wrapper.onDistrictSelected(newValue) } }
+            )) {
+                ForEach(wrapper.state.districts, id: \.id) { districtDto in
+                    Text(districtDto.name).tag(Optional(districtDto))
+                }
+            }
+            .disabled(wrapper.state.state == nil)
+        }
+    }
+
+    @ViewBuilder private var playingSection: some View {
+        Section("Playing") {
+            Picker("Role", selection: Binding(
+                get: { wrapper.state.playingRole },
+                set: { newValue in if let newValue { wrapper.onRoleSelected(newValue) } }
+            )) {
+                ForEach(PlayingRole.allCases, id: \.self) { role in
+                    Text(role.name).tag(Optional(role))
+                }
+            }
+
+            Picker("Batting style", selection: Binding(
+                get: { wrapper.state.battingStyle },
+                set: { newValue in if let newValue { wrapper.onBattingStyleSelected(newValue) } }
+            )) {
+                ForEach(BattingStyle.allCases, id: \.self) { style in
+                    Text(style.name).tag(Optional(style))
+                }
+            }
+
+            if wrapper.state.isBowlingStyleApplicable {
+                Picker("Bowling style", selection: Binding(
+                    get: { wrapper.state.bowlingStyle },
+                    set: { newValue in if let newValue { wrapper.onBowlingStyleSelected(newValue) } }
+                )) {
+                    ForEach(BowlingStyle.allCases, id: \.self) { style in
+                        Text(style.name).tag(Optional(style))
+                    }
+                }
+            }
+        }
+    }
+
+    private var saveSection: some View {
+        Section {
+            Button(wrapper.state.isSaving ? "Saving..." : "Save") {
+                wrapper.save()
+            }
+            .disabled(!wrapper.state.isSaveEnabled)
         }
     }
 }

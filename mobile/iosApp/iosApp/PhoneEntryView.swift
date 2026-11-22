@@ -94,13 +94,14 @@ struct PhoneEntryView: View {
             }
         }
         .sheet(item: $legalPage) { SafariView(url: $0) }
-        .onChange(of: wrapper.navigationEvent) { _, event in
-            // SKIE exports this single-case sealed interface as a Swift enum with the case's
-            // properties as associated values -- same convention `OwnProfileView`'s multi-case
-            // `OwnProfileNavigationEvent` switch already follows.
-            switch event {
-            case .navigateToOtpVerify(let phoneNumber, let verificationId, let resendToken):
-                onNavigateToOtpVerify(phoneNumber, verificationId, resendToken)
+        .onReceive(wrapper.$navigationEvent) { event in
+            // SKIE exports this single-case sealed interface as a Swift enum reached via
+            // `onEnum(of:)`, each case carrying the concrete Kotlin subtype as its one associated
+            // value -- read the payload's properties off that. Observed via the `@Published`
+            // publisher since the existential event isn't `Equatable` (no `onChange(of:)`).
+            switch onEnum(of: event) {
+            case .navigateToOtpVerify(let payload):
+                onNavigateToOtpVerify(payload.phoneNumber, payload.verificationId, payload.resendToken)
             case nil:
                 break
             }

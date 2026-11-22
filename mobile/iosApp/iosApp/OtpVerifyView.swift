@@ -93,7 +93,9 @@ struct OtpVerifyView: View {
                 }
             }
         }
-        .onChange(of: wrapper.navigationEvent) { _, event in
+        .onReceive(wrapper.$navigationEvent) { event in
+            // Existential `AuthNavigationEvent` isn't `Equatable`, so observe the `@Published`
+            // publisher rather than `onChange(of:)`; the switch over it happens in `onNavigate`.
             if let event { onNavigate(event) }
         }
     }

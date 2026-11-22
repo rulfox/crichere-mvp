@@ -79,8 +79,11 @@ struct OwnProfileView: View {
         .navigationTitle("Your profile")
         .sheet(item: $legalPage) { SafariView(url: $0) }
         .onAppear { wrapper.retry() }
-        .onChange(of: wrapper.navigationEvent) { _, event in
-            switch event {
+        .onReceive(wrapper.$navigationEvent) { event in
+            // SKIE exports the sealed `OwnProfileNavigationEvent` as a Swift enum reached via
+            // `onEnum(of:)`; the existential itself isn't `Equatable`, so this observes the
+            // `@Published` publisher (`onReceive`) rather than `onChange(of:)`.
+            switch onEnum(of: event) {
             case .navigateToEditProfile: onNavigateToEditProfile()
             case .navigateToPhoneEntry: onNavigateToPhoneEntry()
             case nil: break
