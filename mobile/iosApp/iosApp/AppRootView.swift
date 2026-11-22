@@ -156,26 +156,42 @@ private struct AppStartRootView: View {
     @StateObject private var wrapper = AppStartViewModelWrapper()
 
     var body: some View {
-        Group {
-            if wrapper.isOffline {
-                // Session still stored; the backend just couldn't be reached (see AppStartViewModel).
-                VStack(spacing: 12) {
-                    Image(systemName: "icloud.slash").font(.system(size: 36)).foregroundStyle(.secondary)
-                    Text("Couldn't connect").font(.headline)
+        AppStartContent(isOffline: wrapper.isOffline, onRetry: wrapper.retry)
+            .onReceive(wrapper.$destination) { resolved in
+                // Existential `AppStartDestination` isn't `Equatable`, so observe the `@Published`
+                // publisher rather than `onChange(of:)`.
+                if let resolved { onResolved(resolved) }
+            }
+    }
+}
+
+/// The app-start check (androidApp `AuthNavHost.kt` `AppStartRoute`): Material's 40 pt spinner, or
+/// "Couldn't connect" with Try again when the session is stored but the backend can't be reached.
+struct AppStartContent: View {
+    let isOffline: Bool
+    let onRetry: () -> Void
+
+    var body: some View {
+        ZStack {
+            if isOffline {
+                VStack(spacing: 0) {
+                    CrIcon("ic_cloud_off", size: 40, tint: CrichereColor.onSurfaceVariant)
+                    Spacer().frame(height: 14)
+                    Text("Couldn't connect").crichere(.sans(17, .semiBold), CrichereColor.onBackground)
+                    Spacer().frame(height: 6)
                     Text("Check your internet connection and try again.")
-                        .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    Button("Try again") { wrapper.retry() }.buttonStyle(.bordered)
+                        .crichere(.sans(13, lineHeight: 18), CrichereColor.onSurfaceVariant)
+                        .multilineTextAlignment(.center)
+                    Spacer().frame(height: 20)
+                    CrichereOutlinedButton("Try again", action: onRetry)
                 }
-                .padding(40)
             } else {
-                ProgressView()
+                CrichereSpinner(color: CrichereColor.primary, lineWidth: 4, size: 40)
             }
         }
-        .onReceive(wrapper.$destination) { resolved in
-            // Existential `AppStartDestination` isn't `Equatable`, so observe the `@Published`
-            // publisher rather than `onChange(of:)`.
-            if let resolved { onResolved(resolved) }
-        }
+        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(CrichereColor.background.ignoresSafeArea())
     }
 }
 

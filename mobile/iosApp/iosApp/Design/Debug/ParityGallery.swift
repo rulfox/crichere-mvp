@@ -71,6 +71,8 @@ enum ParityGallery {
         "B5": { verifyScreen(otpState(cooldown: 0, canResend: true)) },
         "B5b": { verifyScreen(otpState(used: 1, cooldown: 58), resent: true) },
         "B7": { verifyScreen(otpState(used: 3, cooldown: 0)) },
+        "S1": { AnyView(AppStartContent(isOffline: false, onRetry: {})) },
+        "S2": { AnyView(AppStartContent(isOffline: true, onRetry: {})) },
     ]
 }
 #endif
