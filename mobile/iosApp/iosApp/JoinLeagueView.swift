@@ -193,7 +193,7 @@ struct JoinLeagueContent: View {
 
     private var proofState: ProofState {
         let caption = fileCaption(state.uploadFileName, state.uploadSizeBytes?.int64Value)
-        if state.isUploadingScreenshot { return .uploading(progress: Double(state.uploadProgress), caption: caption) }
+        if state.isUploadingScreenshot { return .uploading(progress: Double(state.uploadProgress * 100) / 100, caption: caption) }
         if state.uploadFailed { return .failed }
         if state.screenshotUrl != nil { return .attached(caption: caption) }
         return .empty

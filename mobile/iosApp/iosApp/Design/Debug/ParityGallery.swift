@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -298,6 +298,48 @@ enum ParityGallery {
         "F7": { joinScreen(joinState(attached: true, errorTitle: "Couldn't join", error: "Registration just filled up. Ask the organizer if a spot opens."), thumb: true) },
         "F9": { joinScreen(joinState(Fixtures.league(upiId: nil))) },
         "F-error": { joinScreen(joinState(nil, loadFailed: true)) },
+    ]
+    // MARK: - G Claim a franchise (ClaimFranchiseScreen.kt)
+
+    private static func claimState(_ league: LeagueDto? = Fixtures.league(), name: String = "", nameError: Bool = false, logo: Bool = false,
+                                   uploadingLogo: Bool = false, uploading: Float? = nil, attached: Bool = false, failed: Bool = false,
+                                   submitting: Bool = false, errorTitle: String? = nil, error: String? = nil,
+                                   loadFailed: Bool = false) -> ClaimFranchiseState {
+        ClaimFranchiseState(isLoading: false, league: league, loadFailed: loadFailed, name: name, nameError: nameError,
+                            logoUrl: logo ? "https://fixtures.invalid/logo.jpg" : nil, isUploadingLogo: uploadingLogo,
+                            screenshotUrl: attached ? "https://fixtures.invalid/proof.jpg" : nil, isUploadingScreenshot: uploading != nil,
+                            uploadProgress: uploading ?? 0, uploadFileName: "payment-proof.jpg", uploadSizeBytes: KotlinLong(value: 397_000),
+                            uploadFailed: failed, isSubmitting: submitting, errorTitle: errorTitle, errorMessage: error, claimed: false)
+    }
+
+    private static func claimScreen(_ state: ClaimFranchiseState, logo: Bool = false, noUpi: Bool = false, thumb: Bool = false) -> AnyView {
+        AnyView(ClaimFranchiseContent(state: state, logoPreview: logo ? DesignGallery.samplePhoto.image : nil, noUpiApp: noUpi, copied: noUpi,
+                                      thumbnail: thumb ? DesignGallery.samplePhoto.image : nil))
+    }
+
+    @MainActor private static let claim: [String: () -> AnyView] = [
+        "G1": { claimScreen(claimState()) },
+        "G1-error": { claimScreen(claimState(nameError: true)) },
+        "G1-initials": { claimScreen(claimState(name: "Kolhapur Kings")) },
+        "G2": {
+            AnyView(ZStack(alignment: .bottom) {
+                claimScreen(claimState(name: "Kolhapur Kings"))
+                ParitySheetPreview {
+                    PhotoCropSheet(photo: DesignGallery.samplePhoto, title: "Preview", subtitle: "Franchise logo · drag to reposition",
+                                   onDismiss: {}, onChooseAnother: {}, onUsePhoto: { _ in }, square: true, useLabel: "Use logo")
+                }
+            })
+        },
+        "G3": { claimScreen(claimState(name: "Kolhapur Kings", logo: true, attached: true), logo: true, thumb: true) },
+        "G3-uploading": { claimScreen(claimState(name: "Kolhapur Kings", logo: true, uploadingLogo: true, uploading: 0.42), logo: true, thumb: true) },
+        "G3-failed": { claimScreen(claimState(name: "Kolhapur Kings", failed: true), thumb: true) },
+        "G3-noupi": { claimScreen(claimState(name: "Kolhapur Kings"), noUpi: true) },
+        "G4": { claimScreen(claimState(Fixtures.league(franchiseFee: nil), name: "Kolhapur Kings")) },
+        "G5": { claimScreen(claimState(name: "Kolhapur Kings", logo: true, attached: true, submitting: true), logo: true, thumb: true) },
+        "G6": { claimScreen(claimState(name: "Kolhapur Kings", attached: true, errorTitle: "All franchise slots are taken.",
+                                       error: "Another team claimed the last spot. Ask the organizer if more franchises open."), thumb: true) },
+        "G7": { claimScreen(claimState(nil, loadFailed: true)) },
+        "G9": { claimScreen(claimState(Fixtures.league(upiId: nil), name: "Kolhapur Kings")) },
     ]
 }
 

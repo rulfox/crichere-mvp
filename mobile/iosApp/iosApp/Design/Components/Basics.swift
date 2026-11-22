@@ -90,13 +90,16 @@ struct CricherePrimaryButton: View {
     var enabled: Bool = true
     var loading: Bool = false
     var loadingText: String? = nil
+    var height: CGFloat = 52
     let action: () -> Void
 
-    init(_ text: String, enabled: Bool = true, loading: Bool = false, loadingText: String? = nil, action: @escaping () -> Void) {
+    init(_ text: String, enabled: Bool = true, loading: Bool = false, loadingText: String? = nil, height: CGFloat = 52,
+         action: @escaping () -> Void) {
         self.text = text
         self.enabled = enabled
         self.loading = loading
         self.loadingText = loadingText
+        self.height = height
         self.action = action
     }
 
@@ -112,7 +115,7 @@ struct CricherePrimaryButton: View {
                 }
             }
             .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
+            .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
         }
         .buttonStyle(PillButtonStyle(
             fill: active ? CrichereColor.primary : CrichereColor.disabledContainer,
