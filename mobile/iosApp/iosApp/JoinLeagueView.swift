@@ -83,12 +83,7 @@ struct JoinLeagueView: View {
         // Android places "UPI ID copied" 100 pt up, clear of the Join bar.
         .overlay(alignment: .bottom) {
             if let snack {
-                Text(snack.message).crichere(.sans(14, .medium), CrichereColor.onPrimary)
-                    .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48, alignment: .leading)
-                    .background(CrichereColor.onBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .padding(.horizontal, 13)
-                    .padding(.bottom, 100)
+                UpiCopiedBar(message: snack.message)
                     .transition(.opacity)
                     .task(id: snack.id) {
                         try? await Task.sleep(nanoseconds: 3_000_000_000)

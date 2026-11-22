@@ -250,6 +250,7 @@ enum ParityGallery {
                                    message: "The organizer can approve or dismiss it. Any refund is between you and the organizer; Crichere doesn't handle payments.",
                                    icon: "ic_logout", iconTint: CrichereColor.errorStrong, iconSize: 26,
                                    buttons: [DialogButton(label: "Cancel") {}, DialogButton(label: "Send request", color: CrichereColor.errorStrong) {}])
+                        .frame(width: platformDialogWidth)
                 }
             })
         },
@@ -281,7 +282,7 @@ enum ParityGallery {
 
     @MainActor private static let join: [String: () -> AnyView] = [
         "F1": { joinScreen(joinState()) },
-        "F2": { joinScreen(joinState(), noUpi: true, copied: true) },
+        "F2": { AnyView(ZStack(alignment: .bottom) { joinScreen(joinState(), noUpi: true, copied: true); UpiCopiedBar(message: "UPI ID copied") }) },
         "F3": {
             AnyView(ZStack(alignment: .bottom) {
                 joinScreen(joinState())
@@ -333,7 +334,7 @@ enum ParityGallery {
         "G3": { claimScreen(claimState(name: "Kolhapur Kings", logo: true, attached: true), logo: true, thumb: true) },
         "G3-uploading": { claimScreen(claimState(name: "Kolhapur Kings", logo: true, uploadingLogo: true, uploading: 0.42), logo: true, thumb: true) },
         "G3-failed": { claimScreen(claimState(name: "Kolhapur Kings", failed: true), thumb: true) },
-        "G3-noupi": { claimScreen(claimState(name: "Kolhapur Kings"), noUpi: true) },
+        "G3-noupi": { AnyView(ZStack(alignment: .bottom) { claimScreen(claimState(name: "Kolhapur Kings"), noUpi: true); UpiCopiedBar(message: "UPI ID copied") }) },
         "G4": { claimScreen(claimState(Fixtures.league(franchiseFee: nil), name: "Kolhapur Kings")) },
         "G5": { claimScreen(claimState(name: "Kolhapur Kings", logo: true, attached: true, submitting: true), logo: true, thumb: true) },
         "G6": { claimScreen(claimState(name: "Kolhapur Kings", attached: true, errorTitle: "All franchise slots are taken.",
@@ -698,7 +699,7 @@ enum ParityGallery {
         "R7c": { blockDialog(BlockState(confirming: BlockTarget(userId: "u3", name: "Sahil Kulkarni"), isSubmitting: false, failed: true, justBlocked: nil, justUnblocked: nil)) },
         "R7e": { blockDialog(BlockState(confirming: BlockTarget(userId: "u3", name: "Sahil Kulkarni"), isSubmitting: false, failed: false, justBlocked: nil, justUnblocked: nil),
                              coOrganizer: true) },
-        "R7d": { AnyView(ZStack(alignment: .bottom) { leagueDetailBackdrop(); UndoBar(text: "Sahil Kulkarni blocked", onUndo: {}, onExpire: {}) }) },
+        "R7d": { AnyView(ZStack(alignment: .bottom) { detailScreen(detailState(Fixtures.league())); UndoBar(text: "Sahil Kulkarni blocked", onUndo: {}, onExpire: {}) }) },
         "R11a": { AnyView(BlockedPeopleContent(state: BlockedPeopleState(isLoading: false, loadFailed: false, rows: blockedRows, justUnblocked: nil))) },
         "R11b": { AnyView(BlockedPeopleContent(state: BlockedPeopleState(isLoading: false, loadFailed: false, rows: [], justUnblocked: nil))) },
         "R11c": { AnyView(BlockedPeopleContent(state: BlockedPeopleState(isLoading: false, loadFailed: true, rows: [], justUnblocked: nil))) },

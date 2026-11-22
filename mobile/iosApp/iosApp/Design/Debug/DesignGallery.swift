@@ -158,6 +158,13 @@ struct DesignGallery: View {
         return PickedPhoto(image: image, fileName: "sample.jpg")
     }()
 
+    /// [samplePhoto] as a file URL, for views that load a photo from a URL (written once to the temp directory).
+    static let samplePhotoUrl: String = {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("parity-sample.png")
+        if !FileManager.default.fileExists(atPath: url.path) { try? samplePhoto.image.pngData()?.write(to: url) }
+        return url.absoluteString
+    }()
+
     private func section(_ title: String) -> some View {
         Text(title).crichere(.archivo(20, .bold, lineHeight: 25), CrichereColor.ink).padding(.top, 8)
     }

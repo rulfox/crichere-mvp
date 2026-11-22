@@ -441,3 +441,17 @@ struct ScreenshotCheckSheet: View {
         .padding(.bottom, 24)
     }
 }
+
+/// "UPI ID copied" on Join (F2) and Claim (G3): a 48 pt ink bar, 100 pt up so it clears the bottom button bar.
+struct UpiCopiedBar: View {
+    let message: String
+
+    var body: some View {
+        Text(message).crichere(.sans(14, .medium), CrichereColor.onPrimary)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48, alignment: .leading)
+            .background(CrichereColor.onBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .padding(.horizontal, 13)
+            .padding(.bottom, 100)
+    }
+}

@@ -297,7 +297,7 @@ private struct BlockedPeopleRow: View {
 #if DEBUG
 /// The N2 sheet with fixture content, for the parity gallery.
 struct PhotoSheetPreview: View {
-    var body: some View { PhotoSheet(photoUrl: nil, name: "Aarav Pawar", onView: {}, onChoose: {}) }
+    var body: some View { PhotoSheet(photoUrl: DesignGallery.samplePhotoUrl, name: "Aarav Pawar", onView: {}, onChoose: {}) }
 }
 #endif
 
