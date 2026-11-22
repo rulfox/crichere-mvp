@@ -98,13 +98,20 @@ private val actionBoards: Map<String, ActionBoard> by lazy {
             waitForIdle()
             onRoot().performTouchInput { swipe(center, center + Offset(120.dp.toPx(), -60.dp.toPx()), durationMillis = 600) }
         },
+        "I4-selected" to ActionBoard(creation(filledCreation())) { scrollToTop("Ground") },
         "I9" to ActionBoard(creation(creationState(dirty = true, validation = true, name = "Kolhapur Premier League"))) { scrollToTop("State") },
     )
 }
 
+private fun filledCreation() = creationState(dirty = true, name = "Kolhapur Premier League", located = true, ground = true,
+    startsOn = "2026-10-12", format = "T20", fees = true, upi = "sachin@okaxis", images = true)
+
 /** Board → its screen, for [ParityBoards.all]. */
 fun actionBoardContents(): Map<String, @Composable () -> Unit> =
     actionBoards.mapValues { it.value.content } + mapOf(
+        "I1-filled" to creation(filledCreation()),
+        "I3" to creation(creationState(dirty = true, name = "Kolhapur Premier League", located = true, ground = true, startsOn = "2026-10-12",
+            bannerProgress = 0.42f, saving = true, images = true)),
         "S1" to { AppStartContent(isOffline = false, onRetry = {}) },
         "S2" to { AppStartContent(isOffline = true, onRetry = {}) },
     )

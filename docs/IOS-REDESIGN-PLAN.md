@@ -256,7 +256,7 @@ organizer controls, exceed-purse switch, Sold / End buttons), end-auction dialog
 
 ### Phase 8 — QA and docs (M)
 
-**Status (2026-11-22):** done. Side-by-side against 171 Android captures (see §5). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
+**Status (2026-11-22):** done. Side-by-side against 174 Android captures (see §5). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
 
 - Side-by-side pass over every state in the inventory below; fix drift.
 - Small-screen check (iPhone SE size) and largest iPhone; Dynamic Type at default only
@@ -294,17 +294,15 @@ completed, organizer menu, leave dialog, R9a/R9b · F1–F7, F9 · G1–G6 · H1
 J1–J14 · K1–K9 · L1–L10 + U4 A2–A6 + end dialog/failure · deletion D1–D10 · R1–R13.
 
 **iOS captures (2026-11-22):** 174 boards in `docs/ios-parity/ios/`, rendered by the DEBUG parity
-gallery from fixtures (no login needed). **Android captures: 171** in `docs/ios-parity/android/`, from
+gallery from fixtures (no login needed). **Android captures: 174** in `docs/ios-parity/android/`, from
 the instrumented harness (`androidApp/src/androidTest/.../parity/`, run with `androidApp/scripts/parity.sh`
 on an emulator set to 402 dp wide, the iPhone 17 Pro's width in points). Screens that take only a
 ViewModel are shown by setting its state (`ForcedBoards.kt`); dialogs and sheets a screen keeps to itself
 are drawn over that screen (`DialogBoards.kt`); the rest are reached by tapping, scrolling or pinching the
-real screen (`ActionBoards.kt`). Photo, logo and proof fixtures load the same sample image on both sides.
+real screen (`ActionBoards.kt`). Photo, logo, banner and proof fixtures load the same sample image on both sides.
 
-**Android can't render (iOS-only captures, compared against the Android source):** I1-filled, I3 and
-I4-selected show a logo and banner the user has just picked; Android keeps those previews inside the
-screen and never reads them from state. Likewise the payment-proof thumbnails (F5-attached, G3, G5) are
-blank on Android because they only come from the picked bitmap.
+Every iOS board has an Android capture. The one gap is the payment-proof thumbnail (F5-attached, G3,
+G5): Android only draws it from the bitmap the user just picked, so it's blank in those captures.
 
 **Allowed differences in the captures:** the native pickers inside the date / time dialogs (I6, J10,
 J11: iOS calendar and wheel vs Material's), the keyboard (A2, B1, AD6), Android's clipboard chip after

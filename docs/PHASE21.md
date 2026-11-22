@@ -37,9 +37,9 @@ calendar / time wheel inside the Material-style date and time dialogs.
 - A DEBUG parity gallery (`Design/Debug/ParityGallery.swift`, launch argument `-parity <board>`)
   renders each screen's stateless `<X>Content` view from fixtures, so every board state is reachable
   without signing in. 174 captures are in `docs/ios-parity/ios/` (half resolution).
-- Side by side with 171 Android captures (`docs/ios-parity/android/`, `androidApp/scripts/parity.sh`, an
-  emulator at 402 dp so text wraps as on the iPhone). The boards Android can't render from state are
-  listed in the plan's inventory. Fixes from the pass: text line height (Compose trims the first and
+- Side by side with 174 Android captures (every board) (`docs/ios-parity/android/`, `androidApp/scripts/parity.sh`, an
+  emulator at 402 dp so text wraps as on the iPhone). The allowed differences are listed in the plan's
+  inventory. Fixes from the pass: text line height (Compose trims the first and
   last line to the font's own height unless a style says otherwise; iOS padded every line), dialog
   and sheet scrims, Android's 320 dp platform dialog width, wrapped text starting at the left where
   Compose sets no `textAlign`, the payment thumbnail's expand badge, upload percentages, and controls

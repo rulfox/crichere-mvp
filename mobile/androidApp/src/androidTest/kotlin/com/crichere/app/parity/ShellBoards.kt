@@ -173,7 +173,7 @@ internal fun creationState(edit: Boolean = false, dirty: Boolean = false, valida
                           ground: Boolean = false, groundQuery: String = "", registering: Boolean = false, newGroundName: String = "",
                           pin: Boolean = false, groundError: Boolean = false, startsOn: String? = null, format: String = "", other: Boolean = false,
                           fees: Boolean = false, upi: String = "", awards: List<AwardDraft> = emptyList(), bannerProgress: Float? = null,
-                          saving: Boolean = false, error: String? = null) = LeagueCreationState(
+                          saving: Boolean = false, error: String? = null, images: Boolean = false) = LeagueCreationState(
     isLoading = false, isEditMode = edit, isDirty = dirty, showValidation = validation, name = name,
     isUploadingBanner = bannerProgress != null, bannerUploadProgress = bannerProgress,
     state = if (located) "Maharashtra" else null, district = if (located) "Kolhapur" else null,
@@ -189,6 +189,8 @@ internal fun creationState(edit: Boolean = false, dirty: Boolean = false, valida
     franchisesRequired = if (fees) "8" else "", playersRequired = if (fees) "120" else "",
     franchiseFee = if (fees) "5000" else "", playerFee = if (fees) "500" else "", organizerUpiId = upi, awards = awards,
     isSaving = saving, errorMessage = error,
+    // A logo and banner already chosen: Android draws them from these URLs, iOS from the picked previews.
+    logoUrl = if (images) SamplePhoto.url else null, bannerUrl = if (images) SamplePhoto.url else null,
 )
 
 internal fun creation(state: LeagueCreationState): @Composable () -> Unit = {
