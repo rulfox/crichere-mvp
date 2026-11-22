@@ -319,7 +319,11 @@ struct MainTabView: View {
                 onOpenProfile: { selectedTab = .myProfile }
             )
         case .myLeagues:
-            MyLeaguesView(onOpenLeague: { path.append(MainDestination.leagueDetail($0)) })
+            MyLeaguesView(
+                onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
+                onBrowseLeagues: { selectedTab = .dashboard },
+                onCreateLeague: { path.append(MainDestination.leagueCreation(nil)) }
+            )
         case .myProfile:
             OwnProfileView(
                 onNavigateToEditProfile: onNavigateToEditProfile,

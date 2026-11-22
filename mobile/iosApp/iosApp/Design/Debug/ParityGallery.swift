@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -144,6 +144,28 @@ enum ParityGallery {
         "D5-filtered": { dashboardScreen(dashboardState(leagues: [], state: "Goa")) },
         "D-loading": { dashboardScreen(dashboardState(leagues: [], loading: true)) },
         "D-error": { dashboardScreen(dashboardState(error: "Couldn't load leagues. Check your connection.")) },
+    ]
+
+    // MARK: - M My leagues (MyLeaguesScreen.kt)
+
+    private static func summary(_ league: LeagueDto) -> LeagueSummaryDto {
+        LeagueSummaryDto(id: league.id, name: league.name, logoUrl: nil, district: league.district, state: league.state,
+                         groundName: league.groundName, startsOn: league.startsOn, status: league.status, logoRemoved: false)
+    }
+
+    private static func myLeaguesScreen(_ state: MyLeaguesState) -> AnyView {
+        inTabShell(.myLeagues) { MyLeaguesContent(state: state) }
+    }
+
+    @MainActor private static let myLeagues: [String: () -> AnyView] = [
+        "M1": {
+            let all = Fixtures.dashboardLeagues.map(summary)
+            return myLeaguesScreen(MyLeaguesState(isLoading: false, data: MyLeaguesDto(organizing: [all[0]], playing: [all[1], all[2]],
+                                                                                         franchiseOwner: [all[3]], following: [all[2]]), errorMessage: nil))
+        },
+        "M2": { myLeaguesScreen(MyLeaguesState(isLoading: false, data: MyLeaguesDto(organizing: [], playing: [], franchiseOwner: [], following: []), errorMessage: nil)) },
+        "M3": { myLeaguesScreen(MyLeaguesState(isLoading: false, data: nil, errorMessage: "Couldn't load your leagues.")) },
+        "M-loading": { myLeaguesScreen(MyLeaguesState(isLoading: true, data: nil, errorMessage: nil)) },
     ]
 }
 #endif
