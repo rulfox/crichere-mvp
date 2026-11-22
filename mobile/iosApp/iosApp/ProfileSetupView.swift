@@ -290,7 +290,7 @@ private struct ProfilePhotoRow: View {
     var body: some View {
         HStack(spacing: 14) {
             ProfilePhotoCircle(state: state, localPhoto: localPhoto, failed: failed, hasImage: hasImage)
-            VStack(alignment: .leading, spacing: 0) { details }
+            VStack(alignment: .leading, spacing: 0) { details }.layoutPriority(1)  // ahead of the Spacer, or the caption wraps early
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
@@ -354,7 +354,7 @@ private struct ProfilePhotoCircle: View {
                 .frame(width: 72, height: 72)
                 if state.isUploadingPhoto {
                     Color(hex: 0x0E1A11, opacity: 0x73 / 255.0)
-                    Text("\(Int(progress * 100))%").crichere(.mono(13, .bold), .white)
+                    Text("\(Int(progress * 100 + 0.0001))%").crichere(.mono(13, .bold), .white)
                 } else if failed {
                     Color(hex: 0x8C1D12, opacity: 0x80 / 255.0)
                     CrIcon("ic_error", size: 28, tint: .white)
