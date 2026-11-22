@@ -436,7 +436,7 @@ struct DeleteAccountConfirmDialog: View {
                     .padding(4)
                 }
                 .buttonStyle(.plain)
-                .disabled(!state.canConfirm)
+                .allowsHitTesting(state.canConfirm)  // the label already greys itself; .disabled would dim it again
             }
             .padding(.top, 4)
         }
