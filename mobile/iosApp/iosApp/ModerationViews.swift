@@ -299,7 +299,7 @@ private struct DetailsStep: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(state.isSubmitting)
+            .allowsHitTesting(!state.isSubmitting)  // Compose's clickable(enabled = false) doesn't dim the row
         }
         if state.failed {
             Spacer().frame(height: 10)
