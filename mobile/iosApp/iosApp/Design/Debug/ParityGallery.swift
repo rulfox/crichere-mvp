@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = signIn
+    @MainActor static let boards: [String: () -> AnyView] = signIn.merging(verify) { a, _ in a }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -48,6 +48,29 @@ enum ParityGallery {
         "T1a": { signInScreen(phoneState("9876543210")) },
         "B6": { signInScreen(phoneState(), lockout: true) },
         "D7": { signInScreen(phoneState(), deletion: "25 Oct 2026") },
+    ]
+
+    // MARK: - B Verify code (OtpVerifyScreen.kt)
+
+    private static func otpState(_ code: String = "", verifying: Bool = false, resending: Bool = false, error: String? = nil,
+                                 attempts: Int32 = 5, used: Int32 = 0, cooldown: Int32 = 42, canResend: Bool = false) -> OtpVerifyState {
+        OtpVerifyState(code: code, isVerifying: verifying, isResending: resending, errorMessage: error, attemptsRemaining: attempts,
+                       resendsUsed: used, maxResends: 3, cooldownSecondsRemaining: cooldown, canResend: canResend)
+    }
+
+    private static func verifyScreen(_ state: OtpVerifyState, resent: Bool = false, focus: Bool = false) -> AnyView {
+        AnyView(OtpVerifyContent(state: state, phoneNumber: "+919876543210", onCodeChanged: { _ in }, onVerify: {}, onResend: {},
+                                 onStartOver: {}, showResentInitially: resent, autoFocus: focus))
+    }
+
+    @MainActor private static let verify: [String: () -> AnyView] = [
+        "B1": { verifyScreen(otpState(), focus: true) },
+        "B2": { verifyScreen(otpState("482913")) },
+        "B3": { verifyScreen(otpState("482910", error: "Incorrect code. 4 attempts remaining.", attempts: 4)) },
+        "B4": { verifyScreen(otpState("482913", verifying: true)) },
+        "B5": { verifyScreen(otpState(cooldown: 0, canResend: true)) },
+        "B5b": { verifyScreen(otpState(used: 1, cooldown: 58), resent: true) },
+        "B7": { verifyScreen(otpState(used: 3, cooldown: 0)) },
     ]
 }
 #endif
