@@ -147,7 +147,7 @@ extension View {
     /// Boards R4 to R6 as Android's ModalBottomSheet (white, can't be dismissed while sending -- R5e).
     func reportSheet(_ wrapper: ReportViewModelWrapper) -> some View {
         crichereSheet(isPresented: Binding(get: { wrapper.state.subject != nil }, set: { if !$0 { wrapper.close() } }),
-                      dismissable: !wrapper.state.isSubmitting, style: CrichereSheetStyle(background: CrichereColor.surface)) {
+                      dismissable: !wrapper.state.isSubmitting, style: CrichereSheetStyle(background: CrichereColor.surface, scrim: CrichereSheetStyle.material.scrim)) {
             ReportSheetContent(state: wrapper.state, actions: ReportActions(wrapper))
         }
     }
@@ -324,11 +324,10 @@ private struct ReportOutcome: View {
                 .frame(width: 56, height: 56)
                 .background(CrichereColor.primaryContainer, in: Circle())
             Spacer().frame(height: 14)
-            Text(title).crichere(.sans(17, .semiBold, lineHeight: 22), CrichereColor.onBackground)
+            Text(title).crichere(.sans(17, .semiBold, lineHeight: 22), CrichereColor.onBackground).composeWrap()
             Spacer().frame(height: 8)
-            Text(message).crichere(.sans(14, lineHeight: 21), CrichereColor.onSurfaceVariant)
+            Text(message).crichere(.sans(14, lineHeight: 21), CrichereColor.onSurfaceVariant).composeWrap()
         }
-        .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .padding(.top, 8)
         if let written {
@@ -438,6 +437,7 @@ struct BlockDialog: View {
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CrichereColor.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .frame(width: platformDialogWidth)
     }
 }
 
@@ -489,8 +489,8 @@ struct BlockedPeopleContent: View {
                     Text("No one is blocked").crichere(.sans(18, .semiBold), CrichereColor.onBackground)
                     Spacer().frame(height: 8)
                     Text("To block someone, open ⋮ on their row in any league roster.").crichere(.sans(14, lineHeight: 21), CrichereColor.onSurfaceVariant)
+                        .composeWrap()
                 }
-                .multilineTextAlignment(.center)
                 .padding(24)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -572,7 +572,7 @@ struct SuspendedView: View {
                     .frame(width: 56, height: 56)
                     .background(CrichereColor.surfaceVariant, in: Circle())
                 Text("Your account is suspended").crichere(.sans(26, .bold, lineHeight: 31), CrichereColor.onBackground)
-                Text("Contact hello@crichere.com.").crichere(.sans(16, lineHeight: 25), CrichereColor.onBackground)
+                Text(verbatim: "Contact hello@crichere.com.").crichere(.sans(16, lineHeight: 25), CrichereColor.onBackground)
                 if let maskedPhone { Text(maskedPhone).crichere(.sans(13), CrichereColor.onSurfaceVariant) }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -606,12 +606,14 @@ struct ModerationNoticeDialog: View {
         CrichereDialog(title: title, titleStyle: .sans(19, .semiBold, lineHeight: 24), titleColor: CrichereColor.onBackground,
                        surface: CrichereColor.surface, buttons: [DialogButton(label: "OK", action: onDismiss)]) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("\(body) was removed because it broke our rules. Contact hello@crichere.com if you think this is a mistake.")
+                // verbatim: a string literal would be Markdown and turn the address into a link.
+                Text(verbatim: "\(body) was removed because it broke our rules. Contact hello@crichere.com if you think this is a mistake.")
                     .crichere(.sans(14, lineHeight: 21), CrichereColor.onBackground)
                 if let next { Text(next).crichere(.sans(13, lineHeight: 19), CrichereColor.onSurfaceVariant) }
             }
             .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(width: platformDialogWidth)
     }
 }
 
