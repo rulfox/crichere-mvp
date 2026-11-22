@@ -26,8 +26,36 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: iosApp
+    # Info.plist is GENERATED from these properties on every `xcodegen generate` -- edit keys here,
+    # never in iosApp/Info.plist (a hand edit there is overwritten; that once dropped the fonts,
+    # the URL scheme and the location string, docs/IOS-REDESIGN-PLAN.md §2).
     info:
       path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: Crichere
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        # Portrait only (owner, 2026-11-07), on iPhone and iPad. An iPad app limited to some
+        # orientations must opt out of multitasking, hence UIRequiresFullScreen.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait]
+        UIRequiresFullScreen: true
+        # Brand faces, same variable files as androidApp/res/font (iosApp/Fonts, copied to the
+        # bundle root): Archivo headlines, Instrument Sans UI text, JetBrains Mono money/phone/OTP.
+        UIAppFonts:
+          - archivo_variable.ttf
+          - instrument_sans_variable.ttf
+          - jetbrains_mono_variable.ttf
+        # Phase 3 deep link crichere://leagues/{id} (same as Android's intent-filter), handled by
+        # iosAppApp.swift's onOpenURL.
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [crichere]
+        # League Dashboard "near me" and the "Use my location" pills prompt via
+        # LocationPermission.swift; iOS requires this string before it can prompt at all.
+        NSLocationWhenInUseUsageDescription: Crichere uses your location to show leagues and grounds near you.
+        # No NSAppTransportSecurity exception: the app only talks to https://api.crichere.com
+        # (docs/SECURITY-AUDIT.md, mobile).
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.crichere.app

@@ -2,68 +2,52 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDisplayName</key>
-    <string>Crichere</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.crichere.app</string>
-    <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>UILaunchScreen</key>
-    <dict/>
-    <!--
-        Portrait only (owner, 2026-11-07), on iPhone and iPad. An iPad app limited to some
-        orientations must opt out of multitasking, hence UIRequiresFullScreen.
-    -->
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-    <key>UIRequiresFullScreen</key>
-    <true/>
-    <!--
-        Design update #5 C (docs/PHASE15.md 8.4): Archivo for large titles, section headers and auction
-        headlines; JetBrains Mono for amounts and counts. Same variable files as androidApp/res/font, in
-        iosApp/Fonts (XcodeGen copies them to the bundle root). Body text stays SF Pro.
-    -->
-    <key>UIAppFonts</key>
-    <array>
-        <string>archivo_variable.ttf</string>
-        <string>jetbrains_mono_variable.ttf</string>
-    </array>
-    <!--
-        Phase 3 deep link (see docs/PHASE3.md's Decisions Made): crichere://leagues/{id}. Custom
-        URI scheme, same as Android's manifest intent-filter: no real domain exists yet for a
-        Universal Link. Handled by iosAppApp.swift's onOpenURL, a real resume target since Phase 9
-        (see docs/PHASE9.md): AppRootView/MainTabView.
-    -->
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>crichere</string>
-            </array>
-        </dict>
-    </array>
-    <!--
-        Phase 9 (docs/PHASE9.md): League Dashboard's "near me" toggle and Profile Setup's "use my
-        location" button both need this before CLLocationManager.requestWhenInUseAuthorization()
-        can prompt at all (see LocationPermission.swift): required by iOS regardless of
-        DeviceLocationProvider.ios.kt's own behavior (it deliberately only reads *existing*
-        authorization, never prompts, per that file's doc).
-    -->
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Crichere uses your location to show leagues and grounds near you.</string>
-    <!--
-        No NSAppTransportSecurity exception: the app only talks to https://api.crichere.com, so
-        default ATS (TLS everywhere) applies. The old NSAllowsLocalNetworking exception for a local
-        http backend was removed (docs/SECURITY-AUDIT.md, mobile).
-    -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Crichere</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>crichere</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Crichere uses your location to show leagues and grounds near you.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>archivo_variable.ttf</string>
+		<string>instrument_sans_variable.ttf</string>
+		<string>jetbrains_mono_variable.ttf</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
 </dict>
 </plist>
