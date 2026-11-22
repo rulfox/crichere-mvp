@@ -301,8 +301,9 @@ ViewModel are shown by setting its state (`ForcedBoards.kt`); dialogs and sheets
 are drawn over that screen (`DialogBoards.kt`); the rest are reached by tapping, scrolling or pinching the
 real screen (`ActionBoards.kt`). Photo, logo, banner and proof fixtures load the same sample image on both sides.
 
-Every iOS board has an Android capture. The one gap is the payment-proof thumbnail (F5-attached, G3,
-G5): Android only draws it from the bitmap the user just picked, so it's blank in those captures.
+Every iOS board has an Android capture. Payment-proof thumbnails (F5, F7, G3, G5), which Android only
+draws from a photo the user just picked, are reached by picking one: the test answers the photo picker with
+the sample image and accepts the check sheet (`PickedProofBoards.kt`).
 
 **Allowed differences in the captures:** the native pickers inside the date / time dialogs (I6, J10,
 J11: iOS calendar and wheel vs Material's), the keyboard (A2, B1, AD6), Android's clipboard chip after

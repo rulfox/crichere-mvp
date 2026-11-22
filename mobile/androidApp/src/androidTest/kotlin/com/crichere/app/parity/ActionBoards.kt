@@ -108,7 +108,7 @@ private fun filledCreation() = creationState(dirty = true, name = "Kolhapur Prem
 
 /** Board → its screen, for [ParityBoards.all]. */
 fun actionBoardContents(): Map<String, @Composable () -> Unit> =
-    actionBoards.mapValues { it.value.content } + mapOf(
+    actionBoards.mapValues { it.value.content } + pickedProofBoards.mapValues { it.value.first } + mapOf(
         "I1-filled" to creation(filledCreation()),
         "I3" to creation(creationState(dirty = true, name = "Kolhapur Premier League", located = true, ground = true, startsOn = "2026-10-12",
             bannerProgress = 0.42f, saving = true, images = true)),
@@ -116,9 +116,10 @@ fun actionBoardContents(): Map<String, @Composable () -> Unit> =
         "S2" to { AppStartContent(isOffline = true, onRetry = {}) },
     )
 
-fun hasBoardAction(board: String): Boolean = board in actionBoards
+fun hasBoardAction(board: String): Boolean = board in actionBoards || board in pickedProofBoards
 
 /** What to do on [board]'s screen before the capture, if anything. */
 fun ComposeTestRule.runBoardAction(board: String) {
     actionBoards[board]?.action?.invoke(this)
+    pickedProofBoards[board]?.second?.invoke(this)
 }
