@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -263,6 +263,41 @@ enum ParityGallery {
                 }
             })
         },
+    ]
+
+    // MARK: - F Join as player (JoinLeagueScreen.kt)
+
+    private static func joinState(_ league: LeagueDto? = Fixtures.league(), uploading: Float? = nil, attached: Bool = false, failed: Bool = false,
+                                  errorTitle: String? = nil, error: String? = nil, loadFailed: Bool = false) -> JoinLeagueState {
+        JoinLeagueState(isLoading: false, league: league, loadFailed: loadFailed, screenshotUrl: attached ? "https://fixtures.invalid/proof.jpg" : nil,
+                        isUploadingScreenshot: uploading != nil, uploadProgress: uploading ?? 0, uploadFileName: "payment-proof.jpg",
+                        uploadSizeBytes: KotlinLong(value: 421_000), uploadFailed: failed, isSubmitting: false, errorTitle: errorTitle,
+                        errorMessage: error, joined: false, viewerName: "Aarav Pawar", viewerRole: .allRounder, viewerBatting: .rightHand)
+    }
+
+    private static func joinScreen(_ state: JoinLeagueState, noUpi: Bool = false, copied: Bool = false, thumb: Bool = false) -> AnyView {
+        AnyView(JoinLeagueContent(state: state, noUpiApp: noUpi, copied: copied, thumbnail: thumb ? DesignGallery.samplePhoto.image : nil))
+    }
+
+    @MainActor private static let join: [String: () -> AnyView] = [
+        "F1": { joinScreen(joinState()) },
+        "F2": { joinScreen(joinState(), noUpi: true, copied: true) },
+        "F3": {
+            AnyView(ZStack(alignment: .bottom) {
+                joinScreen(joinState())
+                ParitySheetPreview {
+                    ScreenshotCheckSheet(image: DesignGallery.samplePhoto.image, checklist: ["Amount ₹500", "UPI ID sachin@okaxis", "Reference / UTR no."],
+                                         onDismiss: {}, onChooseAnother: {}, onUse: {})
+                }
+            })
+        },
+        "F5": { joinScreen(joinState(uploading: 0.42), thumb: true) },
+        "F5-attached": { joinScreen(joinState(attached: true), thumb: true) },
+        "F5-failed": { joinScreen(joinState(failed: true), thumb: true) },
+        "F6": { joinScreen(joinState(Fixtures.league(playerFee: nil))) },
+        "F7": { joinScreen(joinState(attached: true, errorTitle: "Couldn't join", error: "Registration just filled up. Ask the organizer if a spot opens."), thumb: true) },
+        "F9": { joinScreen(joinState(Fixtures.league(upiId: nil))) },
+        "F-error": { joinScreen(joinState(nil, loadFailed: true)) },
     ]
 }
 
