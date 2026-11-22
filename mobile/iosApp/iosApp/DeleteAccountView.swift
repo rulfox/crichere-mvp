@@ -359,3 +359,29 @@ final class AccountNoticesWrapper: ObservableObject {
     func dismissCancelled() { notices.dismissDeletionCancelled() }
     func dismissSuspended() { notices.dismissSuspended() }
 }
+
+/// Initials badge in a stable colour per franchise name (same idea as Android's `FranchiseBadge`),
+/// with the franchise's logo on top when it has one. The initials stay underneath, so they show
+/// while the logo loads and if it fails (docs/PHASE17.md).
+struct FranchiseBadge: View {
+    let name: String
+    let size: CGFloat
+    let radius: CGFloat
+    let fontSize: CGFloat
+    var logoUrl: String? = nil
+
+    private static let palette: [UInt32] = [0xB5462B, 0x6B4FA8, 0x2F6FA8, 0x2E7D4F, 0xA8742F, 0x8A3D6B]
+
+    var body: some View {
+        let initials = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+        let index = abs(name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }) % Self.palette.count
+        Text(initials.isEmpty ? "?" : initials)
+            .font(BrandFont.archivo(fontSize, .heavy))
+            .foregroundColor(.white)
+            .frame(width: size, height: size)
+            .background(RoundedRectangle(cornerRadius: radius).fill(Color(hex: Self.palette[index])))
+            .overlay { RemoteImage(url: logoUrl) }
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .accessibilityHidden(true)
+    }
+}

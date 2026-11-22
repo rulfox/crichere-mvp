@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles, live].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -535,6 +535,86 @@ enum ParityGallery {
             })
         },
         "K-error": { roles(rolesState(loadFailed: true)) },
+    ]
+    // MARK: - L Live auction (AuctionLiveScreen.kt)
+
+    private static let bids = [
+        AuctionBidTickerDto(franchiseId: "f2", franchiseName: "Sangli Strikers", amount: 15000, placedAt: "2026-11-22T12:00:00Z"),
+        AuctionBidTickerDto(franchiseId: "f1", franchiseName: "Kolhapur Kings", amount: 14500, placedAt: "2026-11-22T11:59:40Z"),
+        AuctionBidTickerDto(franchiseId: "f2", franchiseName: "Sangli Strikers", amount: 12000, placedAt: "2026-11-22T11:59:00Z"),
+    ]
+
+    private static func auctionDto(_ status: AuctionStatus = .inProgress, playerUp: Bool = true, bid: Double? = 15000, leader: String? = "f2",
+                                   allow: Bool = false, last: Bool = false, squadsFull: Int32 = 0, purseBelow: Int32 = 0) -> AuctionStateDto {
+        let leaderName = leader == "f1" ? "Kolhapur Kings" : leader == "f2" ? "Sangli Strikers" : nil
+        return AuctionStateDto(auctionStatus: status, currentPlayerId: playerUp ? "p1" : nil, currentPlayerName: playerUp ? "Aarav Pawar" : nil,
+                               currentBidAmount: playerUp ? bid.map { KotlinDouble(value: $0) } : nil, currentLeadingFranchiseId: playerUp && bid != nil ? leader : nil,
+                               currentLeadingFranchiseName: playerUp && bid != nil ? leaderName : nil, allowExceedPurse: allow,
+                               recentBids: playerUp && bid != nil ? bids : [], currentPlayerPhotoUrl: nil, currentPlayerPhotoRemoved: false,
+                               currentPlayerRole: playerUp ? .allRounder : nil, playersTotal: 40, playersSold: 11,
+                               lastResult: last ? AuctionLastResultDto(playerName: "Rohit Jadhav", sold: true, franchiseName: "Kolhapur Kings",
+                                                                       amount: KotlinDouble(value: 15000)) : nil,
+                               canAnyoneBid: squadsFull + purseBelow == 0, playersPending: 29, franchisesTotal: 2, squadsFull: squadsFull,
+                               purseBelowBase: purseBelow)
+    }
+
+    private static let finalResults = AuctionResultsDto(auctionStatus: .completed, franchises: [
+        FranchiseAuctionResultDto(franchiseId: "f1", franchiseName: "Kolhapur Kings", playersWon: [
+            PlayerAuctionResultDto(playerId: "p1", userId: "u1", playerName: "Aarav Pawar", soldPrice: 15000, photoUrl: nil, photoRemoved: false, deleted: false),
+            PlayerAuctionResultDto(playerId: "p2", userId: "u2", playerName: "Rohit Jadhav", soldPrice: 52000, photoUrl: nil, photoRemoved: false, deleted: false),
+            PlayerAuctionResultDto(playerId: "p3", userId: "u3", playerName: "Sahil Kulkarni", soldPrice: 41000, photoUrl: nil, photoRemoved: false, deleted: true),
+        ], purseSpent: 108000, purseRemaining: KotlinDouble(value: -8000), belowSquadMin: true),
+        FranchiseAuctionResultDto(franchiseId: "f2", franchiseName: "Sangli Strikers", playersWon: [
+            PlayerAuctionResultDto(playerId: "p4", userId: "u4", playerName: "Vikram Patil", soldPrice: 30000, photoUrl: nil, photoRemoved: false, deleted: false),
+        ], purseSpent: 30000, purseRemaining: KotlinDouble(value: 70000), belowSquadMin: true),
+    ])
+
+    private static func liveState(_ auction: AuctionStateDto?, organizer: Bool = false, mine: String? = nil, phase: ConnectionPhase = .online,
+                                  results: AuctionResultsDto? = nil, input: String = "", bidding: Bool = false, bidError: String? = nil,
+                                  endOpen: Bool = false, ending: Bool = false, endFailure: EndAuctionFailure? = nil,
+                                  loadFailed: Bool = false) -> AuctionState {
+        AuctionState(isLoading: auction == nil && !loadFailed, loadFailed: loadFailed, connectionLost: phase == .lost, connectionPhase: phase,
+                     lastEventAtMillis: KotlinLong(value: Int64(Date().timeIntervalSince1970 * 1000) - 34_000), league: Fixtures.league(),
+                     isOrganizer: organizer, myFranchiseId: mine, auction: auction, results: results, bidAmountInput: input, isActing: false,
+                     isBidding: bidding, bidError: bidError, actionError: nil, isEndConfirmOpen: endOpen, isEnding: ending, endFailure: endFailure)
+    }
+
+    private static func live(_ state: AuctionState) -> AnyView {
+        AnyView(AuctionLiveContent(state: state).lightStatusBarIcons(true))
+    }
+
+    @MainActor private static let live: [String: () -> AnyView] = [
+        "L1": { live(liveState(auctionDto(), mine: "f1", input: "15500")) },
+        "L1-leading": { live(liveState(auctionDto(leader: "f1"), mine: "f1")) },
+        "L1-error": { live(liveState(auctionDto(), mine: "f1", input: "15100", bidError: "Bid at least ₹15,500.")) },
+        "L1-placing": { live(liveState(auctionDto(), mine: "f1", input: "15500", bidding: true)) },
+        "L2": { live(liveState(auctionDto(), organizer: true)) },
+        "L2-nobid": { live(liveState(auctionDto(bid: nil), organizer: true)) },
+        "L3": { live(liveState(auctionDto(.notStarted, playerUp: false), organizer: true)) },
+        "L3-viewer": { live(liveState(auctionDto(.notStarted, playerUp: false))) },
+        "L4": { live(liveState(auctionDto())) },
+        "L5": { live(liveState(auctionDto(.completed, playerUp: false), organizer: true, results: finalResults)) },
+        "L8": { live(liveState(auctionDto(playerUp: false, last: true), organizer: true)) },
+        "L10": { live(liveState(auctionDto(playerUp: false, last: true, squadsFull: 1, purseBelow: 1), organizer: true)) },
+        "L10-viewer": { live(liveState(auctionDto(playerUp: false, last: true, squadsFull: 1, purseBelow: 1))) },
+        "L16-reconnecting": { live(liveState(auctionDto(), mine: "f1", phase: .reconnecting)) },
+        "L16-lost": { live(liveState(auctionDto(), mine: "f1", phase: .lost)) },
+        "L16-back": { live(liveState(auctionDto(), mine: "f1", phase: .backOnline)) },
+        "L19": {
+            AnyView(ZStack {
+                live(liveState(auctionDto(), organizer: true))
+                EndAuctionDialog(state: liveState(auctionDto(), organizer: true, endOpen: true), onDismiss: {}, onConfirm: {})
+            })
+        },
+        "L19-ending": {
+            AnyView(ZStack {
+                live(liveState(auctionDto(), organizer: true))
+                EndAuctionDialog(state: liveState(auctionDto(), organizer: true, endOpen: true, ending: true), onDismiss: {}, onConfirm: {})
+            })
+        },
+        "L21": { live(liveState(auctionDto(playerUp: false), organizer: true, endFailure: .network)) },
+        "L-loading": { live(liveState(nil)) },
+        "L-error": { live(liveState(nil, loadFailed: true)) },
     ]
 }
 

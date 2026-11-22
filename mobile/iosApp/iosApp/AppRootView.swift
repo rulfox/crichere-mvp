@@ -392,7 +392,7 @@ struct MainTabView: View {
             AuctionSettingsView(leagueId: leagueId, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .auctionLive(let leagueId):
-            AuctionLiveView(leagueId: leagueId)
+            AuctionLiveView(leagueId: leagueId, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .manageRoles(let leagueId):
             ManageRolesView(
