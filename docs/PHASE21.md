@@ -37,13 +37,18 @@ calendar / time wheel inside the Material-style date and time dialogs.
 - A DEBUG parity gallery (`Design/Debug/ParityGallery.swift`, launch argument `-parity <board>`)
   renders each screen's stateless `<X>Content` view from fixtures, so every board state is reachable
   without signing in. 174 captures are in `docs/ios-parity/ios/` (half resolution).
+- Side by side with 146 Android captures (`docs/ios-parity/android/`, `androidApp/scripts/parity.sh`, an
+  emulator at 402 dp so text wraps as on the iPhone). The boards Android can't render from state are
+  listed in the plan's inventory. Fixes from the pass: text line height (Compose trims the first and
+  last line to the font's own height unless a style says otherwise; iOS padded every line), dialog
+  and sheet scrims, Android's 320 dp platform dialog width, wrapped text starting at the left where
+  Compose sets no `textAlign`, the payment thumbnail's expand badge, upload percentages, and controls
+  dimmed twice (`.disabled` on a `.plain` button on top of their own 38%).
 - Small screen: the dense boards (Sign in, League detail, Claim, Live auction dock) re-checked on the
   iPhone 16e (390 pt; no SE runtime installed). Nothing truncates or overlaps.
 
 ## Not verified
 
-- **Android reference captures** (`docs/ios-parity/android/`): blocked, the Mac has ~1.6 GB free and
-  the Android SDK + emulator needs 5-8 GB. Comparison was against the Android source, not pixels.
 - **Live flows** need a real `GoogleService-Info.plist` and a signed-in test account with seeded
   leagues: sign in / OTP, uploads, UPI hand-off, the auction stream, ground registration against the
   backend, account deletion. The views are the same ones the gallery renders, wired to the shared

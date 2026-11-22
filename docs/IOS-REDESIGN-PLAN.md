@@ -142,14 +142,13 @@ Sizes: S ≈ ½ day, M ≈ 1 day, L ≈ 2 days, XL ≈ 3+ days of focused agent 
 **Status (2026-11-22):** done — Info.plist is generated from `project.yml` `info.properties`
 (verified: fonts, URL scheme, portrait lock, location string survive a regenerate); compile fixes
 committed (`05844e2`); `iosApp.xcodeproj/` gitignored (stub `GoogleService-Info.plist` and `build/`
-already were); Instrument Sans bundled. **Blocked:** Android reference captures — the Mac's data
-volume has 1.0 GiB free, and the Android SDK + emulator needs ~5–8 GB (Roborazzi on the JVM
-~1.5 GB). Until space is freed or the owner drops screenshots in `docs/ios-parity/android/`,
-screens are ported from the Android source (exact dp/sp/colour values) and checked on iOS only.
+already were); Instrument Sans bundled. Android reference captures: the SDK, emulator, AVD and Gradle
+cache live on an external SSD (`PARITY_TOOLS`, default `/Volumes/Aswin_SSD/crichere-android-tools`),
+since the Mac's data volume has ~1 GiB free; `androidApp/scripts/parity.sh [boards]` builds there.
 
-**Capture design (when unblocked):** don't log in to production. Android: an instrumented
-`ParityCaptureTest` renders each `*Route` with `testFakes` repositories in each board state and
-saves `captureToImage()` PNGs, pulled with `adb`. iOS: each rebuilt screen is a stateless content
+**Capture design:** don't log in to production. Android: the instrumented `ParityCaptureTest`
+renders each screen composable with `testFakes` repositories in each board state and saves a
+full-screen PNG, pulled with `adb` (no test orchestrator: it would clear the files between tests). iOS: each rebuilt screen is a stateless content
 view (state + actions); a DEBUG-only parity gallery, opened with the launch argument
 `-parity <board-id>`, renders it with the same fixture data built from the shared state classes.
 - Fix the `project.yml` / Info.plist clobbering; regenerate; confirm fonts, URL scheme, location
@@ -257,7 +256,7 @@ organizer controls, exceed-purse switch, Sold / End buttons), end-auction dialog
 
 ### Phase 8 — QA and docs (M)
 
-**Status (2026-11-22):** done, apart from the Android side-by-side (blocked, see Phase 0). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
+**Status (2026-11-22):** done. Side-by-side against 146 Android captures (see §5). Legacy theme removed; iPhone 16e small-screen pass; docs: `docs/PHASE21.md`, `docs/OPEN-ITEMS.md`, `iosApp/README.md`, `Theme.swift` header.
 
 - Side-by-side pass over every state in the inventory below; fix drift.
 - Small-screen check (iPhone SE size) and largest iPhone; Dynamic Type at default only
@@ -295,10 +294,24 @@ completed, organizer menu, leave dialog, R9a/R9b · F1–F7, F9 · G1–G6 · H1
 J1–J14 · K1–K9 · L1–L10 + U4 A2–A6 + end dialog/failure · deletion D1–D10 · R1–R13.
 
 **iOS captures (2026-11-22):** 174 boards in `docs/ios-parity/ios/`, rendered by the DEBUG parity
-gallery from fixtures (no login needed). **Android captures: 0** (blocked by disk space).
+gallery from fixtures (no login needed). **Android captures: 146** in `docs/ios-parity/android/`, from
+the instrumented harness (`androidApp/src/androidTest/.../parity/`, run with `androidApp/scripts/parity.sh`
+on an emulator set to 402 dp wide, the iPhone 17 Pro's width in points). Screens that take only a
+ViewModel are shown by setting the ViewModel's state directly (`ForcedBoards.kt`).
+
+**Android can't render from state (iOS-only captures, compared against the Android source):**
+- Dialogs and sheets held in a screen's own `remember` state: I6 / I10 (date picker, discard), J10 / J11
+  (date and time dialogs), J9-cleared (undo after clearing the time), K3 / K9 (grant / remove-self
+  confirms), E2-leave / E10 (leave and organizer dialogs), N2 / N-logout (photo sheet, log-out confirm),
+  F3 / G2 (screenshot check sheet), R7d (block Undo bar, shown by League detail's snackbar host).
+- Local image previews (a picked photo never leaves the screen): I1-filled, I3, I4-selected, H2 (zoomed);
+  F2 / G3-noupi (the "no UPI app" note is also screen state). In other boards Android shows an empty
+  tile where iOS shows the gallery's sample photo (C2, C7, C8, F5-attached, G3, G5, N1).
+- Keyboard focus on entry: A2, B1. B5b ("code resent" snackbar, a one-off event). S1 / S2 (the
+  app-start route is private to `AuthNavHost.kt` and resolves on its own).
+- Scroll positions of a captured screen: I7-fees, I8, I9 (same state as I7 / I1, scrolled to a section).
 
 **Not reachable here (need the owner):**
-- Android reference captures for every board (SDK + emulator, ~5-8 GB free disk, or owner screenshots).
 - Anything needing a real `GoogleService-Info.plist` and a signed-in test account: live sign-in / OTP
   send and verify, photo / logo / screenshot uploads, UPI app hand-off, the live auction stream
   (reconnect / lost timing), ground registration and place search against real data, account deletion
