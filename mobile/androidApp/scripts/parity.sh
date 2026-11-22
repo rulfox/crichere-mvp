@@ -30,6 +30,8 @@ if ! "$ADB" devices | grep -q "emulator-"; then
     "$ADB" shell cmd overlay enable com.android.internal.systemui.navbar.gestural >/dev/null 2>&1 || true
     "$ADB" shell "settings put system time_12_24 12" || true
 fi
+# 1280 px at 509 dpi is 402 dp wide, the iPhone 17 Pro's width in points, so text wraps the same on both.
+"$ADB" shell wm density 509
 
 rsync -a --delete --exclude build --exclude .gradle --exclude .kotlin --exclude iosApp --exclude local.properties ./ "$MIRROR/"
 echo "sdk.dir=$ANDROID_HOME" > "$MIRROR/local.properties"

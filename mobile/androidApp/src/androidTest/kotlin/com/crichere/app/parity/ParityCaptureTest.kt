@@ -58,6 +58,6 @@ class ParityCaptureTest(private val board: String) {
 /** Board id → screen state. Same ids as `iosApp/Design/Debug/ParityGallery.swift`. */
 object ParityBoards {
     val all: Map<String, @Composable () -> Unit> by lazy {
-        joinBoards() + claimBoards() + auctionSettingsBoards() + rolesBoards() + deletionBoards() + auctionBoards() + shellBoards()
+        joinBoards() + claimBoards() + auctionSettingsBoards() + rolesBoards() + deletionBoards() + auctionBoards() + shellBoards() + forcedBoards()
     }
 }
