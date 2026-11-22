@@ -4,18 +4,7 @@ import Shared
 /// Shared bits for the design update #4 ports (docs/PHASE15.md section 7). **Authored but unverified**
 /// (no Xcode here), like every Swift file in this target.
 
-private let indianGrouping: NumberFormatter = {
-    let formatter = NumberFormatter()
-    formatter.locale = Locale(identifier: "en_IN")
-    formatter.numberStyle = .decimal
-    formatter.maximumFractionDigits = 2
-    return formatter
-}()
-
-/// "₹15,500" / "₹1,25,000" -- Indian digit grouping, same as Android's `rupees()`.
-func rupees(_ amount: Double) -> String {
-    "₹" + (indianGrouping.string(from: NSNumber(value: amount)) ?? String(amount))
-}
+// rupees() lives in Design/LeagueUi.swift (Android output: no decimals).
 
 /// A one-off message at the bottom of a screen: the I12 snackbar (#15201A, radius 10, 12 pt from the
 /// sides, 24 pt above the bottom). A `nil` duration stays until its action or a tap on the message.

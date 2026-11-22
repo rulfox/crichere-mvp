@@ -138,6 +138,20 @@ reading both sides.
 Sizes: S ≈ ½ day, M ≈ 1 day, L ≈ 2 days, XL ≈ 3+ days of focused agent work.
 
 ### Phase 0 — Tooling (S–M)
+
+**Status (2026-11-22):** done — Info.plist is generated from `project.yml` `info.properties`
+(verified: fonts, URL scheme, portrait lock, location string survive a regenerate); compile fixes
+committed (`05844e2`); `iosApp.xcodeproj/` gitignored (stub `GoogleService-Info.plist` and `build/`
+already were); Instrument Sans bundled. **Blocked:** Android reference captures — the Mac's data
+volume has 1.0 GiB free, and the Android SDK + emulator needs ~5–8 GB (Roborazzi on the JVM
+~1.5 GB). Until space is freed or the owner drops screenshots in `docs/ios-parity/android/`,
+screens are ported from the Android source (exact dp/sp/colour values) and checked on iOS only.
+
+**Capture design (when unblocked):** don't log in to production. Android: an instrumented
+`ParityCaptureTest` renders each `*Route` with `testFakes` repositories in each board state and
+saves `captureToImage()` PNGs, pulled with `adb`. iOS: each rebuilt screen is a stateless content
+view (state + actions); a DEBUG-only parity gallery, opened with the launch argument
+`-parity <board-id>`, renders it with the same fixture data built from the shared state classes.
 - Fix the `project.yml` / Info.plist clobbering; regenerate; confirm fonts, URL scheme, location
   string survive.
 - Commit the 2026-11-22 compile fixes (still uncommitted) separately from the redesign.
@@ -146,6 +160,14 @@ Sizes: S ≈ ½ day, M ≈ 1 day, L ≈ 2 days, XL ≈ 3+ days of focused agent 
 - Keep the stub `GoogleService-Info.plist` out of git (gitignore it).
 
 ### Phase 1 — Design system (L)
+
+**Status (2026-11-22):** done. `iosApp/iosApp/Design/`: `Tokens.swift`, `Typography.swift` (real
+`wght` weights verified on screen), `LeagueUi.swift` (helpers incl. Java-compatible `tileColor`),
+`Navigation.swift` (hidden nav bar + swipe-back, `lightStatusBarIcons`), `Icons.xcassets` (99
+Android drawables via `scripts/convert_android_icons.py`), `Components/` (Basics, Dialogs, Fields,
+Sheets, PaymentProof, PhotoCropSheet, AreaPickerSheet, TabBar), DEBUG gallery (`-gallery 1|2|3`,
+`-gallery-dialog|-snack|-crop|-crop-banner|-area`). `DropdownSelector.kt` has no twin: no Android
+screen uses it any more (`CrichereSelectField` replaced it).
 - `Design/Tokens.swift`: every `Color.kt` colour + auction palette.
 - `Design/Typography.swift`: three families + the `CrichereTypography` scale + mono style;
   bundle Instrument Sans; register in Info.plist (via `project.yml`).

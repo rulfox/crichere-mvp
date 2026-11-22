@@ -45,6 +45,8 @@ struct IosAppApp: App {
     private var root: some View {
             AppRootView(pendingDeepLinkLeagueId: $pendingDeepLinkLeagueId)
                 .tint(CrichereColor.primary)
+                // Light-only app (Theme.kt); screens flip the status bar icons with lightStatusBarIcons.
+                .lightStatusBarIcons(false)
                 .onOpenURL { url in
                     // crichere://leagues/{id} -- see docs/PHASE3.md. A URL arriving while the app
                     // is already running updates this same @State, which AppRootView re-reads via
