@@ -77,7 +77,7 @@ private fun <T> ViewModel.force(state: T) {
 private fun <V : ViewModel, T> forced(state: T, opening: T? = null, make: () -> V): V {
     val viewModel = remember { make().also { it.force(opening ?: state) } }
     LaunchedEffect(Unit) {
-        if (opening != null) delay(800)
+        if (opening != null) delay(300)
         viewModel.force(state)
     }
     return viewModel
