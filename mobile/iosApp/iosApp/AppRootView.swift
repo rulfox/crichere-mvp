@@ -345,7 +345,7 @@ struct MainTabView: View {
     private func mainDestinationView(_ destination: MainDestination) -> some View {
         switch destination {
         case .blockedPeople:
-            BlockedPeopleView()
+            BlockedPeopleView(onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .deleteAccount:
             DeleteAccountView(

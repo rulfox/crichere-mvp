@@ -99,11 +99,9 @@ struct LeagueDetailView: View {
         )
         .crichereScreen()
         .snackHost($snack)
-        .blockConfirm(block)
+        .blockConfirm(block, coOrganizerIds: Set((wrapper.state.league?.coOrganizers ?? []).map(\.userId)))
         .blockToast(block)
-        .sheet(isPresented: Binding(get: { report.state.subject != nil }, set: { if !$0 { report.close() } })) {
-            ReportSheetView(wrapper: report)
-        }
+        .reportSheet(report)
         .crichereDialog(isPresented: $showCompleteDialog, dismissable: !wrapper.state.isCompleting) {
             DestructiveConfirmDialog(
                 title: "Mark \((wrapper.state.league?.name ?? "").trimmingCharacters(in: .whitespaces)) as completed?",

@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles, live, deletion].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation, auctionSettings, roles, live, deletion, moderation].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -650,10 +650,71 @@ enum ParityGallery {
         "AD6d": { confirm("DELETE", submitting: true) },
         "AD6e": { confirm("DELETE", failed: true) },
     ]
+    // MARK: - R Moderation (ModerationUi.kt): report sheet, block dialog, blocked people, notices, suspended
+
+    private static let personSubject = ReportSubject(type: .user, id: "u3", name: "Sahil Kulkarni", context: "Player in Kolhapur Premier League",
+                                                     contextLeagueId: "league-kpl")
+    private static let leagueSubject = ReportSubject(type: .league, id: "league-kpl", name: "Kolhapur Premier League",
+                                                     context: "Organized by Sachin Gaikwad", contextLeagueId: "league-kpl")
+
+    private static func report(_ state: ReportState) -> AnyView {
+        AnyView(ZStack(alignment: .bottom) {
+            leagueDetailBackdrop()
+            ParitySheetPreview(background: CrichereColor.surface) { ReportSheetContent(state: state) }
+        })
+    }
+
+    private static func leagueDetailBackdrop() -> some View {
+        Color(hex: 0xF7F8F4).ignoresSafeArea()
+    }
+
+    private static func blockDialog(_ state: BlockState, coOrganizer: Bool = false) -> AnyView {
+        AnyView(ZStack {
+            leagueDetailBackdrop()
+            ParityDialogPreview {
+                BlockDialog(state: state, target: state.confirming ?? BlockTarget(userId: "u3", name: "Sahil Kulkarni"), coOrganizer: coOrganizer,
+                            onCancel: {}, onConfirm: {})
+            }
+        })
+    }
+
+    private static let blockedRows = [
+        BlockedRow(person: BlockedPersonDto(userId: "u3", name: "Sahil Kulkarni", blockedAt: "2026-10-12T10:00:00Z"), isUnblocking: false, failed: false),
+        BlockedRow(person: BlockedPersonDto(userId: "u5", name: "Omkar Shinde", blockedAt: "2026-11-02T10:00:00Z"), isUnblocking: false, failed: true),
+    ]
+
+    @MainActor private static let moderation: [String: () -> AnyView] = [
+        "R4a": { report(ReportState(subject: personSubject, step: .reason, reason: nil, details: "", alsoBlock: false, isSubmitting: false, failed: false)) },
+        "R4b": { report(ReportState(subject: leagueSubject, step: .reason, reason: .fakeOrScamLeague, details: "", alsoBlock: false, isSubmitting: false, failed: false)) },
+        "R5a": { report(ReportState(subject: personSubject, step: .details, reason: .inappropriateImage, details: "", alsoBlock: true, isSubmitting: false, failed: false)) },
+        "R5c": { report(ReportState(subject: personSubject, step: .details, reason: .somethingElse, details: "Keeps posting abusive messages in the league group.",
+                                    alsoBlock: false, isSubmitting: false, failed: true)) },
+        "R5e": { report(ReportState(subject: personSubject, step: .details, reason: .inappropriateImage, details: "Profile photo is offensive.",
+                                    alsoBlock: true, isSubmitting: true, failed: false)) },
+        "R6a": { report(ReportState(subject: personSubject, step: .sent, reason: .inappropriateImage, details: "", alsoBlock: false, isSubmitting: false, failed: false)) },
+        "R6b": { report(ReportState(subject: personSubject, step: .alreadyReported, reason: .somethingElse, details: "Keeps posting abusive messages.",
+                                    alsoBlock: false, isSubmitting: false, failed: false)) },
+        "R7a": { blockDialog(BlockState(confirming: BlockTarget(userId: "u3", name: "Sahil Kulkarni"), isSubmitting: false, failed: false, justBlocked: nil, justUnblocked: nil)) },
+        "R7c": { blockDialog(BlockState(confirming: BlockTarget(userId: "u3", name: "Sahil Kulkarni"), isSubmitting: false, failed: true, justBlocked: nil, justUnblocked: nil)) },
+        "R7e": { blockDialog(BlockState(confirming: BlockTarget(userId: "u3", name: "Sahil Kulkarni"), isSubmitting: false, failed: false, justBlocked: nil, justUnblocked: nil),
+                             coOrganizer: true) },
+        "R7d": { AnyView(ZStack(alignment: .bottom) { leagueDetailBackdrop(); UndoBar(text: "Sahil Kulkarni blocked", onUndo: {}, onExpire: {}) }) },
+        "R11a": { AnyView(BlockedPeopleContent(state: BlockedPeopleState(isLoading: false, loadFailed: false, rows: blockedRows, justUnblocked: nil))) },
+        "R11b": { AnyView(BlockedPeopleContent(state: BlockedPeopleState(isLoading: false, loadFailed: false, rows: [], justUnblocked: nil))) },
+        "R11c": { AnyView(BlockedPeopleContent(state: BlockedPeopleState(isLoading: false, loadFailed: true, rows: [], justUnblocked: nil))) },
+        "R12b": {
+            AnyView(ZStack {
+                leagueDetailBackdrop()
+                ParityDialogPreview { ModerationNoticeDialog(notice: ModerationNoticeDto(id: "n1", kind: .leagueLogo, subjectName: "Kolhapur Premier League"), onDismiss: {}) }
+            })
+        },
+        "R13a": { AnyView(SuspendedView(maskedPhone: "+91 98•••••210", onBackToSignIn: {})) },
+    ]
 }
 
 /// A sheet drawn in place (scrim + 28 pt panel + handle) for still captures; the real one animates in.
 struct ParitySheetPreview<Content: View>: View {
+    var background: Color = CrichereColor.background
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -664,7 +725,7 @@ struct ParitySheetPreview<Content: View>: View {
                 content()
             }
             .frame(maxWidth: .infinity)
-            .background(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28).fill(CrichereColor.background).ignoresSafeArea(edges: .bottom))
+            .background(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28).fill(background).ignoresSafeArea(edges: .bottom))
         }
     }
 }
