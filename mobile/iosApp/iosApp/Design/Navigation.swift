@@ -14,7 +14,7 @@ extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
     }
 
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        viewControllers.count > 1
+        viewControllers.count > 1 && SwipeBackGuard.blockers == 0
     }
 
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
@@ -22,7 +22,37 @@ extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
     }
 }
 
+/// Screens that must intercept Back (an edited form asks "Discard changes?" first, like Android's
+/// BackHandler) turn the edge swipe off while they're dirty; their own close button asks instead.
+@MainActor
+enum SwipeBackGuard {
+    static var blockers = 0
+}
+
+private struct SwipeBackBlocker: ViewModifier {
+    let blocked: Bool
+    @State private var holding = false
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { update(blocked) }
+            .onChange(of: blocked) { _, value in update(value) }
+            .onDisappear { update(false) }
+    }
+
+    private func update(_ value: Bool) {
+        guard value != holding else { return }
+        holding = value
+        SwipeBackGuard.blockers += value ? 1 : -1
+    }
+}
+
 extension View {
+    /// Turns iOS's edge-swipe back off while [blocked] (see [SwipeBackGuard]).
+    func swipeBackBlocked(_ blocked: Bool) -> some View {
+        modifier(SwipeBackBlocker(blocked: blocked))
+    }
+
     /// A full Android-style screen: no system navigation bar, the board's background behind everything.
     func crichereScreen(background: Color = CrichereColor.background) -> some View {
         self

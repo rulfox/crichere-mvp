@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile, leagueDetail, join, claim, viewer, creation].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -352,6 +352,92 @@ enum ParityGallery {
                                                 initialOffset: CGSize(width: 120, height: -60))) },
         "H3": { viewerBoard(ScreenshotViewerContent(image: nil, failed: true)) },
         "H-loading": { viewerBoard(ScreenshotViewerContent(image: nil, failed: false)) },
+    ]
+    // MARK: - I Create / edit league (LeagueCreationScreen.kt, GroundMapPicker.kt)
+
+    private static let leagueStates = [StateDto(code: "MH", name: "Maharashtra"), StateDto(code: "KA", name: "Karnataka")]
+    private static let leagueDistricts = [DistrictDto(id: "d1", name: "Kolhapur"), DistrictDto(id: "d2", name: "Sangli")]
+    private static let grounds = [
+        GroundDto(id: "g1", name: "Shahu Stadium", state: "Maharashtra", district: "Kolhapur", latitude: 16.7, longitude: 74.24),
+        GroundDto(id: "g2", name: "Shivaji University Ground", state: "Maharashtra", district: "Kolhapur", latitude: 16.68, longitude: 74.25),
+        GroundDto(id: "g3", name: "Shastri Nagar Maidan", state: "Maharashtra", district: "Kolhapur", latitude: 16.71, longitude: 74.22),
+    ]
+
+    private static func creationState(edit: Bool = false, dirty: Bool = false, validation: Bool = false, name: String = "",
+                                      description: String = "", pendingLogo: Bool = false, pendingBanner: Bool = false,
+                                      logoProgress: Float? = nil, bannerProgress: Float? = nil, located: Bool = false,
+                                      ground: Bool = false, groundQuery: String = "", registering: Bool = false,
+                                      newGroundName: String = "", pin: Bool = false, groundNameError: Bool = false,
+                                      groundError: Bool = false, startsOn: String? = nil, format: String = "", other: Bool = false,
+                                      fees: Bool = false, upi: String = "", awards: [AwardDraft] = [], saving: Bool = false,
+                                      error: String? = nil) -> LeagueCreationState {
+        LeagueCreationState(
+            isLoading: false, loadFailed: false, isEditMode: edit, isDirty: dirty, showValidation: validation, validationAttempt: 0,
+            name: name, description: description, logoUrl: nil, bannerUrl: nil, isUploadingLogo: logoProgress != nil,
+            isUploadingBanner: bannerProgress != nil, hasPendingLogo: pendingLogo, hasPendingBanner: pendingBanner,
+            logoUploadProgress: logoProgress.map { KotlinFloat(value: $0) }, bannerUploadProgress: bannerProgress.map { KotlinFloat(value: $0) },
+            state: located ? "Maharashtra" : nil, district: located ? "Kolhapur" : nil, states: leagueStates, districts: located ? leagueDistricts : [],
+            isLocating: false, groundId: ground ? "g1" : nil, groundDisplayName: ground ? "Shahu Stadium -- Kolhapur" : nil,
+            isChangingGround: false, groundSearchQuery: groundQuery, groundSearchResults: groundQuery.isEmpty ? [] : grounds,
+            isSearchingGrounds: false, isRegisteringNewGround: registering, newGroundName: newGroundName,
+            newGroundLatitude: pin ? KotlinDouble(value: 16.6913) : nil, newGroundLongitude: pin ? KotlinDouble(value: 74.2449) : nil,
+            isRegisteringGround: false, newGroundNameError: groundNameError,
+            groundErrorTitle: groundError ? "A ground with this name already exists nearby." : nil,
+            groundErrorMessage: groundError ? "Search for it instead, or use a different name." : nil,
+            startsOn: startsOn, format: format, isFormatOther: other, franchisesRequired: fees ? "8" : "", playersRequired: fees ? "120" : "",
+            franchiseFee: fees ? "5000" : "", playerFee: fees ? "500" : "", organizerUpiId: upi, awards: awards, isSaving: saving,
+            errorMessage: error)
+    }
+
+    private static let filledState = creationState(dirty: true, name: "Kolhapur Premier League", pendingLogo: true, pendingBanner: true,
+                                                   located: true, ground: true, startsOn: "2026-10-12", format: "T20", fees: true,
+                                                   upi: "sachin@okaxis")
+    private static let sampleAwards = [
+        AwardDraft(id: nil, name: "Winners", cashAmount: "25000", hasTrophy: true),
+        AwardDraft(id: nil, name: "Runners-up", cashAmount: "", hasTrophy: false),
+    ]
+
+    private static func creation(_ state: LeagueCreationState, images: Bool = false, startAt: AnyHashable? = nil) -> AnyView {
+        AnyView(LeagueCreationContent(state: state, logoPreview: images ? DesignGallery.samplePhoto.image : nil,
+                                      bannerPreview: images ? DesignGallery.samplePhoto.image : nil, startAt: startAt))
+    }
+
+    @MainActor private static let creation: [String: () -> AnyView] = [
+        "I1": { creation(creationState()) },
+        "I1-filled": { creation(filledState, images: true) },
+        "I3": { creation(creationState(dirty: true, name: "Kolhapur Premier League", pendingLogo: true, pendingBanner: true,
+                                       bannerProgress: 0.42, located: true, ground: true, startsOn: "2026-10-12", saving: true), images: true) },
+        "I4": { creation(creationState(dirty: true, name: "Kolhapur Premier League", located: true, groundQuery: "Sh"), startAt: LeagueField.ground) },
+        "I4-selected": { creation(filledState, images: true, startAt: LeagueField.ground) },
+        "I5": { AnyView(GroundRegisterOverlay(state: creationState(dirty: true, located: true, registering: true, pin: true))) },
+        "I6": {
+            AnyView(ZStack {
+                creation(creationState(dirty: true, name: "Kolhapur Premier League", located: true), startAt: LeagueField.startsOn)
+                ParityDialogPreview {
+                    CrichereDatePickerDialog(title: "Select start date", initial: parseIsoDay("2026-10-12"), onDismiss: {}, onPicked: { _ in })
+                }
+            })
+        },
+        "I7": { creation(creationState(dirty: true, validation: true, fees: true)) },
+        "I7-fees": { creation(creationState(dirty: true, validation: true, fees: true), startAt: LeagueField.upiId) },
+        "I8": { creation(creationState(dirty: true, name: "Kolhapur Premier League", awards: sampleAwards), startAt: "awards") },
+        "I9": { creation(creationState(dirty: true, validation: true, name: "Kolhapur Premier League"), startAt: LeagueField.state) },
+        "I10": {
+            AnyView(ZStack {
+                creation(creationState(edit: true, dirty: true, name: "Kolhapur Premier League", pendingLogo: true, pendingBanner: true,
+                                       located: true, ground: true, startsOn: "2026-10-12", format: "T20"), images: true)
+                ParityDialogPreview {
+                    DiscardChangesDialog(message: "Your edits won't be saved. The league stays as it was.", onKeepEditing: {}, onDiscard: {})
+                }
+            })
+        },
+        "I11": { AnyView(GroundRegisterOverlay(state: creationState(dirty: true, located: true, registering: true, newGroundName: "Shahu Stadium",
+                                                                    pin: true, groundError: true))) },
+        "I12": { creation(creationState(edit: true, name: "Kolhapur Premier League", located: true, ground: true, startsOn: "2026-10-12",
+                                        format: "8 overs", other: true)) },
+        "I16": { AnyView(GroundRegisterOverlay(state: creationState(dirty: true, registering: true))) },
+        "I-error": { creation(creationState(dirty: true, name: "Kolhapur Premier League", located: true, ground: true, startsOn: "2026-10-12",
+                                            error: "Couldn't save the league. Check your connection and try again.")) },
     ]
 }
 
