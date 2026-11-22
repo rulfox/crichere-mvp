@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard, myLeagues, myProfile].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -167,5 +167,73 @@ enum ParityGallery {
         "M3": { myLeaguesScreen(MyLeaguesState(isLoading: false, data: nil, errorMessage: "Couldn't load your leagues.")) },
         "M-loading": { myLeaguesScreen(MyLeaguesState(isLoading: true, data: nil, errorMessage: nil)) },
     ]
+
+    // MARK: - N My profile (OwnProfileScreen.kt)
+
+    private static func ownState(photo: Bool = true, uploading: Float? = nil, photoError: String? = nil, failed: Bool = false,
+                                 loading: Bool = false) -> OwnProfileState {
+        OwnProfileState(isLoading: loading, name: failed || loading ? nil : "Aarav Pawar",
+                        photoUrl: photo ? "https://fixtures.invalid/photo.jpg" : nil, country: "IN", state: "Maharashtra",
+                        district: "Kolhapur", playingRole: .allRounder, battingStyle: .rightHand, bowlingStyle: .leftArmOrthodox,
+                        loadFailed: failed, isUploadingPhoto: uploading != nil, photoUploadProgress: uploading ?? 0, photoError: photoError)
+    }
+
+    private static func ownScreen(_ state: OwnProfileState, local: Bool = true) -> AnyView {
+        inTabShell(.myProfile) { OwnProfileContent(state: state, localPhoto: local ? DesignGallery.samplePhoto.image : nil) }
+    }
+
+    @MainActor private static let myProfile: [String: () -> AnyView] = [
+        "N1": { ownScreen(ownState()) },
+        "N3": { ownScreen(ownState(photo: false), local: false) },
+        "N4": { ownScreen(ownState(uploading: 0.6)) },
+        "N5": { ownScreen(ownState(photoError: "Couldn't update your photo. Please try again.")) },
+        "N-error": { ownScreen(ownState(failed: true), local: false) },
+        "N-loading": { ownScreen(ownState(loading: true), local: false) },
+        "N2": {
+            AnyView(ZStack(alignment: .bottom) {
+                ownScreen(ownState())
+                ParitySheetPreview { PhotoSheetPreview() }
+            })
+        },
+        "N-logout": {
+            AnyView(ZStack {
+                ownScreen(ownState())
+                ParityDialogPreview {
+                    CrichereDialog(title: "Log out of Crichere?", message: "You'll need an SMS code to sign back in.", buttons: [
+                        DialogButton(label: "Cancel") {}, DialogButton(label: "Log out", color: CrichereColor.errorStrong) {},
+                    ])
+                }
+            })
+        },
+    ]
+}
+
+/// A sheet drawn in place (scrim + 28 pt panel + handle) for still captures; the real one animates in.
+struct ParitySheetPreview<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color(hex: 0x0A120C, opacity: 0.5).ignoresSafeArea()
+            VStack(spacing: 0) {
+                Capsule().fill(Color(hex: 0xB9C1B4)).frame(width: 32, height: 4).padding(.top, 10)
+                content()
+            }
+            .frame(maxWidth: .infinity)
+            .background(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28).fill(CrichereColor.background).ignoresSafeArea(edges: .bottom))
+        }
+    }
+}
+
+/// A dialog drawn in place for still captures.
+struct ParityDialogPreview<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.32).ignoresSafeArea()
+            content().padding(.horizontal, 23)
+        }
+    }
 }
 #endif

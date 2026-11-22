@@ -330,3 +330,28 @@ struct DismissibleNotice: View {
         .background(container, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
+
+/// Full-screen load failure (androidApp `LeagueDetailScreen.kt` `LoadError`): cloud-off icon, Archivo
+/// title, hint, and a green Retry pill.
+struct LoadErrorView: View {
+    var title: String = "Couldn't load this league"
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            CrIcon("ic_cloud_off", size: 40, tint: CrichereColor.outline)
+            Spacer().frame(height: 10)
+            Text(title).crichere(.archivo(17, .bold), CrichereColor.onBackground).multilineTextAlignment(.center)
+            Spacer().frame(height: 10)
+            Text("Check your connection and try again.").crichere(.sans(13, lineHeight: 18.85), CrichereColor.onSurfaceVariant)
+                .multilineTextAlignment(.center)
+            Spacer().frame(height: 14)
+            Button(action: onRetry) {
+                Text("Retry").crichere(.sans(13.5, .semiBold)).padding(.horizontal, 20).frame(height: 40)
+            }
+            .buttonStyle(PillButtonStyle(fill: CrichereColor.primary, pressedFill: CrichereColor.greenPressed, content: CrichereColor.onPrimary, radius: 20))
+        }
+        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}

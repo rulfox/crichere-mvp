@@ -328,6 +328,7 @@ struct MainTabView: View {
             OwnProfileView(
                 onNavigateToEditProfile: onNavigateToEditProfile,
                 onNavigateToPhoneEntry: onNavigateToPhoneEntry,
+                onViewPhoto: { path.append(MainDestination.screenshotViewer($0)) },
                 onDeleteAccount: { path.append(MainDestination.deleteAccount) },
                 onBlockedPeople: { path.append(MainDestination.blockedPeople) }
             )
