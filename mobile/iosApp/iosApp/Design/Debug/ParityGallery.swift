@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = signIn.merging(verify) { a, _ in a }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -73,6 +73,44 @@ enum ParityGallery {
         "B7": { verifyScreen(otpState(used: 3, cooldown: 0)) },
         "S1": { AnyView(AppStartContent(isOffline: false, onRetry: {})) },
         "S2": { AnyView(AppStartContent(isOffline: true, onRetry: {})) },
+    ]
+
+    // MARK: - C Profile setup (ProfileSetupScreen.kt)
+
+    static let states = [StateDto(code: "MH", name: "Maharashtra"), StateDto(code: "KA", name: "Karnataka"), StateDto(code: "GA", name: "Goa")]
+    static let districts = [DistrictDto(id: "d1", name: "Kolhapur"), DistrictDto(id: "d2", name: "Pune"), DistrictDto(id: "d3", name: "Sangli")]
+
+    private static func profileState(name: String = "", photo: Bool = false, place: Bool = false, role: PlayingRole? = nil,
+                                     batting: BattingStyle? = nil, bowling: BowlingStyle? = nil, uploading: Float? = nil,
+                                     uploadError: String? = nil, saving: Bool = false, error: String? = nil, nameError: String? = nil,
+                                     loaded: Bool = false) -> ProfileSetupState {
+        // A saved photo needs a URL for isSaveEnabled; the gallery shows the local image over it.
+        let url: String? = photo ? "https://fixtures.invalid/photo.jpg" : nil
+        let values = ProfileFormValues(name: name, photoUrl: url, state: place ? "Maharashtra" : nil, district: place ? "Kolhapur" : nil,
+                                       playingRole: role, battingStyle: batting, bowlingStyle: bowling)
+        return ProfileSetupState(
+            isLoading: false, name: name, photoUrl: url, state: place ? "Maharashtra" : nil, district: place ? "Kolhapur" : nil,
+            playingRole: role, battingStyle: batting, bowlingStyle: bowling, states: states, districts: place ? districts : [],
+            isUploadingPhoto: uploading != nil, photoUploadProgress: uploading ?? 0,
+            uploadingPhotoName: uploading != nil ? "IMG_2041.jpg" : nil, uploadingPhotoSizeBytes: uploading != nil ? KotlinLong(value: 412_000) : nil,
+            isLocating: false, isSaving: saving, errorMessage: error, nameError: nameError, photoUploadErrorMessage: uploadError,
+            initialFocusField: .name, loadedValues: loaded ? values : nil)
+    }
+
+    private static func profileScreen(_ state: ProfileSetupState, edit: Bool = false, photo: Bool = false) -> AnyView {
+        AnyView(ProfileSetupContent(state: state, showBack: edit, localPhoto: photo ? DesignGallery.samplePhoto.image : nil))
+    }
+
+    @MainActor private static let profileSetup: [String: () -> AnyView] = [
+        "C1": { profileScreen(profileState()) },
+        "C1-error": { profileScreen(profileState(name: "A", nameError: "Enter your full name.")) },
+        "C2": { profileScreen(profileState(name: "Aarav Pawar", photo: true, place: true, role: .bowler, batting: .rightHand, bowling: .rightArmFast), photo: true) },
+        "C4": { profileScreen(profileState(name: "Aarav Pawar", uploading: 0.42), photo: true) },
+        "C6": { profileScreen(profileState(name: "Aarav Pawar", uploadError: "Couldn't upload photo. Please try again."), photo: true) },
+        "C7": { profileScreen(profileState(name: "Aarav Pawar", photo: true, place: true, role: .batsman, batting: .leftHand, saving: true), photo: true) },
+        "C8": { profileScreen(profileState(name: "Aarav Pawar", photo: true, place: true, role: .batsman, batting: .leftHand,
+                                           error: "Couldn't save your profile. Please try again."), photo: true) },
+        "C1-edit": { profileScreen(profileState(name: "Aarav Pawar", photo: true, place: true, role: .allRounder, batting: .rightHand, bowling: .leftArmOrthodox, loaded: true), edit: true, photo: true) },
     ]
 }
 #endif
