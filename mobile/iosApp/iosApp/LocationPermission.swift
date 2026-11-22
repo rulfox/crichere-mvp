@@ -22,6 +22,13 @@ final class LocationPermissionRequester: NSObject, ObservableObject, CLLocationM
         }
     }
 
+    /// The user said no (or a policy blocks it) -- Android's `locationDenied`, which shows the
+    /// "Location is off" banner instead of asking again.
+    var isDenied: Bool {
+        let status = manager.authorizationStatus
+        return status == .denied || status == .restricted
+    }
+
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.continuation?.resume()

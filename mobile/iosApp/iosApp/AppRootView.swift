@@ -195,6 +195,26 @@ struct AppStartContent: View {
     }
 }
 
+/// D8 (androidApp `AuthNavHost.kt` `DeletionCancelledSnack`): dark bar with a green check, 16 pt in from
+/// the sides and 15 pt above the tab bar; tap to dismiss.
+struct DeletionCancelledSnack: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            CrIcon("ic_check_circle_filled", size: 20, tint: Color(hex: 0x9CD49A))
+            Text("Welcome back. Your account deletion was cancelled.")
+                .crichere(.sans(14, .medium, lineHeight: 18.9), .white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(CrichereColor.onBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.4), radius: 8, y: 6)
+        .onTapGesture(perform: onDismiss)
+    }
+}
+
 /// Pushed destinations reachable from either the Dashboard or My Leagues tab -- one shared
 /// `NavigationPath` for both (see `MainTabView`'s own doc for why this is a single stack, not one
 /// per tab).
@@ -252,44 +272,27 @@ struct MainTabView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            TabView(selection: $selectedTab) {
-                LeagueDashboardView(
-                    onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
-                    onCreateLeague: { path.append(MainDestination.leagueCreation(nil)) }
-                )
-                .tabItem { Label("Dashboard", systemImage: "list.bullet") }
-                .tag(MainTab.dashboard)
-
-                MyLeaguesView(onOpenLeague: { path.append(MainDestination.leagueDetail($0)) })
-                    .tabItem { Label("My Leagues", systemImage: "person.2") }
-                    .tag(MainTab.myLeagues)
-
-                OwnProfileView(
-                    onNavigateToEditProfile: onNavigateToEditProfile,
-                    onNavigateToPhoneEntry: onNavigateToPhoneEntry,
-                    onDeleteAccount: { path.append(MainDestination.deleteAccount) },
-                    onBlockedPeople: { path.append(MainDestination.blockedPeople) }
-                )
-                    .tabItem { Label("My Profile", systemImage: "person.crop.circle") }
-                    .tag(MainTab.myProfile)
-            }
-            .navigationDestination(for: MainDestination.self) { mainDestinationView($0) }
-        }
-        // D8: a sign-in that cancelled a pending deletion says so once (a toast on iOS).
-        .overlay(alignment: .bottom) {
-            if notices.deletionCancelled {
-                Label("Welcome back. Your account deletion was cancelled.", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16).padding(.vertical, 14)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Brand.ink))
-                    .padding(.horizontal, 16).padding(.bottom, 64)
-                    .onTapGesture { notices.dismissCancelled() }
-                    .task {
-                        try? await Task.sleep(nanoseconds: 4_000_000_000)
-                        notices.dismissCancelled()
+            // Android's MainRoute: the selected tab's screen above the board's tab bar (MainBottomBar).
+            VStack(spacing: 0) {
+                ZStack(alignment: .bottom) {
+                    tabContent
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if notices.deletionCancelled {
+                        DeletionCancelledSnack(onDismiss: notices.dismissCancelled)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 15)
+                            .transition(.opacity)
+                            .task {
+                                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                                notices.dismissCancelled()
+                            }
                     }
+                }
+                .animation(.easeOut(duration: 0.2), value: notices.deletionCancelled)
+                CrichereTabBar(tabs: Self.tabs, selected: selectedTab) { selectedTab = $0 }
             }
+            .crichereScreen()
+            .navigationDestination(for: MainDestination.self) { mainDestinationView($0) }
         }
         // Loads the block list once signed in, and queues removed-image notices (R12b to R12e).
         .modifier(ModerationNoticeHost())
@@ -298,6 +301,33 @@ struct MainTabView: View {
         // the foreground on the Main destination) -- `.onAppear` alone would miss that, since it
         // only fires once per appearance, not on every later change to the bound value.
         .onChange(of: pendingLeagueId) { _, _ in consumePendingLeagueIdIfAny() }
+    }
+
+    static let tabs = [
+        CrichereTab(id: MainTab.dashboard, label: "Dashboard", icon: "ic_sports_cricket", selectedIcon: "ic_sports_cricket_filled"),
+        CrichereTab(id: MainTab.myLeagues, label: "My Leagues", icon: "ic_groups", selectedIcon: "ic_groups_filled"),
+        CrichereTab(id: MainTab.myProfile, label: "My Profile", icon: "ic_account_circle", selectedIcon: "ic_account_circle_filled"),
+    ]
+
+    /// Like Android's `when (tab)`: only the selected tab's screen exists.
+    @ViewBuilder private var tabContent: some View {
+        switch selectedTab {
+        case .dashboard:
+            LeagueDashboardView(
+                onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
+                onCreateLeague: { path.append(MainDestination.leagueCreation(nil)) },
+                onOpenProfile: { selectedTab = .myProfile }
+            )
+        case .myLeagues:
+            MyLeaguesView(onOpenLeague: { path.append(MainDestination.leagueDetail($0)) })
+        case .myProfile:
+            OwnProfileView(
+                onNavigateToEditProfile: onNavigateToEditProfile,
+                onNavigateToPhoneEntry: onNavigateToPhoneEntry,
+                onDeleteAccount: { path.append(MainDestination.deleteAccount) },
+                onBlockedPeople: { path.append(MainDestination.blockedPeople) }
+            )
+        }
     }
 
     private func consumePendingLeagueIdIfAny() {

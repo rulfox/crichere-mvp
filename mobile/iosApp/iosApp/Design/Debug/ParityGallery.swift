@@ -26,7 +26,7 @@ enum ParityGallery {
         }
     }
 
-    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
+    @MainActor static let boards: [String: () -> AnyView] = [signIn, verify, profileSetup, dashboard].reduce(into: [:]) { $0.merge($1) { a, _ in a } }
 
     // MARK: - A Sign in (PhoneEntryScreen.kt)
 
@@ -111,6 +111,39 @@ enum ParityGallery {
         "C8": { profileScreen(profileState(name: "Aarav Pawar", photo: true, place: true, role: .batsman, batting: .leftHand,
                                            error: "Couldn't save your profile. Please try again."), photo: true) },
         "C1-edit": { profileScreen(profileState(name: "Aarav Pawar", photo: true, place: true, role: .allRounder, batting: .rightHand, bowling: .leftArmOrthodox, loaded: true), edit: true, photo: true) },
+    ]
+
+    // MARK: - D Dashboard (LeagueDashboardScreen.kt) inside the tab shell
+
+    /// A tab screen above the board's tab bar, like `MainTabView`.
+    static func inTabShell<Content: View>(_ tab: MainTab, @ViewBuilder _ content: () -> Content) -> AnyView {
+        AnyView(VStack(spacing: 0) {
+            content().frame(maxWidth: .infinity, maxHeight: .infinity)
+            CrichereTabBar(tabs: MainTabView.tabs, selected: tab) { _ in }
+        }.background(CrichereColor.background.ignoresSafeArea()))
+    }
+
+    private static func dashboardState(leagues: [LeagueDto] = Fixtures.dashboardLeagues, loading: Bool = false, state: String? = nil,
+                                       district: String? = nil, near: Bool = false, locating: Bool = false, error: String? = nil) -> LeagueDashboardState {
+        LeagueDashboardState(isLoading: loading, leagues: leagues, states: states, districts: districts, selectedState: state,
+                             selectedDistrict: district, isNearMode: near, isLocating: locating, errorMessage: error,
+                             viewerName: "Aarav Pawar", viewerPhotoUrl: nil)
+    }
+
+    private static func dashboardScreen(_ state: LeagueDashboardState, locationOff: Bool = false) -> AnyView {
+        inTabShell(.dashboard) { LeagueDashboardContent(state: state, showLocationOff: locationOff) }
+    }
+
+    @MainActor private static let dashboard: [String: () -> AnyView] = [
+        "D1": { dashboardScreen(dashboardState()) },
+        "D1-filtered": { dashboardScreen(dashboardState(state: "Maharashtra", district: "Kolhapur")) },
+        "D3": { dashboardScreen(dashboardState(near: true)) },
+        "D3-locating": { dashboardScreen(dashboardState(locating: true)) },
+        "D4": { dashboardScreen(dashboardState(), locationOff: true) },
+        "D5": { dashboardScreen(dashboardState(leagues: [])) },
+        "D5-filtered": { dashboardScreen(dashboardState(leagues: [], state: "Goa")) },
+        "D-loading": { dashboardScreen(dashboardState(leagues: [], loading: true)) },
+        "D-error": { dashboardScreen(dashboardState(error: "Couldn't load leagues. Check your connection.")) },
     ]
 }
 #endif
