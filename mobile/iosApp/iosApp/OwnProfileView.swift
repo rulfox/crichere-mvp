@@ -88,7 +88,7 @@ struct OwnProfileView: View {
                 pickedPhoto = decodePickedPhoto(data, fileName: nil)
             }
         }
-        .crichereSheet(isPresented: $showPhotoSheet) {
+        .crichereSheet(isPresented: $showPhotoSheet, style: .material) {
             PhotoSheet(photoUrl: wrapper.state.photoUrl, name: wrapper.state.name ?? "",
                        onView: {
                            showPhotoSheet = false
@@ -182,7 +182,7 @@ struct OwnProfileContent: View {
                 .frame(width: 104, height: 104)
             }
             .buttonStyle(.plain)
-            .disabled(state.isUploadingPhoto)
+            .allowsHitTesting(!state.isUploadingPhoto)  // not .disabled: Compose's clickable(enabled = false) doesn't dim
             .accessibilityLabel(state.photoUrl != nil ? "Profile photo options" : "Add a photo")
             Spacer().frame(height: 10)
             Text(name).crichere(.archivo(22, .extraBold, lineHeight: 24.2), CrichereColor.onBackground).multilineTextAlignment(.center)
@@ -192,7 +192,7 @@ struct OwnProfileContent: View {
                     Text("Add a photo so organizers recognise you").crichere(.sans(13, .semiBold, lineHeight: 13), CrichereColor.primary)
                 }
                 .buttonStyle(.plain)
-                .disabled(state.isUploadingPhoto)
+                .allowsHitTesting(!state.isUploadingPhoto)  // not .disabled: Compose's clickable(enabled = false) doesn't dim
             }
             if let error = state.photoError {
                 Spacer().frame(height: 10)
