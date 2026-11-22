@@ -131,6 +131,7 @@ struct LeagueDetailView: View {
                     },
                 ]
             )
+            .frame(width: platformDialogWidth)
         }
         // The ViewModel survives leaving and re-entering, so a fresh fetch on every visit shows edits.
         .onAppear {
