@@ -986,7 +986,10 @@ private struct RosterRow: View {
                         SmallRosterPill(text: "Approve leave", filled: true, enabled: !organizer.isResponding, action: organizer.onApproveLeave)
                         SmallRosterPill(text: "Dismiss", filled: false, enabled: !organizer.isResponding, action: organizer.onDismissLeave)
                     } else {
-                        Group {
+                        // A ZStack, not a Group: an empty Group vanishes with its frame, which pushed
+                        // Remove to the left on rows with no screenshot (Android's Box(weight(1f)) always fills).
+                        ZStack(alignment: .leading) {
+                            Color.clear.frame(width: 0, height: 0)
                             if let screenshotUrl { ScreenshotLink(url: screenshotUrl, onView: organizer.onViewScreenshot) }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
