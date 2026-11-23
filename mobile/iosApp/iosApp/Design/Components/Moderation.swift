@@ -42,6 +42,9 @@ struct ModerationRowMenu: View {
     @State private var anchor: CGRect = .zero
 
     var body: some View {
+        // Read here, in body: the overlay closure runs in another hosting controller, where reading
+        // this view's @State returns its initial value (.zero), so the menu opened in the top-left.
+        let menuAnchor = anchor
         Button { open = true } label: {
             CrIcon("ic_more_vert", size: 20, tint: CrichereColor.onSurfaceVariant).frame(width: 44, height: 44)
         }
@@ -53,7 +56,7 @@ struct ModerationRowMenu: View {
                 .onChange(of: proxy.frame(in: .global)) { _, frame in anchor = frame }
         })
         .crichereOverlay(isPresented: $open) {
-            AnchoredMenu(anchor: anchor, width: 208, onDismiss: { open = false }) {
+            AnchoredMenu(anchor: menuAnchor, width: 208, onDismiss: { open = false }) {
                 Text(name)
                     .crichere(.sans(12), CrichereColor.onSurfaceVariant)
                     .padding(.horizontal, 16)

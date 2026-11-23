@@ -274,6 +274,8 @@ struct CrichereSelectField<Option: Hashable>: View {
     @State private var anchor: CGRect = .zero
 
     var body: some View {
+        // Read in body, not in the overlay closure (another hosting controller sees @State's initial .zero).
+        let menuAnchor = anchor
         let arrowTint: Color = !enabled ? CrichereColor.fieldDisabledText
             : expanded ? CrichereColor.primary
             : selected != nil ? CrichereColor.onBackground : CrichereColor.onSurfaceVariant
@@ -300,7 +302,7 @@ struct CrichereSelectField<Option: Hashable>: View {
         .accessibilityLabel("\(label), \(selected.map(optionLabel) ?? "")")
         .accessibilityAddTraits(.isButton)
         .crichereOverlay(isPresented: $expanded) {
-            DropdownMenuOverlay(anchor: anchor, options: options, selected: selected, optionLabel: optionLabel, onDismiss: { expanded = false }) { option in
+            DropdownMenuOverlay(anchor: menuAnchor, options: options, selected: selected, optionLabel: optionLabel, onDismiss: { expanded = false }) { option in
                 expanded = false
                 onSelected(option)
             }
