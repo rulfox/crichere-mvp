@@ -239,6 +239,10 @@ private struct DetailsStep: View {
     let subject: ReportSubject
     let actions: ReportActions
 
+    // The field is one line tall until it grows; tapping anywhere in the 132 pt box focuses it, like
+    // Android's full-height text area.
+    @FocusState private var detailsFocused: Bool
+
     var body: some View {
         let atLimit = state.details.count >= 500
         HStack(spacing: 0) {
@@ -271,11 +275,14 @@ private struct DetailsStep: View {
                 .crichere(.sans(15, lineHeight: 22.5), CrichereColor.onBackground)
                 .tint(CrichereColor.primary)
                 .lineLimit(1...5)
+                .focused($detailsFocused)
                 .disabled(state.isSubmitting)
                 .accessibilityLabel("Report details")
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 132, maxHeight: 132, alignment: .topLeading)
+        .contentShape(Rectangle())
+        .onTapGesture { if !state.isSubmitting { detailsFocused = true } }
         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(CrichereColor.outline, lineWidth: 1))
         Spacer().frame(height: 8)
         HStack {
