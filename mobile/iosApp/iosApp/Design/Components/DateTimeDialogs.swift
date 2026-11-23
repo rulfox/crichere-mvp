@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Date / time pickers in Android's Material dialog style (androidApp `LeagueCreationScreen.kt`
 // StartDatePicker, `AuctionSettingsScreen.kt` J10/J11): the board's #F1F4EE surface, 28 pt corners,
@@ -54,6 +55,55 @@ struct DateDialogStyle {
 
 /// Material `DatePickerDialog`: title, the picked day as the headline ("Mon, 12 Oct", or "Pick a
 /// date"), a divider, the graphical picker (days before [minimum] disabled), Cancel / OK.
+/// The inline calendar (the `UIDatePicker` SwiftUI's `.graphical` style wraps) with a tap recognizer that
+/// runs alongside the picker's own. A SwiftUI `simultaneousGesture` on the DatePicker swallowed the day
+/// taps instead, so every pick became today.
+private struct InlineCalendar: UIViewRepresentable {
+    let date: Date
+    let minimum: Date?
+    let onChange: (Date) -> Void
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeUIView(context: Context) -> UIDatePicker {
+        let picker = UIDatePicker()
+        picker.datePickerMode = .date
+        picker.preferredDatePickerStyle = .inline
+        picker.calendar = utcCalendar
+        picker.timeZone = TimeZone(identifier: "UTC")
+        picker.tintColor = UIColor(CrichereColor.primary)
+        picker.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tapped))
+        tap.cancelsTouchesInView = false
+        tap.delegate = context.coordinator
+        picker.addGestureRecognizer(tap)
+        return picker
+    }
+
+    func updateUIView(_ picker: UIDatePicker, context: Context) {
+        context.coordinator.parent = self
+        picker.minimumDate = minimum
+        if picker.date != date { picker.setDate(date, animated: false) }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIDatePicker, context: Context) -> CGSize? {
+        let width = proposal.width ?? 320
+        let fitted = uiView.systemLayoutSizeFitting(CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+                                                    withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
+        return CGSize(width: width, height: fitted.height)
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: InlineCalendar
+        init(parent: InlineCalendar) { self.parent = parent }
+        @objc func changed(_ picker: UIDatePicker) { parent.onChange(picker.date) }
+        @objc func tapped() { parent.onTap() }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+}
+
 struct CrichereDatePickerDialog: View {
     let title: String
     let initial: Date?
@@ -87,18 +137,11 @@ struct CrichereDatePickerDialog: View {
                 .padding(.top, style.headlineTop)
                 .padding(.bottom, style.headlineBottom)
             Rectangle().fill(CrichereColor.outlineVariant).frame(height: 1)
-            DatePicker("", selection: Binding(get: { selection ?? initial ?? minimum ?? Date() }, set: { selection = $0 }),
-                       in: (minimum ?? .distantPast)..., displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .labelsHidden()
-                .tint(CrichereColor.primary)
-                .environment(\.calendar, utcCalendar)
-                .environment(\.timeZone, TimeZone(identifier: "UTC")!)
-                // iOS's calendar always shows a selected day and doesn't report a tap on it, so any tap
-                // in the calendar counts as the pick (J13's "Pick a date" until then).
-                .simultaneousGesture(TapGesture().onEnded {
-                    if selection == nil { selection = initial ?? minimum ?? utcCalendar.startOfDay(for: Date()) }
-                })
+            // iOS's calendar always shows a selected day and doesn't report a tap on it, so any tap
+            // in the calendar counts as the pick (J13's "Pick a date" until then).
+            InlineCalendar(date: selection ?? initial ?? minimum ?? Date(), minimum: minimum,
+                           onChange: { selection = $0 },
+                           onTap: { if selection == nil { selection = initial ?? minimum ?? utcCalendar.startOfDay(for: Date()) } })
                 .padding(.horizontal, 12)
             HStack(spacing: 8) {
                 Spacer(minLength: 0)

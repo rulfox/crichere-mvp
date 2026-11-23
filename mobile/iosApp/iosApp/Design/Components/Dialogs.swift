@@ -31,16 +31,29 @@ private struct OverlayPresenter<Overlay: View>: UIViewControllerRepresentable {
                 host.modalPresentationStyle = .overFullScreen
                 host.modalTransitionStyle = .crossDissolve
                 coordinator.host = host
-                DispatchQueue.main.async {
-                    guard var top = controller.view.window?.rootViewController else { return }
-                    while let presented = top.presentedViewController, presented !== host { top = presented }
-                    if host.presentingViewController == nil { top.present(host, animated: true) }
-                }
+                DispatchQueue.main.async { Self.present(host, from: controller, coordinator: coordinator, attempts: 40) }
             }
         } else if let host = coordinator.host {
             coordinator.host = nil
             host.dismiss(animated: true)
         }
+    }
+
+    /// Presents [host] on the topmost controller once no presentation or dismissal is running. UIKit
+    /// silently drops a present made mid-transition ("view is not in the window hierarchy"), which lost
+    /// the auction time dialog that follows the date dialog. Retries every 50 ms, up to [attempts].
+    private static func present(_ host: UIHostingController<AnyView>, from controller: UIViewController, coordinator: Coordinator, attempts: Int) {
+        guard coordinator.host === host, host.presentingViewController == nil,
+              var top = controller.view.window?.rootViewController else { return }
+        while let presented = top.presentedViewController, presented !== host { top = presented }
+        if top.isBeingDismissed || top.isBeingPresented || top.transitionCoordinator != nil {
+            guard attempts > 0 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                present(host, from: controller, coordinator: coordinator, attempts: attempts - 1)
+            }
+            return
+        }
+        top.present(host, animated: true)
     }
 
     static func dismantleUIViewController(_ controller: UIViewController, coordinator: Coordinator) {
