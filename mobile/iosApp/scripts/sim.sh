@@ -20,7 +20,7 @@ build)
     /opt/homebrew/bin/xcodegen generate --quiet
     xcodebuild -project iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator \
         -destination "platform=iOS Simulator,name=$DEVICE" -derivedDataPath build \
-        CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO -skipMacroValidation build >"$LOG" 2>&1 && status=0 || status=$?
+        CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= COMPILER_INDEX_STORE_ENABLE=NO -skipMacroValidation build >"$LOG" 2>&1 && status=0 || status=$?
     grep -E "error:" "$LOG" | sort -u | head -40 || true
     grep -E "BUILD SUCCEEDED|BUILD FAILED" "$LOG" || echo "(no result line; see $LOG)"
     exit "$status"
