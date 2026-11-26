@@ -64,7 +64,18 @@ an unparseable version, health checks, or a platform whose minimum is empty. Bot
 - Android and iOS: minimum above the build's version → block on launch and mid-auction; Update opens
   the store; Back can't dismiss.
 
-## Open decisions
+## Decisions (2026-11-26)
 
-- Compare human versions (`1.1.0`) on both platforms (recommended) vs per-platform build numbers.
-- Hard block only (recommended for now) vs also a dismissable "update available" nudge.
+- Compare human versions (`1.1.0`) on both platforms, not build numbers.
+- Hard block only for now; a dismissable "update available" nudge can reuse the same headers later.
+
+## Status
+
+- Backend: done (`appupdate/AppUpdate.kt`, registered first in `SecurityConfig`); unit tests pass
+  (`AppVersionTest`, `AppUpdateFilterTest`). `ANDROID_UPDATE_URL` defaults to the Play Store listing;
+  `IOS_UPDATE_URL` must be set (the TestFlight public link) before `MIN_IOS_VERSION` is.
+- Shared: done (`configureAppInfo`, headers and the 426 check on both backend clients,
+  `AppUpdateNotices`); `AppUpdateCheckTest` written, not yet run (needs the Android SDK).
+- Android (`UpdateRequiredGate` over `AuthNavHost` in `MainActivity`, Play immediate update) and iOS
+  (`UpdateRequiredView` overlay on `AppRootView`, version set in `iosAppApp.swift`): written, not yet
+  compiled (Android SDK and Xcode not available on this Mac).
