@@ -164,7 +164,7 @@ class LeagueRepositoryTest {
 
         val result = repository.updateAuctionSettings(
             "l1",
-            AuctionSettingsSaveRequestDto(basePrice = 500.0, purse = 10000.0, squadMin = 5, squadMax = 15, bidIncrement = 100.0),
+            AuctionSettingsSaveRequestDto(basePrice = 500.0, purse = 10000.0, squadMin = 5, squadMax = 15, bidIncrement = 100.0, bidRanges = emptyList()),
         )
 
         assertEquals("l1", result.id)
@@ -175,7 +175,7 @@ class LeagueRepositoryTest {
         val repository = repository(mockClient(status = HttpStatusCode.BadRequest, body = "{}"))
 
         assertFailsWith<LeagueSaveFailedException> {
-            repository.updateAuctionSettings("l1", AuctionSettingsSaveRequestDto(basePrice = 500.0, purse = 10000.0, squadMin = 5, squadMax = 15, bidIncrement = 100.0))
+            repository.updateAuctionSettings("l1", AuctionSettingsSaveRequestDto(basePrice = 500.0, purse = 10000.0, squadMin = 5, squadMax = 15, bidIncrement = 100.0, bidRanges = emptyList()))
         }
     }
 

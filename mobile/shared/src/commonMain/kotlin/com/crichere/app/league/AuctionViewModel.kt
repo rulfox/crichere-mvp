@@ -44,6 +44,8 @@ data class AuctionState(
     val isBidding: Boolean = false,
     /** Under the Amount field (design L6). */
     val bidError: String? = null,
+    /** Design L2's tap-to-fill buttons after an amount that isn't a bid step ("Try ₹2,000 · ₹2,500"); empty otherwise. */
+    val bidSuggestions: List<Double> = emptyList(),
     /** In the organizer controls dock -- a Sold / Next Player / … the server refused. */
     val actionError: String? = null,
     /** End Auction asks first (design update #5, L19); [isEnding] locks the dialog (L20). */
@@ -55,16 +57,33 @@ data class AuctionState(
     /** The dialog's body for the current pool. */
     val endAuctionBody: EndAuctionBody get() = endAuctionBody(auction?.playersPending ?: 0, isDeadEnd)
 
-    /** Current bid + the league's increment, or the base price before the first bid (the server's own rule). */
+    /** The league's bid steps (docs/PHASE22.md), `null` until its base price and bid increment are set. */
+    val bidLadder: BidLadder? get() = BidLadder.of(league)
+
+    /** The next bid step above the current bid, or the base price before the first bid (the server's own rule). */
     val minimumNextBid: Double?
         get() {
             val auctionState = auction ?: return null
             if (auctionState.currentPlayerId == null) return null
-            val current = auctionState.currentBidAmount
-            return if (current != null) league?.auctionBidIncrement?.let { current + it } else league?.auctionBasePrice
+            return bidLadder?.minimumNext(auctionState.currentBidAmount)?.toDouble()
         }
 
-    val bidIncrement: Double? get() = league?.auctionBidIncrement
+    /** Design L1's "+₹500" label: the step for the range the typed amount (or the minimum) is in. */
+    val stepButtonAmount: Double?
+        get() {
+            val ladder = bidLadder ?: return null
+            val base = bidAmountInput.trim().toDoubleOrNull() ?: minimumNextBid ?: return null
+            return ladder.stepAt(kotlin.math.floor(base).toLong()).toDouble()
+        }
+
+    /** Design L1's step labels under "Next bid at least", the current bid's range marked; empty when the league has no ranges or nobody is up. */
+    val stepLabels: List<StepLabel>
+        get() {
+            val ladder = bidLadder?.takeIf { it.hasRanges } ?: return emptyList()
+            val auctionState = auction ?: return emptyList()
+            if (auctionState.currentPlayerId == null) return emptyList()
+            return ladder.stepLabels(auctionState.currentBidAmount)
+        }
 
     /** Live, nobody on the block, and no franchise can open a bid (design update #4, A2). */
     val isDeadEnd: Boolean
@@ -256,6 +275,7 @@ class AuctionViewModel(
                     else -> current.bidAmountInput
                 },
                 bidError = if (playerChanged || minimum != current.minimumNextBid) null else current.bidError,
+                bidSuggestions = if (playerChanged || minimum != current.minimumNextBid) emptyList() else current.bidSuggestions,
             )
         }
         val squadsChanged = previous == null || previous.playersSold != newState.playersSold || previous.auctionStatus != newState.auctionStatus
@@ -270,15 +290,21 @@ class AuctionViewModel(
         }
     }
 
-    fun onBidAmountChanged(value: String) = _state.update { it.copy(bidAmountInput = value, bidError = null) }
+    fun onBidAmountChanged(value: String) = _state.update { it.copy(bidAmountInput = value, bidError = null, bidSuggestions = emptyList()) }
 
-    /** Design L1's "+₹500": the typed amount (or the minimum) plus one bid increment. */
+    /** Design L1's "+₹500": the next bid step above the typed amount (or the minimum), never below the minimum. */
     fun onStepBid() {
         val current = _state.value
-        val increment = current.bidIncrement ?: return
-        val base = current.bidAmountInput.toDoubleOrNull() ?: current.minimumNextBid ?: return
-        _state.update { it.copy(bidAmountInput = amountText(base + increment), bidError = null) }
+        val ladder = current.bidLadder ?: return
+        val minimum = current.minimumNextBid
+        val base = current.bidAmountInput.toDoubleOrNull() ?: minimum ?: return
+        val next = ladder.nextAbove(base).toDouble().let { if (minimum != null && it < minimum) minimum else it }
+        _state.update { it.copy(bidAmountInput = amountText(next), bidError = null, bidSuggestions = emptyList()) }
     }
+
+    /** Design L2: a "Try ₹2,000" button fills that amount in. */
+    fun onSuggestionPicked(amount: Double) =
+        _state.update { it.copy(bidAmountInput = amountText(amount), bidError = null, bidSuggestions = emptyList()) }
 
     fun start() = runOrganizerAction { auctionRepository.start(leagueId) }
     fun nextPlayer() = runOrganizerAction { auctionRepository.nextPlayer(leagueId) }
@@ -339,20 +365,42 @@ class AuctionViewModel(
                 return
             }
             minimum != null && amount < minimum -> {
-                _state.update { it.copy(bidError = "Bid must be at least ${rupeeText(minimum)}.") }
+                _state.update { it.copy(bidError = "Bid must be at least ${rupeeText(minimum)}.", bidSuggestions = emptyList()) }
+                return
+            }
+            current.bidLadder?.isOnLadder(amount) == false -> {
+                _state.update { it.copy(bidError = notAStepMessage(amount), bidSuggestions = suggestionsFor(amount, it)) }
                 return
             }
         }
 
-        _state.update { it.copy(isBidding = true, bidError = null) }
+        _state.update { it.copy(isBidding = true, bidError = null, bidSuggestions = emptyList()) }
         viewModelScope.launch {
             runCatching { auctionRepository.placeBid(leagueId, PlaceBidRequestDto(franchiseId, amount!!)) }
                 .onSuccess { newState ->
                     _state.update { it.copy(isBidding = false) }
                     applyAuctionState(newState)
                 }
-                .onFailure { throwable -> _state.update { it.copy(isBidding = false, bidError = bidErrorFor(throwable, it)) } }
+                .onFailure { throwable ->
+                    _state.update {
+                        val notAStep = (throwable as? AuctionActionFailedException)?.code == "BID_NOT_ON_LADDER"
+                        it.copy(
+                            isBidding = false,
+                            bidError = if (notAStep) notAStepMessage(amount!!) else bidErrorFor(throwable, it),
+                            bidSuggestions = if (notAStep) suggestionsFor(amount!!, it) else emptyList(),
+                        )
+                    }
+                }
         }
+    }
+
+    /** Design L2: "₹2,200 isn't a bid step." -- the screen adds "Try" and the [AuctionState.bidSuggestions] buttons. */
+    private fun notAStepMessage(amount: Double) = "${rupeeText(amount)} isn't a bid step."
+
+    private fun suggestionsFor(amount: Double, state: AuctionState): List<Double> {
+        val ladder = state.bidLadder ?: return emptyList()
+        val minimum = state.minimumNextBid?.toLong() ?: ladder.basePrice
+        return ladder.neighbours(amount, minimum).map { it.toDouble() }
     }
 
     private fun bidErrorFor(throwable: Throwable, state: AuctionState): String {
