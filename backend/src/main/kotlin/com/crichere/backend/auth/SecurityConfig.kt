@@ -1,5 +1,7 @@
 package com.crichere.backend.auth
 
+import com.crichere.backend.appupdate.AppUpdateFilter
+import com.crichere.backend.appupdate.AppUpdateProperties
 import com.crichere.backend.admin.ActivityTracker
 import com.crichere.backend.common.ProblemDetails
 import com.crichere.backend.common.WebViewerProperties
@@ -55,6 +57,7 @@ class SecurityConfig(
     private val objectMapper: ObjectMapper,
     private val webViewerProperties: WebViewerProperties,
     private val activityTracker: ActivityTracker,
+    private val appUpdateProperties: AppUpdateProperties,
 ) {
 
     @Bean
@@ -96,6 +99,12 @@ class SecurityConfig(
                     .authenticationEntryPoint(problemDetailAuthenticationEntryPoint())
                     .accessDeniedHandler(problemDetailAccessDeniedHandler())
             }
+            // Outdated app builds are turned away first (docs/PHASE23.md): sign-in included, and
+            // before they use up any rate-limit allowance.
+            .addFilterBefore(
+                AppUpdateFilter(appUpdateProperties, objectMapper),
+                UsernamePasswordAuthenticationFilter::class.java,
+            )
             // Rate limiting runs before authentication so a flood of session attempts is
             // rejected before any token work happens.
             .addFilterBefore(

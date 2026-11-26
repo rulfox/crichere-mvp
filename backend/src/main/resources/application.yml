@@ -98,6 +98,14 @@ crichere:
     ground-create-capacity: 20
     award-create-capacity: 100
     window: 1h
+  app-update:
+    # docs/PHASE23.md. Builds older than these get 426 APP_UPDATE_REQUIRED and an "Update required"
+    # screen. Empty = no minimum (the default). Versions are major.minor.patch (Android versionName,
+    # iOS CFBundleShortVersionString).
+    min-android: ${MIN_ANDROID_VERSION:}
+    min-ios: ${MIN_IOS_VERSION:}
+    android-url: ${ANDROID_UPDATE_URL:https://play.google.com/store/apps/details?id=com.crichere.app}
+    ios-url: ${IOS_UPDATE_URL:}
   account-deletion:
     # docs/PHASE16.md. Signing in during the grace period cancels the deletion; the purge job
     # erases what is left after it.
