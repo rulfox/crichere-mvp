@@ -12,6 +12,7 @@ import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.franchise.toResponse
 import com.crichere.backend.ground.GroundRepository
 import com.crichere.backend.league.dto.AuctionSettingsSaveRequest
+import com.crichere.backend.league.dto.BidRangeResponse
 import com.crichere.backend.league.dto.LeagueAwardResponse
 import com.crichere.backend.league.dto.LeagueAwardSaveRequest
 import com.crichere.backend.league.dto.LeagueResponse
@@ -207,6 +208,7 @@ class LeagueService(
      *
      * @throws NotOrganizerException [callerId] is not this league's organizer.
      * @throws SquadSizeInvalidException [request.squadMin] is greater than [request.squadMax].
+     * @throws BidRangesInvalidException the bid steps break a rule (see [BidRangesValidator]).
      * @throws com.crichere.backend.auction.AuctionAlreadyStartedException the auction has already started (see docs/PHASE5.md).
      */
     @Transactional
@@ -217,12 +219,17 @@ class LeagueService(
         val squadMin = requireNotNull(request.squadMin)
         val squadMax = requireNotNull(request.squadMax)
         if (squadMin > squadMax) throw SquadSizeInvalidException()
+        val basePrice = requireNotNull(request.basePrice)
+        val bidIncrement = requireNotNull(request.bidIncrement)
+        val bidRanges = request.bidRanges?.map { BidRange(requireNotNull(it.upTo), requireNotNull(it.step)) } ?: league.auctionBidRanges
+        BidRangesValidator.validate(basePrice, bidRanges, bidIncrement)
 
-        league.auctionBasePrice = request.basePrice
+        league.auctionBasePrice = basePrice
         league.auctionPurse = request.purse
         league.auctionSquadMin = squadMin
         league.auctionSquadMax = squadMax
-        league.auctionBidIncrement = request.bidIncrement
+        league.auctionBidIncrement = bidIncrement
+        league.auctionBidRanges = bidRanges
         league.auctionScheduledAt = request.scheduledAt
         league.updatedAt = Instant.now()
         return leagueRepository.save(league).toResponse(callerId)
@@ -472,6 +479,7 @@ class LeagueService(
             auctionSquadMin = auctionSquadMin,
             auctionSquadMax = auctionSquadMax,
             auctionBidIncrement = auctionBidIncrement,
+            auctionBidRanges = auctionBidRanges.map { BidRangeResponse(upTo = it.upTo, step = it.step) },
             auctionSquadMaxWarning = auctionSquadMaxWarning,
             coOrganizers = coOrganizers,
             auctionScheduledAt = auctionScheduledAt,

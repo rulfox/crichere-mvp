@@ -27,8 +27,15 @@ class AuctionPlayerAlreadyOpenException : RuntimeException("A player is already 
 /** A bid/`sold`/`unsold` was attempted with no player currently open -- call `next-player` first. */
 class AuctionNoPlayerOpenException : RuntimeException("No player is currently open for bidding")
 
-/** A bid was below the required minimum (current bid + increment, or base price if no bid yet). */
+/** A bid was below the required minimum (the next bid step above the current bid, or base price if no bid yet). */
 class BidTooLowException(val minimumAmount: java.math.BigDecimal) : RuntimeException("Bid must be at least $minimumAmount")
+
+/**
+ * A bid wasn't one of the league's bid steps (docs/PHASE22.md). [lower]/[upper] are the nearest valid
+ * bids either side, for the "Try X or Y" message; [lower] is `null` when nothing valid sits below it.
+ */
+class BidNotOnLadderException(val lower: java.math.BigDecimal?, val upper: java.math.BigDecimal) :
+    RuntimeException("Bid is not one of the bid steps")
 
 /** The bidding franchise already holds the leading bid -- a franchise cannot outbid itself. */
 class AlreadyLeadingException : RuntimeException("This franchise already has the leading bid")

@@ -10,6 +10,7 @@ import com.crichere.backend.auction.AuctionNotInProgressException
 import com.crichere.backend.auction.AuctionNotReadyException
 import com.crichere.backend.auction.AlreadyLeadingException
 import com.crichere.backend.auction.AuctionPlayerAlreadyOpenException
+import com.crichere.backend.auction.BidNotOnLadderException
 import com.crichere.backend.auction.BidTooLowException
 import com.crichere.backend.auction.NoBidsToSellException
 import com.crichere.backend.auction.NothingToUndoException
@@ -45,6 +46,7 @@ import com.crichere.backend.league.OrganizerUpiRequiredException
 import com.crichere.backend.league.PaymentScreenshotRequiredException
 import com.crichere.backend.league.RoleAlreadyGrantedException
 import com.crichere.backend.league.RoleNotFoundException
+import com.crichere.backend.league.BidRangesInvalidException
 import com.crichere.backend.league.SquadSizeInvalidException
 import com.crichere.backend.league.UserNotFoundException
 import com.crichere.backend.player.AlreadyJoinedException
@@ -512,6 +514,19 @@ class GlobalExceptionHandler {
             instance = request.requestURI,
         )
 
+    /** An auction-settings save broke a bid-step rule (docs/PHASE22.md); `rangeIndex` is 0-based, `null` for the "and above" step. */
+    @ExceptionHandler(BidRangesInvalidException::class)
+    fun handleBidRangesInvalid(exception: BidRangesInvalidException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "bid-ranges-invalid",
+            title = "Invalid bid steps",
+            code = "BID_RANGES_INVALID",
+            detail = exception.reason,
+            instance = request.requestURI,
+            extensions = listOfNotNull(exception.rangeIndex?.let { "rangeIndex" to it }, "reason" to exception.reason).toMap(),
+        )
+
     /** An auction-settings save had `squadMin` greater than `squadMax` (see `com.crichere.backend.league.LeagueExceptions`). */
     @ExceptionHandler(SquadSizeInvalidException::class)
     fun handleSquadSizeInvalid(request: HttpServletRequest): ProblemDetail =
@@ -717,6 +732,19 @@ class GlobalExceptionHandler {
             detail = "Bid must be at least ${exception.minimumAmount}.",
             instance = request.requestURI,
             extensions = mapOf("minimumAmount" to exception.minimumAmount),
+        )
+
+    /** A bid wasn't one of the league's bid steps (docs/PHASE22.md); `lower`/`upper` are the nearest valid bids. */
+    @ExceptionHandler(BidNotOnLadderException::class)
+    fun handleBidNotOnLadder(exception: BidNotOnLadderException, request: HttpServletRequest): ProblemDetail =
+        ProblemDetails.of(
+            status = HttpStatus.BAD_REQUEST,
+            slug = "bid-not-on-ladder",
+            title = "Not a bid step",
+            code = "BID_NOT_ON_LADDER",
+            detail = "Bid must be one of the bid steps.",
+            instance = request.requestURI,
+            extensions = listOfNotNull(exception.lower?.let { "lower" to it }, "upper" to exception.upper).toMap(),
         )
 
     /** A bid would push the franchise's squad past `auctionSquadMax`. */

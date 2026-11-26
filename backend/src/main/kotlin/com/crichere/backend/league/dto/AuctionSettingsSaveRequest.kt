@@ -1,5 +1,6 @@
 package com.crichere.backend.league.dto
 
+import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Positive
 import java.math.BigDecimal
@@ -31,6 +32,7 @@ data class AuctionSettingsSaveRequest(
 
     @field:NotNull(message = "bidIncrement is required")
     @field:Positive(message = "bidIncrement must be positive")
+    /** The step above the last of [bidRanges]; with no ranges, the one flat step. */
     val bidIncrement: BigDecimal?,
 
     /**
@@ -39,4 +41,22 @@ data class AuctionSettingsSaveRequest(
      * has passed, re-saving the other settings must still work.
      */
     val scheduledAt: Instant? = null,
+
+    /**
+     * Bid-step ranges below [bidIncrement] (docs/PHASE22.md), which then becomes the step above the
+     * last range. `null` (an app from before bid steps) keeps whatever is saved; an empty list clears them.
+     */
+    @field:Valid
+    val bidRanges: List<BidRangeRequest>? = null,
+)
+
+/** One bid-step range: bids up to, not including, [upTo] go up by [step]. Its start is the previous range's end. */
+data class BidRangeRequest(
+    @field:NotNull(message = "upTo is required")
+    @field:Positive(message = "upTo must be positive")
+    val upTo: BigDecimal?,
+
+    @field:NotNull(message = "step is required")
+    @field:Positive(message = "step must be positive")
+    val step: BigDecimal?,
 )

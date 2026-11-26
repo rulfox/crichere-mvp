@@ -1,6 +1,7 @@
 package com.crichere.backend.league
 
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -99,8 +100,14 @@ class LeagueEntity(
     @Column(name = "auction_squad_max")
     var auctionSquadMax: Int? = null,
 
+    /** The step above the last of [auctionBidRanges] -- with no ranges, the one flat step (docs/PHASE22.md). */
     @Column(name = "auction_bid_increment")
     var auctionBidIncrement: BigDecimal? = null,
+
+    /** Optional bid-step ranges below [auctionBidIncrement]'s open-ended step (V29, docs/PHASE22.md). */
+    @Column(name = "auction_bid_ranges", nullable = false)
+    @Convert(converter = BidRangesConverter::class)
+    var auctionBidRanges: List<BidRange> = emptyList(),
 
     /** `NOT_STARTED` until the organizer calls `start`; see docs/PHASE5.md. */
     @Column(name = "auction_status", nullable = false)
