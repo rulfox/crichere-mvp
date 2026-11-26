@@ -5,6 +5,7 @@
 // Env: BID_PAUSE_MS (default 1500), SKIP_EVERY (default 4, 0 = bid on everything)
 import { api, auctionStates } from './lib/api.mjs'
 import { sql, quote } from './lib/db.mjs'
+import { nextBid } from './lib/ladder.mjs'
 
 const fragment = process.argv[2]
 const [[leagueId, leagueName]] = sql(
@@ -35,7 +36,6 @@ for await (const state of auctionStates(leagueId)) {
   }
   const fresh = (await api('GET', `/leagues/${leagueId}`)).body
   const base = Number(fresh.auctionBasePrice)
-  const increment = Number(fresh.auctionBidIncrement)
   const rounds = 2 + Math.floor(Math.random() * 4)
   let amount = base
   let turn = 0
@@ -47,7 +47,7 @@ for await (const state of auctionStates(leagueId)) {
     const res = await api('POST', `/leagues/${leagueId}/auction/bids`, { as: owner.userId, body: { franchiseId: owner.franchiseId, amount } })
     console.log(`Lot ${state.currentLotNumber} ${state.currentPlayerName}: ${owner.name} bids ${amount} -> ${res.status}${res.status === 200 ? '' : ' ' + res.body?.code}`)
     if (res.status === 200) {
-      amount += increment
+      amount = nextBid(fresh, amount) // follows the league's bid steps
     } else if (res.body?.code === 'SQUAD_FULL') {
       blocked.add(owner.franchiseId) // full for good -- the other franchise carries on
     } else if (res.body?.code === 'PURSE_EXCEEDED') {

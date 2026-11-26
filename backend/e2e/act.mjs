@@ -7,6 +7,7 @@
 // The organizer is the league's organizer; bids use the owner's forged token (local profile only).
 import { api, auctionStates } from './lib/api.mjs'
 import { sql, quote } from './lib/db.mjs'
+import { nextBid } from './lib/ladder.mjs'
 
 const [fragment, action, arg, amountArg] = process.argv.slice(2)
 const [[leagueId]] = sql(`SELECT id FROM leagues WHERE name ILIKE ${quote(`%${fragment}%`)} ORDER BY created_at DESC LIMIT 1;`)
@@ -37,7 +38,7 @@ switch (action) {
     const franchise = league.franchises.find((f) => f.name.toLowerCase().includes(arg.toLowerCase()))
     const state = await currentState()
     const amount = amountArg ? Number(amountArg)
-      : state.currentBidAmount != null ? Number(state.currentBidAmount) + Number(league.auctionBidIncrement) : Number(league.auctionBasePrice)
+      : nextBid(league, state.currentBidAmount != null ? Number(state.currentBidAmount) : null)
     res = await api('POST', path('/bids'), { as: franchise.ownerUserId, body: { franchiseId: franchise.id, amount } })
     break
   }

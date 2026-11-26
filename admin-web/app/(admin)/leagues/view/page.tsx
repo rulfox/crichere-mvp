@@ -244,6 +244,16 @@ function ProofDialog({ kind, rowId, onClose }: { kind: "player" | "franchise"; r
   );
 }
 
+/**
+ * The league's bid steps (docs/PHASE22.md) from the raw `auction_bid_ranges` column (`1000:250,3000:500`)
+ * plus the step above them: "250 / 500, then 2,500 pts". No ranges: just the one step.
+ */
+function bidSteps(ranges: string | null, above: number | null): string {
+  if (above == null) return "—";
+  const steps = (ranges ?? "").split(",").filter(Boolean).map((pair) => Number(pair.split(":")[1]));
+  return steps.length === 0 ? pts(above) : `${steps.map((n) => num(n)).join(" / ")}, then ${pts(above)}`;
+}
+
 function AuctionTab({ id }: { id: string }) {
   const data = useApi<Row>(`/api/v1/admin/leagues/${id}/auction`);
   if (data.error && !data.data) return <Panel><Failed error={data.error} onRetry={data.reload} /></Panel>;
@@ -257,7 +267,7 @@ function AuctionTab({ id }: { id: string }) {
           ["Base price", pts(a.auctionBasePrice as number | null)],
           ["Purse", pts(a.auctionPurse as number | null)],
           ["Squad size", a.auctionSquadMin != null ? `${a.auctionSquadMin} to ${a.auctionSquadMax}` : "—"],
-          ["Bid step", pts(a.auctionBidIncrement as number | null)],
+          ["Bid steps", bidSteps(a.auctionBidRanges as string | null, a.auctionBidIncrement as number | null)],
           ["Status", String(a.auctionStatus).replace("_", " ").toLowerCase()],
         ].map(([k, v]) => (
           <div className="kpi" key={k}>
