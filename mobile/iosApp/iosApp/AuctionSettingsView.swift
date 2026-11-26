@@ -255,7 +255,7 @@ private struct SettingsFields: View {
             } else {
                 BidStepsSection(state: state, actions: actions).padding(.bottom, 8)
             }
-            ScheduledAtField(state: state, actions: actions).disabled(state.isLocked)
+            if !state.isLocked { ScheduledAtField(state: state, actions: actions) }
         }
         .opacity(state.isSaving ? 0.55 : 1)
     }
