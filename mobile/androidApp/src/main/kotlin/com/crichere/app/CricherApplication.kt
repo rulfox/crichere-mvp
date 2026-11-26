@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.crichere.app.auth.CurrentActivityTracker
 import com.crichere.app.di.initKoin
+import com.crichere.app.network.configureAppInfo
 import com.crichere.app.network.configureBackendBaseUrl
 import com.crichere.app.network.configureNetworkLogging
 import org.koin.android.ext.koin.androidContext
@@ -17,6 +18,7 @@ class CricherApplication : Application() {
         super.onCreate()
         configureBackendBaseUrl(BuildConfig.BACKEND_BASE_URL)
         configureNetworkLogging(BuildConfig.DEBUG)
+        configureAppInfo("android", BuildConfig.VERSION_NAME)
         initKoin {
             if (BuildConfig.DEBUG) androidLogger()
             androidContext(this@CricherApplication)

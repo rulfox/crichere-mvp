@@ -48,6 +48,8 @@ googleServices = "4.5.0"
 # and messaging, so it gets its own upgrade (docs/PHASE19.md).
 firebaseCrashlytics = "3.0.8"
 kotlinxCoroutinesPlayServices = "1.11.0"
+# Play In-App Updates: the immediate "update required" flow (docs/PHASE23.md).
+playAppUpdate = "2.1.0"
 # Ground location picker (Phase 2). Checked against live sources (mvnrepository.com,
 # developers.google.com/android/guides/releases) on 2026-09-04, same precedent as the
 # Firebase BOM above. No Maps API key exists in this environment -- see androidApp's
@@ -70,6 +72,7 @@ navigation3 = "1.2.0"
 androidxLifecycleNavigation3 = "2.11.0"
 
 [libraries]
+play-app-update-ktx = { module = "com.google.android.play:app-update-ktx", version.ref = "playAppUpdate" }
 # Compose Multiplatform artifacts, declared directly: CMP 1.12 deprecated the plugin's
 # `compose.runtime`/`compose.ui`/... accessors ("Specify dependency directly").
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }

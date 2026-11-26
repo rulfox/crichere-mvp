@@ -150,6 +150,7 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(libs.compose.runtime)
+    implementation(libs.play.app.update.ktx)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
