@@ -11,13 +11,11 @@ options:
                 # (ProfileSetupView's PhotosPicker needs 16+, so 17 satisfies that too)
 
 packages:
-  # Pin an exact version by checking https://github.com/firebase/firebase-ios-sdk/releases at
-  # build time -- same "check live sources, don't assume from training data" discipline this
-  # repo's libs.versions.toml comments document for every other dependency. Placeholder version
-  # below MUST be updated before `xcodegen generate` is run for real.
+  # Pinned to the version the app was built and tested with (2026-11-23), so a release archive
+  # can't silently pick up a newer SDK. Bump deliberately.
   FirebaseIOS:
     url: https://github.com/firebase/firebase-ios-sdk
-    from: "11.0.0"
+    exactVersion: "11.15.0"
 
 targets:
   iosApp:
@@ -33,14 +31,15 @@ targets:
       path: iosApp/Info.plist
       properties:
         CFBundleDisplayName: Crichere
-        CFBundleShortVersionString: "0.1.0"
+        CFBundleShortVersionString: "1.0.0" # matches Android versionName
         CFBundleVersion: "1"
         UILaunchScreen: {}
-        # Portrait only (owner, 2026-11-07), on iPhone and iPad. An iPad app limited to some
-        # orientations must opt out of multitasking, hence UIRequiresFullScreen.
+        # Portrait only (owner, 2026-11-07). iPhone only for 1.0 (owner, 2026-11-23): see
+        # TARGETED_DEVICE_FAMILY below; iPads run it in iPhone compatibility mode.
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait]
-        UIRequiresFullScreen: true
+        # Only HTTPS / the OS's own crypto: exempt, so App Store Connect skips the export
+        # compliance question on every upload.
+        ITSAppUsesNonExemptEncryption: false
         # Brand faces, same variable files as androidApp/res/font (iosApp/Fonts, copied to the
         # bundle root): Archivo headlines, Instrument Sans UI text, JetBrains Mono money/phone/OTP.
         UIAppFonts:
@@ -64,8 +63,10 @@ targets:
         # fabricate.
         DEVELOPMENT_TEAM: ""
         SWIFT_VERSION: "5.0"
-        # No app icon yet (Design/Icons.xcassets holds only the Android UI icons).
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        TARGETED_DEVICE_FAMILY: "1" # iPhone only (owner, 2026-11-23)
+        # Assets.xcassets/AppIcon: the Android launcher (web-viewer/assets/brand/ic-launcher-full.svg)
+        # at 1024 px, opaque; iOS applies the rounded mask.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: FirebaseIOS
         product: FirebaseAuth
