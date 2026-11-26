@@ -137,6 +137,7 @@ internal fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Aucti
                             .padding(start = 19.dp, end = 19.dp, top = 5.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        if (state.isLocked) LockedAuctionNote()
                         Fields(state, viewModel, onScheduleCleared = { clearedSchedule = it })
                         state.squadWarning?.let { warning ->
                             SquadWarningNote(
@@ -167,7 +168,7 @@ internal fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Aucti
                         )
                     }
                 }
-                SaveBar(state, onSave = viewModel::submit)
+                if (!state.isLocked) SaveBar(state, onSave = viewModel::submit)
             }
         }
     }
@@ -183,16 +184,17 @@ private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewMo
     val amount = KeyboardOptions(keyboardType = KeyboardType.Decimal)
     val count = KeyboardOptions(keyboardType = KeyboardType.Number)
     Column(Modifier.alpha(if (state.isSaving) 0.55f else 1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        SettingField(state.basePrice, viewModel::onBasePriceChanged, "Base price", errors[AuctionField.BasePrice], amount, state.isSaving)
-        SettingField(state.purse, viewModel::onPurseChanged, "Purse per franchise", errors[AuctionField.Purse], amount, state.isSaving)
+        SettingField(state.basePrice, viewModel::onBasePriceChanged, "Base price", errors[AuctionField.BasePrice], amount, state.isSaving, enabled = !state.isLocked)
+        SettingField(state.purse, viewModel::onPurseChanged, "Purse per franchise", errors[AuctionField.Purse], amount, state.isSaving, enabled = !state.isLocked)
         // Board V1.
         Text(AUCTION_MONEY_NOTE, style = pText(12.sp, lineHeight = 18.sp), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 2.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SettingField(state.squadMin, viewModel::onSquadMinChanged, "Squad size (min)", errors[AuctionField.SquadMin], count, state.isSaving, Modifier.weight(1f))
-            SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Squad size (max)", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f))
+            SettingField(state.squadMin, viewModel::onSquadMinChanged, "Squad size (min)", errors[AuctionField.SquadMin], count, state.isSaving, Modifier.weight(1f), enabled = !state.isLocked)
+            SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Squad size (max)", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f), enabled = !state.isLocked)
         }
-        SettingField(state.bidIncrement, viewModel::onBidIncrementChanged, "Bid increment", errors[AuctionField.BidIncrement], amount, state.isSaving)
-        ScheduledAtField(state, viewModel::onScheduledAtChanged, onCleared = onScheduleCleared)
+        // Design S1-S4 (docs/PHASE22.md): the bid steps replace the single bid increment field.
+        if (state.isLocked) LockedBidSteps(state.lockedSteps) else BidStepsSection(state, viewModel)
+        if (!state.isLocked) ScheduledAtField(state, viewModel::onScheduledAtChanged, onCleared = onScheduleCleared)
     }
 }
 
@@ -402,6 +404,7 @@ private fun SettingField(
     keyboardOptions: KeyboardOptions,
     readOnly: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     CrichereTextField(
         value = value,
@@ -413,6 +416,7 @@ private fun SettingField(
         keyboardOptions = keyboardOptions,
         readOnly = readOnly,
         modifier = modifier,
+        enabled = enabled,
     )
 }
 

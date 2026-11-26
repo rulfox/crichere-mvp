@@ -1,6 +1,9 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.crichere.app.ui
 
 import com.crichere.app.league.LeaguePlayerDto
+import com.crichere.app.league.StepLabel
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import com.crichere.app.moderation.ModerationRepository
@@ -39,6 +42,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -227,7 +231,7 @@ private fun LoadedAuction(state: AuctionState, auction: AuctionStateDto, viewMod
                         Spacer(Modifier.height(12.dp))
                         when {
                             auction.currentPlayerId != null -> {
-                                BlockCard(auction, state.minimumNextBid, league?.franchises.orEmpty(), league?.players.orEmpty())
+                                BlockCard(auction, state.minimumNextBid, league?.franchises.orEmpty(), league?.players.orEmpty(), state.stepLabels)
                                 Spacer(Modifier.height(15.dp))
                                 RecentBids(auction.recentBids, league?.franchises.orEmpty())
                             }
@@ -467,7 +471,13 @@ private fun ConnectionPill(phase: ConnectionPhase, onRetry: () -> Unit) {
  * 40 dp bid row, so the card no longer comes out ~10 dp taller than the board.
  */
 @Composable
-private fun BlockCard(auction: AuctionStateDto, minimumNextBid: Double?, franchises: List<LeagueFranchiseDto>, leaguePlayers: List<LeaguePlayerDto>) {
+private fun BlockCard(
+    auction: AuctionStateDto,
+    minimumNextBid: Double?,
+    franchises: List<LeagueFranchiseDto>,
+    leaguePlayers: List<LeaguePlayerDto>,
+    stepLabels: List<StepLabel> = emptyList(),
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -563,6 +573,28 @@ private fun BlockCard(auction: AuctionStateDto, minimumNextBid: Double?, franchi
                 style = tight(InstrumentSansFamily, 12.sp, FontWeight.Medium, 16.sp),
                 color = CrichereAuctionMuted,
             )
+        }
+        if (stepLabels.isNotEmpty()) {
+            // Design L1 (docs/PHASE22.md): the league's bid steps, the current bid's range lit.
+            Spacer(Modifier.height(10.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = "Bid steps" },
+            ) {
+                stepLabels.forEach { label ->
+                    Text(
+                        label.text,
+                        style = mono(10.5.sp, FontWeight.SemiBold),
+                        color = if (label.isCurrent) CrichereAuctionBg else CrichereAuctionMuted,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(if (label.isCurrent) CrichereAuctionGold else Color.Transparent)
+                            .border(1.dp, if (label.isCurrent) CrichereAuctionGold else Hairline, RoundedCornerShape(7.dp))
+                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -1011,6 +1043,8 @@ private fun BidForm(state: AuctionState, viewModel: AuctionViewModel, offline: B
                     error = state.bidError,
                     enabled = !state.isBidding && !offline,
                     outbidAmount = outbidAmount,
+                    suggestions = state.bidSuggestions,
+                    onSuggestion = viewModel::onSuggestionPicked,
                 )
                 else -> DockStatusTile(current)
             }
@@ -1018,7 +1052,7 @@ private fun BidForm(state: AuctionState, viewModel: AuctionViewModel, offline: B
     }
     Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        val increment = state.bidIncrement
+        val increment = state.stepButtonAmount
         val inert = mode != DockMode.Bid || offline
         if (increment != null) {
             Box(
@@ -1128,7 +1162,16 @@ private object IndianAmountTransformation : VisualTransformation {
  * at most 9 (₹99,99,99,999) -- extra keystrokes are ignored. [outbidAmount] shows "Outbid · ₹X" inside it.
  */
 @Composable
-private fun AmountField(value: String, onValueChange: (String) -> Unit, error: String?, enabled: Boolean, outbidAmount: Double?) {
+private fun AmountField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    error: String?,
+    enabled: Boolean,
+    outbidAmount: Double?,
+    /** Design L2: "₹2,200 isn't a bid step. Try [₹2,000] [₹2,500]" -- each fills the amount in. */
+    suggestions: List<Double> = emptyList(),
+    onSuggestion: (Double) -> Unit = {},
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
     val thick = enabled && (error != null || focused)
@@ -1197,7 +1240,32 @@ private fun AmountField(value: String, onValueChange: (String) -> Unit, error: S
         }
         if (error != null) {
             Spacer(Modifier.height(6.dp))
-            Text(error, style = tight(InstrumentSansFamily, 12.sp, FontWeight.Medium, 16.sp), color = Alert, modifier = Modifier.padding(start = 4.dp))
+            if (suggestions.isEmpty()) {
+                Text(error, style = tight(InstrumentSansFamily, 12.sp, FontWeight.Medium, 16.sp), color = Alert, modifier = Modifier.padding(start = 4.dp))
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 4.dp),
+                ) {
+                    Text("$error Try", style = text(12.5.sp, FontWeight.Medium, 16.sp), color = Alert)
+                    suggestions.forEach { amount ->
+                        Box(
+                            Modifier
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(CrichereAuctionGold.copy(alpha = 0.1f))
+                                .border(1.5.dp, CrichereAuctionGold, RoundedCornerShape(20.dp))
+                                .clickable { onSuggestion(amount) }
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(rupees(amount), style = mono(13.5.sp, FontWeight.Bold), color = CrichereAuctionGold)
+                        }
+                    }
+                }
+            }
         }
     }
 }
