@@ -23,6 +23,7 @@ final class AuctionViewModelWrapper: ObservableObject {
 
     func retry() { viewModel.retry() }
     func onBidAmountChanged(_ value: String) { viewModel.onBidAmountChanged(value: value) }
+    func onSuggestionPicked(_ amount: Double) { viewModel.onSuggestionPicked(amount: amount) }
     func placeBid() { viewModel.placeBid() }
     func onStepBid() { viewModel.onStepBid() }
     func start() { viewModel.start() }
@@ -74,7 +75,7 @@ struct AuctionLiveView: View {
 
     var body: some View {
         AuctionLiveContent(state: wrapper.state, blockedIds: block.blockedIds, actions: AuctionLiveActions(
-            onBack: onBack, onRetry: wrapper.retry, onBidAmountChanged: wrapper.onBidAmountChanged, onPlaceBid: wrapper.placeBid,
+            onBack: onBack, onRetry: wrapper.retry, onBidAmountChanged: wrapper.onBidAmountChanged, onSuggestionPicked: wrapper.onSuggestionPicked, onPlaceBid: wrapper.placeBid,
             onStepBid: wrapper.onStepBid, onStart: wrapper.start, onNextPlayer: wrapper.nextPlayer, onSold: wrapper.sold,
             onUnsold: wrapper.unsold, onUndo: wrapper.undo, onRequestEnd: wrapper.requestEnd, onToggleExceedPurse: wrapper.toggleExceedPurse,
             onClearEndFailure: wrapper.clearEndFailure))
@@ -92,6 +93,7 @@ struct AuctionLiveActions {
     var onBack: () -> Void = {}
     var onRetry: () -> Void = {}
     var onBidAmountChanged: (String) -> Void = { _ in }
+    var onSuggestionPicked: (Double) -> Void = { _ in }
     var onPlaceBid: () -> Void = {}
     var onStepBid: () -> Void = {}
     var onStart: () -> Void = {}
@@ -187,7 +189,7 @@ private struct LoadedAuction: View {
         case .inProgress:
             Spacer().frame(height: 12)
             if auction.currentPlayerId != nil {
-                BlockCard(auction: auction, minimumNextBid: state.minimumNextBid?.doubleValue, franchises: franchises,
+                BlockCard(auction: auction, minimumNextBid: state.minimumNextBid?.doubleValue, stepLabels: state.stepLabels, franchises: franchises,
                           players: state.league?.players ?? [], blockedIds: blockedIds)
                 Spacer().frame(height: 15)
                 RecentBids(bids: auction.recentBids, franchises: franchises, blockedIds: blockedIds)
@@ -362,6 +364,7 @@ private struct ConnectionPill: View {
 private struct BlockCard: View {
     let auction: AuctionStateDto
     let minimumNextBid: Double?
+    var stepLabels: [StepLabel] = []
     let franchises: [LeagueFranchiseDto]
     let players: [LeaguePlayerDto]
     let blockedIds: Set<String>
@@ -381,6 +384,20 @@ private struct BlockCard: View {
                 (Text(auction.currentBidAmount == nil ? "Opening bid at least " : "Next bid at least ")
                     + Text(rupees(minimumNextBid)).font(CrichereTextStyle.mono(12, .medium).font).foregroundColor(textDim))
                     .crichere(.sans(12, .medium, lineHeight: 16).tight, muted)
+            }
+            if !stepLabels.isEmpty {
+                // Design L1 (docs/PHASE22.md): the league's bid steps, the current bid's range lit.
+                Spacer().frame(height: 10)
+                FlowRow(spacing: 6) {
+                    ForEach(Array(stepLabels.enumerated()), id: \.offset) { _, label in
+                        Text(label.text).crichere(.mono(10.5, .semiBold, lineHeight: 14), label.isCurrent ? auctionBg : muted)
+                            .padding(.horizontal, 7).padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 7).fill(label.isCurrent ? gold : Color.clear))
+                            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(label.isCurrent ? gold : hairline))
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Bid steps")
             }
         }
         .padding(14)
@@ -809,7 +826,8 @@ private struct BidForm: View {
             ZStack {
                 if modeIsBid {
                     AmountField(value: state.bidAmountInput, onChange: actions.onBidAmountChanged, error: state.bidError,
-                                enabled: !state.isBidding && !offline, outbidAmount: outbidAmount)
+                                enabled: !state.isBidding && !offline, outbidAmount: outbidAmount,
+                                suggestions: state.bidSuggestions.map(\.doubleValue), onSuggestion: actions.onSuggestionPicked)
                         .transition(.opacity)
                 } else {
                     DockStatusTile(mode: state.dockMode).transition(.opacity)
@@ -856,7 +874,7 @@ private struct BidForm: View {
         let inert = !modeIsBid || offline
         let inputEnabled = !state.isBidding && !offline && modeIsBid
         return HStack(spacing: 10) {
-            if let increment = state.bidIncrement?.doubleValue {
+            if let increment = state.stepButtonAmount?.doubleValue {
                 Button(action: actions.onStepBid) {
                     Text("+\(rupees(increment))").crichere(.mono(14, .bold, lineHeight: 14), inert ? muted.opacity(0.5) : gold)
                         .padding(.horizontal, 16).frame(height: 48)
@@ -940,6 +958,9 @@ private struct AmountField: View {
     let error: String?
     let enabled: Bool
     let outbidAmount: Double?
+    /// Design L2: "₹2,200 isn't a bid step. Try [₹2,000] [₹2,500]" -- each fills the amount in.
+    var suggestions: [Double] = []
+    var onSuggestion: (Double) -> Void = { _ in }
 
     @FocusState private var focused: Bool
 
@@ -982,7 +1003,24 @@ private struct AmountField: View {
             }
             if let error {
                 Spacer().frame(height: 6)
-                Text(error).crichere(.sans(12, .medium, lineHeight: 16).tight, coral).padding(.leading, 4)
+                if suggestions.isEmpty {
+                    Text(error).crichere(.sans(12, .medium, lineHeight: 16).tight, coral).padding(.leading, 4)
+                } else {
+                    FlowRow(spacing: 8) {
+                        Text(error + " Try").crichere(.sans(12.5, .medium, lineHeight: 16), coral).frame(minHeight: 40)
+                        ForEach(suggestions, id: \.self) { amount in
+                            Button { onSuggestion(amount) } label: {
+                                Text(rupees(amount)).crichere(.mono(13.5, .bold, lineHeight: 14), gold)
+                                    .padding(.horizontal, 14).frame(height: 40)
+                                    .background(Capsule().fill(gold.opacity(0.1)))
+                                    .overlay(Capsule().strokeBorder(gold, lineWidth: 1.5))
+                                    .contentShape(Capsule())
+                            }
+                            .buttonStyle(PressHighlight(shape: Capsule(), color: gold.opacity(0.15)))
+                        }
+                    }
+                    .padding(.leading, 4)
+                }
             }
         }
     }

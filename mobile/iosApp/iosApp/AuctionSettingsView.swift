@@ -27,6 +27,10 @@ final class AuctionSettingsViewModelWrapper: ObservableObject {
     func onSquadMinChanged(_ value: String) { viewModel.onSquadMinChanged(value: value) }
     func onSquadMaxChanged(_ value: String) { viewModel.onSquadMaxChanged(value: value) }
     func onBidIncrementChanged(_ value: String) { viewModel.onBidIncrementChanged(value: value) }
+    func onAddRange() { viewModel.onAddRange() }
+    func onRemoveRange(_ index: Int32) { viewModel.onRemoveRange(index: index) }
+    func onRangeUpToChanged(_ index: Int32, _ value: String) { viewModel.onRangeUpToChanged(index: index, value: value) }
+    func onRangeStepChanged(_ index: Int32, _ value: String) { viewModel.onRangeStepChanged(index: index, value: value) }
     /// `nil` clears it; otherwise stored as an ISO-8601 instant (docs/PHASE11.md D3).
     func onScheduledAtChanged(_ value: Date?) {
         viewModel.onScheduledAtChanged(value: value.map { ISO8601DateFormatter().string(from: $0) })
@@ -71,6 +75,10 @@ struct AuctionSettingsView: View {
                 onSquadMin: wrapper.onSquadMinChanged,
                 onSquadMax: wrapper.onSquadMaxChanged,
                 onBidIncrement: wrapper.onBidIncrementChanged,
+                onAddRange: wrapper.onAddRange,
+                onRemoveRange: wrapper.onRemoveRange,
+                onRangeUpTo: wrapper.onRangeUpToChanged,
+                onRangeStep: wrapper.onRangeStepChanged,
                 onPickSchedule: { pickingDate = true },
                 onClearSchedule: {
                     guard let current = state.scheduledAt else { return }
@@ -162,6 +170,10 @@ struct AuctionSettingsActions {
     var onSquadMin: (String) -> Void = { _ in }
     var onSquadMax: (String) -> Void = { _ in }
     var onBidIncrement: (String) -> Void = { _ in }
+    var onAddRange: () -> Void = {}
+    var onRemoveRange: (Int32) -> Void = { _ in }
+    var onRangeUpTo: (Int32, String) -> Void = { _, _ in }
+    var onRangeStep: (Int32, String) -> Void = { _, _ in }
     var onPickSchedule: () -> Void = {}
     var onClearSchedule: () -> Void = {}
     var onUndoClear: () -> Void = {}
@@ -183,6 +195,7 @@ struct AuctionSettingsContent: View {
                 ZStack(alignment: .bottom) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 12) {
+                            if state.isLocked { LockedAuctionNote() }
                             SettingsFields(state: state, actions: actions)
                             if let warning = state.squadWarning {
                                 SquadWarningNote(text: "Squad max × franchises (\(warning.squadMax) × \(warning.franchises) = \(warning.total)) is more than "
@@ -199,7 +212,7 @@ struct AuctionSettingsContent: View {
                         .padding(.horizontal, 13)
                         .padding(.bottom, 19)
                 }
-                SaveBar(state: state, onSave: actions.onSave)
+                if !state.isLocked { SaveBar(state: state, onSave: actions.onSave) }
             } else {
                 LoadErrorView(title: "Couldn't load auction settings", onRetry: actions.onRetry)
             }
@@ -236,8 +249,13 @@ private struct SettingsFields: View {
                 field(state.squadMin, actions.onSquadMin, "Squad size (min)", errors[.squadMin], .numberPad)
                 field(state.squadMax, actions.onSquadMax, "Squad size (max)", errors[.squadMax], .numberPad)
             }
-            field(state.bidIncrement, actions.onBidIncrement, "Bid increment", errors[.bidIncrement], .decimalPad)
-            ScheduledAtField(state: state, actions: actions)
+            // Design S1-S4 (docs/PHASE22.md): the bid steps replace the single bid increment field.
+            if state.isLocked {
+                LockedBidSteps(rows: state.lockedSteps).padding(.vertical, 8)
+            } else {
+                BidStepsSection(state: state, actions: actions).padding(.bottom, 8)
+            }
+            ScheduledAtField(state: state, actions: actions).disabled(state.isLocked)
         }
         .opacity(state.isSaving ? 0.55 : 1)
     }
@@ -245,7 +263,7 @@ private struct SettingsFields: View {
     private func field(_ value: String, _ onChange: @escaping (String) -> Void, _ label: String, _ error: String?,
                        _ keyboard: UIKeyboardType) -> some View {
         CrichereTextField(text: Binding(get: { value }, set: onChange), label: label, look: .form, error: error, mono: true,
-                          readOnly: state.isSaving, keyboard: keyboard)
+                          readOnly: state.isSaving, enabled: !state.isLocked, keyboard: keyboard)
     }
 }
 
