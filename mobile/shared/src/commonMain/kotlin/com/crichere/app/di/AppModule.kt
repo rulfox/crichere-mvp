@@ -2,6 +2,7 @@ package com.crichere.app.di
 
 import com.crichere.app.account.AccountDeletionRepository
 import com.crichere.app.account.AccountNotices
+import com.crichere.app.account.AppUpdateNotices
 import com.crichere.app.account.DeleteAccountViewModel
 import com.crichere.app.account.KtorAccountDeletionRepository
 import com.crichere.app.auth.AppStartViewModel
@@ -77,7 +78,7 @@ private val UPLOAD_HTTP_CLIENT = named("uploadHttpClient")
 val sharedModule: Module = module {
     // Un-authenticated client: AuthRepository's own calls to /auth/session|refresh|logout. Must
     // stay separate from the authenticated client below -- see HttpClientFactory.kt.
-    single(AUTH_HTTP_CLIENT) { HttpClientFactory.createAuthClient() }
+    single(AUTH_HTTP_CLIENT) { HttpClientFactory.createAuthClient(onUpdateRequired = get<AppUpdateNotices>()::updateRequired) }
 
     // The raw, no-defaultRequest-base-URL client: ProfileRepository.uploadPhoto's absolute-URL
     // POST straight to S3's presigned uploadUrl -- see HttpClientFactory.createUploadClient()'s
@@ -93,6 +94,7 @@ val sharedModule: Module = module {
             loadTokens = { get<AuthTokenProvider>().loadTokens() },
             refreshTokens = { get<AuthTokenProvider>().refreshTokens() },
             onAccountSuspended = { get<AuthRepository>().handleSuspended() },
+            onUpdateRequired = get<AppUpdateNotices>()::updateRequired,
         )
     }
 
@@ -114,6 +116,9 @@ val sharedModule: Module = module {
     }
 
     single { AccountNotices() }
+
+    // docs/PHASE23.md: an outdated build covers everything with the Update required screen.
+    single { AppUpdateNotices() }
 
     single<ModerationRepository> { KtorModerationRepository(httpClient = get()) }
     factory { ReportViewModel(get()) }

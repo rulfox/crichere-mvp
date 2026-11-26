@@ -2,6 +2,8 @@ package com.crichere.app.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
+import com.crichere.app.account.AppUpdateRequired
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.auth.Auth
@@ -27,6 +29,8 @@ import kotlinx.serialization.json.Json
  * deliberately not used, per the locked architecture decision in ARCHITECTURE.md.
  */
 internal object HttpClientFactory {
+    const val APP_PLATFORM_HEADER = "X-App-Platform"
+    const val APP_VERSION_HEADER = "X-App-Version"
 
     /**
      * The shared, authenticated client every feature repository (besides [com.crichere.app.auth.AuthRepository]
@@ -43,17 +47,10 @@ internal object HttpClientFactory {
         loadTokens: suspend () -> BearerTokens?,
         refreshTokens: suspend () -> BearerTokens?,
         onAccountSuspended: suspend () -> Unit = {},
-    ): HttpClient = HttpClient {
-        applyBaseConfig()
-
-        // Any request can be the one that finds out (docs/PHASE18.md, boards R13b and R13c).
-        HttpResponseValidator {
-            validateResponse { response ->
-                if (response.status == HttpStatusCode.Forbidden && response.problemCode() == ACCOUNT_SUSPENDED) {
-                    onAccountSuspended()
-                }
-            }
-        }
+        onUpdateRequired: (AppUpdateRequired) -> Unit = {},
+        engine: HttpClientEngine? = null,
+    ): HttpClient = client(engine) {
+        applyBaseConfig(onAccountSuspended, onUpdateRequired)
 
         install(Auth) {
             bearer {
@@ -79,9 +76,17 @@ internal object HttpClientFactory {
      * "retry once" guard tracks the original failing request, not further requests issued from
      * inside the refresh callback itself.
      */
-    fun createAuthClient(): HttpClient = HttpClient {
-        applyBaseConfig()
+    fun createAuthClient(
+        onUpdateRequired: (AppUpdateRequired) -> Unit = {},
+        engine: HttpClientEngine? = null,
+    ): HttpClient = client(engine) {
+        // Sign-in is the first thing an outdated build calls, so it needs the update check too.
+        applyBaseConfig(onAccountSuspended = {}, onUpdateRequired = onUpdateRequired)
     }
+
+    /** A test passes a `MockEngine`; the app gets the platform's engine. */
+    private fun client(engine: HttpClientEngine?, block: HttpClientConfig<*>.() -> Unit): HttpClient =
+        if (engine != null) HttpClient(engine, block) else HttpClient(block)
 
     /**
      * A third client, deliberately with **no** [applyBaseConfig] at all -- Task 7's
@@ -108,13 +113,35 @@ internal object HttpClientFactory {
         }
     }
 
-    private fun HttpClientConfig<*>.applyBaseConfig() {
+    private fun HttpClientConfig<*>.applyBaseConfig(
+        onAccountSuspended: suspend () -> Unit,
+        onUpdateRequired: (AppUpdateRequired) -> Unit,
+    ) {
         expectSuccess = false
 
         defaultRequest {
             url {
                 protocol = URLProtocol.HTTP
                 takeFrom(backendBaseUrl)
+            }
+            // docs/PHASE23.md: lets the backend turn away builds older than its minimum.
+            appPlatform?.let { headers.append(APP_PLATFORM_HEADER, it) }
+            appVersion?.let { headers.append(APP_VERSION_HEADER, it) }
+        }
+
+        // Any request can be the one that finds out: a suspension (docs/PHASE18.md, boards R13b and
+        // R13c) or an outdated build (docs/PHASE23.md, design U1).
+        HttpResponseValidator {
+            validateResponse { response ->
+                when (response.status) {
+                    HttpStatusCode.Forbidden -> if (response.problemCode() == ACCOUNT_SUSPENDED) onAccountSuspended()
+                    HttpStatusCode.UpgradeRequired -> {
+                        val fields = response.problemStrings()
+                        if (fields["code"] == APP_UPDATE_REQUIRED) {
+                            onUpdateRequired(AppUpdateRequired(fields["updateUrl"], fields["minVersion"], appVersion))
+                        }
+                    }
+                }
             }
         }
 
