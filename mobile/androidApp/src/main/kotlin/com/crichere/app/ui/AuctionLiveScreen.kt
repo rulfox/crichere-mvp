@@ -166,7 +166,7 @@ private val LocalBlockedIds = compositionLocalOf<Set<String>> { emptySet() }
  * ViewModel's SSE subscription; there is no manual refresh.
  */
 @Composable
-private fun AuctionLiveScreen(state: AuctionState, viewModel: AuctionViewModel, onBack: () -> Unit) {
+internal fun AuctionLiveScreen(state: AuctionState, viewModel: AuctionViewModel, onBack: () -> Unit) {
     LightStatusBarIcons(enabled = true, navigationBar = true)
     Column(Modifier.fillMaxSize().background(CrichereAuctionBg).imePadding()) {
         TopBar(onBack)

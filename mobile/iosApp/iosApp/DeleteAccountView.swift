@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// Mirrors `DeleteAccountViewModel` (docs/PHASE16.md) -- same wrapper pattern as
-/// `OwnProfileViewModelWrapper`. **Authored but unverified** (no Mac in this setup).
+/// `OwnProfileViewModelWrapper`.
 @MainActor
 final class DeleteAccountViewModelWrapper: ObservableObject {
     @Published var state: DeleteAccountState
@@ -46,315 +46,450 @@ func eraseDateLabel(_ iso: String) -> String {
     return out.string(from: date)
 }
 
-private let errorStrong = Color(hex: 0x8C1D12)
-private let onWarningInk = Color(hex: 0x6E4700)
-private let greenContainerFill = Color(hex: 0xD7EBD2)
-private let onGreenContainerInk = Color(hex: 0x0B2E10)
+private let bodyInk = Color(hex: 0x3E4A41)
+private let graceBody = Color(hex: 0x2E4A31)
+private let skeleton = Color(hex: 0xE6E9E1)
 
-/// iOS twin of `DeleteAccountScreen.kt` (design D2–D6). Pushed from My Profile; the back chevron
-/// comes from the NavigationStack.
+/// Delete account (design D2-D6, androidApp `ui/DeleteAccountScreen.kt`). The server check runs on every
+/// entry; the screen then shows exactly one of can delete (D3), blocked (D4) or error (D5). [onSignedOut]
+/// fires after a successful request, once the local session is gone (D7). [onOpenLeague] opens a blocker.
 struct DeleteAccountView: View {
+    var onBack: () -> Void = {}
     let onOpenLeague: (String) -> Void
     let onSignedOut: () -> Void
 
     @StateObject private var wrapper = DeleteAccountViewModelWrapper()
 
     var body: some View {
+        let state = wrapper.state
+        DeleteAccountContent(screen: state.screen, onBack: onBack, onOpenLeague: onOpenLeague, onRetry: wrapper.check, onDelete: wrapper.openConfirm)
+            .crichereScreen()
+            .onAppear { wrapper.check() }
+            .onChange(of: wrapper.signedOut) { _, out in if out { onSignedOut() } }
+            .crichereDialog(isPresented: Binding(get: { state.dialog != nil }, set: { if !$0 { wrapper.dismissConfirm() } }),
+                            dismissable: !(state.dialog?.isSubmitting ?? false)) {
+                if let dialog = wrapper.state.dialog, case let .canDelete(screen) = onEnum(of: wrapper.state.screen) {
+                    DeleteAccountConfirmDialog(state: dialog, erasesOn: eraseDateLabel(screen.erasesOn), onInputChange: wrapper.onInputChange,
+                                               onDismiss: wrapper.dismissConfirm, onConfirm: wrapper.confirm)
+                }
+            }
+    }
+}
+
+/// The screen, stateless for the DEBUG parity gallery.
+struct DeleteAccountContent: View {
+    let screen: DeleteAccountScreenState
+    var onBack: () -> Void = {}
+    var onOpenLeague: (String) -> Void = { _ in }
+    var onRetry: () -> Void = {}
+    var onDelete: () -> Void = {}
+
+    var body: some View {
         VStack(spacing: 0) {
-            switch onEnum(of: wrapper.state.screen) {
+            DeleteTopBar(onBack: onBack)
+            switch onEnum(of: screen) {
             case .error:
-                errorState
-            case .loading:
-                scroll { loading }
-                bottomBar { deleteButton(enabled: false) }
-            case .canDelete(let screen):
-                scroll { canDelete(screen) }
-                bottomBar { deleteButton(enabled: true) }
-            case .blocked(let screen):
-                scroll { blocked(screen.blockers) }
-                bottomBar {
-                    Button { wrapper.check() } label: {
-                        Label("Check again", systemImage: "arrow.clockwise").frame(maxWidth: .infinity, minHeight: 48)
+                ErrorStateView(onRetry: onRetry)
+            default:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) { content }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                DeleteBottomBar {
+                    if case .blocked = onEnum(of: screen) {
+                        CheckAgainButton(label: "Check again", action: onRetry).frame(maxWidth: .infinity)
+                    } else {
+                        DeleteButton(enabled: { if case .canDelete = onEnum(of: screen) { return true } else { return false } }(), action: onDelete)
                     }
-                    .buttonStyle(.bordered)
-                    .clipShape(Capsule())
                 }
             }
         }
-        .background(Brand.background)
-        .navigationTitle("Delete account")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { wrapper.check() }
-        .onChange(of: wrapper.signedOut) { _, out in if out { onSignedOut() } }
-        .sheet(isPresented: Binding(
-            get: { wrapper.state.dialog != nil },
-            set: { if !$0 { wrapper.dismissConfirm() } }
-        )) {
-            if let dialog = wrapper.state.dialog, case .canDelete(let screen) = onEnum(of: wrapper.state.screen) {
-                DeleteAccountConfirmSheet(
-                    state: dialog,
-                    erasesOn: eraseDateLabel(screen.erasesOn),
-                    onInputChange: wrapper.onInputChange,
-                    onCancel: wrapper.dismissConfirm,
-                    onConfirm: wrapper.confirm
-                )
-                .presentationDetents([.medium])
-                .interactiveDismissDisabled(dialog.isSubmitting)
-            }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CrichereColor.background.ignoresSafeArea())
+    }
+
+    @ViewBuilder private var content: some View {
+        switch onEnum(of: screen) {
+        case .loading: LoadingContent()
+        case let .canDelete(state): CanDeleteContent(screen: state)
+        case let .blocked(state): BlockedContent(blockers: state.blockers, onOpenLeague: onOpenLeague)
+        case .error: EmptyView()
         }
     }
+}
 
-    private func scroll<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) { content() }
-                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+/// Back arrow + "Delete account", 56 pt.
+private struct DeleteTopBar: View {
+    let onBack: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Button(action: onBack) { CrIcon("ic_arrow_back", size: 24, tint: CrichereColor.onBackground).frame(width: 48, height: 48) }
+                .buttonStyle(.pressCircle)
+                .accessibilityLabel("Back")
+            Text("Delete account").crichere(.sans(18, .semiBold, lineHeight: 18), CrichereColor.onBackground)
+            Spacer(minLength: 0)
         }
+        .padding(.leading, 4)
+        .padding(.trailing, 8)
+        .frame(height: 56)
     }
+}
 
-    private func bottomBar<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-            content().padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 12)
-        }
-        .background(Brand.background)
-    }
+private func heading(_ text: String) -> some View {
+    Text(text).crichere(.archivo(24, .extraBold, lineHeight: 27.6, tracking: -0.48), CrichereColor.onBackground)
+}
 
-    private func deleteButton(enabled: Bool) -> some View {
-        Button { wrapper.openConfirm() } label: {
-            Text("Delete account").font(.system(size: 15, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 52)
-        }
-        .foregroundColor(enabled ? .white : Color(hex: 0x8A948C))
-        .background(Capsule().fill(enabled ? errorStrong : Color(hex: 0xDCE0D7)))
-        .disabled(!enabled)
-    }
+private func lead(_ text: String) -> some View {
+    Text(text).crichere(.sans(14, lineHeight: 21), bodyInk)
+}
 
-    private func heading(_ text: String) -> some View {
-        Text(text).font(BrandFont.archivo(24, .heavy)).foregroundColor(Brand.ink)
-    }
-
-    // D2
-    @ViewBuilder private var loading: some View {
+/// D2.
+private struct LoadingContent: View {
+    var body: some View {
         heading("Delete your account")
         HStack(spacing: 12) {
-            ProgressView()
-            Text("Checking your leagues…").font(.system(size: 14, weight: .medium)).foregroundColor(Color(hex: 0x3E4A41))
+            CrichereSpinner(color: CrichereColor.primary, lineWidth: 2, size: 20)
+            Text("Checking your leagues…").crichere(.sans(14, .medium, lineHeight: 18.2), bodyInk)
         }
-    }
-
-    // D3a / D3b
-    @ViewBuilder private func canDelete(_ screen: DeleteAccountScreenStateCanDelete) -> some View {
-        heading("Delete your account")
-        Text("You'll be signed out on all your devices straight away.").font(.system(size: 14)).foregroundColor(Color(hex: 0x3E4A41))
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "clock.arrow.circlepath").foregroundColor(Brand.primary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("14 days to change your mind").font(.system(size: 14.5, weight: .bold)).foregroundColor(onGreenContainerInk)
-                Text("Nothing is erased until \(eraseDateLabel(screen.erasesOn)). Sign in again before then and the deletion is cancelled.")
-                    .font(.system(size: 13)).foregroundColor(Color(hex: 0x2E4A31))
+        DeletionCard {
+            ForEach(Array([239, 188, 212, 164].enumerated()), id: \.offset) { index, width in
+                if index > 0 { RowDivider() }
+                HStack(spacing: 12) {
+                    skeleton.frame(width: 20, height: 20).clipShape(RoundedRectangle(cornerRadius: 6))
+                    skeleton.frame(width: CGFloat(width), height: 12).clipShape(RoundedRectangle(cornerRadius: 6))
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 44)
             }
+        }
+        skeleton.frame(height: 96).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// D3a / D3b.
+private struct CanDeleteContent: View {
+    let screen: DeleteAccountScreenStateCanDelete
+
+    var body: some View {
+        heading("Delete your account")
+        lead("You'll be signed out on all your devices straight away.")
+        HStack(alignment: .top, spacing: 12) {
+            CrIcon("ic_history", size: 22, tint: CrichereColor.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("14 days to change your mind").crichere(.sans(14.5, .bold, lineHeight: 17.4), CrichereColor.onPrimaryContainer)
+                Text("Nothing is erased until \(eraseDateLabel(screen.erasesOn)). Sign in again before then and the deletion is cancelled.")
+                    .crichere(.sans(13, lineHeight: 18.2), graceBody)
+            }
+            Spacer(minLength: 0)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16).fill(greenContainerFill))
-
-        section("Erased after 14 days") {
-            card {
-                ForEach([("phone", "Your phone number"), ("person.crop.circle", "Your profile and photo"),
-                         ("doc.text", "Payment screenshots you uploaded"), ("bookmark", "Leagues you follow")], id: \.1) { icon, label in
+        .background(CrichereColor.primaryContainer, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        DeletionSection(title: "Erased after 14 days") {
+            DeletionCard {
+                ForEach(Array([("ic_call", "Your phone number"), ("ic_account_circle", "Your profile and photo"),
+                               ("ic_receipt_long", "Payment screenshots you uploaded"), ("ic_bookmark", "Leagues you follow")].enumerated()),
+                        id: \.offset) { index, item in
+                    if index > 0 { RowDivider() }
                     HStack(spacing: 12) {
-                        Image(systemName: icon).foregroundColor(Brand.inkMuted).frame(width: 20)
-                        Text(label).font(.system(size: 14)).foregroundColor(Brand.ink)
-                        Spacer()
+                        CrIcon(item.0, size: 20, tint: CrichereColor.onSurfaceVariant)
+                        Text(item.1).crichere(.sans(14, lineHeight: 18.9), CrichereColor.onBackground)
+                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                 }
             }
         }
-        section("Kept") {
-            card {
+        DeletionSection(title: "Kept") {
+            DeletionCard {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Auction results and rosters of leagues that already ran. Your name shows as:")
-                        .font(.system(size: 14)).foregroundColor(Brand.ink)
+                        .crichere(.sans(14, lineHeight: 19.6), CrichereColor.onBackground)
                     HStack(spacing: 10) {
-                        DeletedUserAvatar(size: 32)
-                        Text("Deleted user").font(.system(size: 13.5, weight: .semibold)).foregroundColor(Brand.inkMuted)
+                        DeletedUserAvatar(size: 32, iconSize: 18)
+                        Text("Deleted user").crichere(.sans(13.5, .semiBold), DeletedAvatar.name)
                     }
                 }
-                .padding(.horizontal, 14).padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         if !screen.handovers.isEmpty {
-            section("Leagues you organize") {
+            DeletionSection(title: "Leagues you organize") {
                 Text("When your account is erased, the earliest co-organizer becomes the organizer.")
-                    .font(.system(size: 13)).foregroundColor(Brand.inkMuted)
-                card {
-                    ForEach(screen.handovers, id: \.leagueId) { handover in
+                    .crichere(.sans(13, lineHeight: 18.2), CrichereColor.onSurfaceVariant)
+                DeletionCard {
+                    ForEach(Array(screen.handovers.enumerated()), id: \.offset) { index, handover in
+                        if index > 0 { RowDivider() }
                         HStack(spacing: 12) {
-                            FranchiseBadge(name: handover.leagueName, size: 36, radius: 10, fontSize: 11)
+                            LeagueTile(id: handover.leagueId, name: handover.leagueName, logoUrl: handover.leagueLogoUrl, size: 36, fontSize: 11)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(handover.leagueName).font(.system(size: 14, weight: .semibold)).foregroundColor(Brand.ink).lineLimit(1)
-                                Label("Passes to \(handover.newOrganizerName ?? "a co-organizer")", systemImage: "arrow.right")
-                                    .font(.system(size: 12.5)).foregroundColor(Brand.inkMuted)
+                                Text(handover.leagueName).crichere(.sans(14, .semiBold, lineHeight: 16.8), CrichereColor.onBackground).lineLimit(1)
+                                HStack(spacing: 4) {
+                                    CrIcon("ic_arrow_forward", size: 14, tint: CrichereColor.onSurfaceVariant)
+                                    Text("Passes to \(handover.newOrganizerName ?? "a co-organizer")")
+                                        .crichere(.sans(12.5, lineHeight: 15), CrichereColor.onSurfaceVariant).lineLimit(1)
+                                }
                             }
-                            Spacer()
+                            Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 14).padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
                     }
                 }
             }
         }
     }
+}
 
-    // D4
-    @ViewBuilder private func blocked(_ blockers: [DeletionBlockerDto]) -> some View {
+/// D4. Each row opens that league; the reason line is the fix.
+private struct BlockedContent: View {
+    let blockers: [DeletionBlockerDto]
+    let onOpenLeague: (String) -> Void
+
+    var body: some View {
         heading("You can't delete your account yet")
-        Text("These leagues need you first. Sort them out, then come back and try again.")
-            .font(.system(size: 14)).foregroundColor(Color(hex: 0x3E4A41))
-        card {
-            ForEach(blockers, id: \.leagueId) { blocker in
-                Button { onOpenLeague(blocker.leagueId) } label: {
-                    HStack(spacing: 12) {
-                        FranchiseBadge(name: blocker.leagueName, size: 40, radius: 10, fontSize: 12)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(blocker.leagueName).font(.system(size: 14.5, weight: .semibold)).foregroundColor(Brand.ink).lineLimit(1)
-                            if blocker.reason == .auctionLive {
-                                Label("Auction is live. Wait for it to end.", systemImage: "hammer").foregroundColor(onWarningInk)
-                            } else {
-                                Label("Add a co-organizer or mark the league completed.", systemImage: "person.badge.plus").foregroundColor(Brand.primary)
-                            }
-                        }
-                        .font(.system(size: 13))
-                        Spacer()
-                        Image(systemName: "chevron.right").foregroundColor(Color(hex: 0x9AA39C))
-                    }
-                    .padding(14)
-                }
+        lead("These leagues need you first. Sort them out, then come back and try again.")
+        DeletionCard {
+            ForEach(Array(blockers.enumerated()), id: \.offset) { index, blocker in
+                if index > 0 { RowDivider() }
+                Button { onOpenLeague(blocker.leagueId) } label: { row(blocker) }
+                    .buttonStyle(.pressHighlight)
             }
         }
-        Label("Nothing has changed on your account.", systemImage: "info.circle")
-            .font(.system(size: 12.5)).foregroundColor(Brand.inkMuted)
-    }
-
-    // D5
-    private var errorState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "icloud.slash").font(.system(size: 40)).foregroundColor(Brand.inkMuted)
-            Text("Couldn't check your account").font(BrandFont.archivo(18, .bold)).foregroundColor(Brand.ink)
-            Text("Check your connection and try again. Nothing has been deleted.")
-                .font(.system(size: 14)).foregroundColor(Color(hex: 0x3E4A41)).multilineTextAlignment(.center)
-            Button { wrapper.check() } label: { Label("Retry", systemImage: "arrow.clockwise").frame(width: 160, height: 48) }
-                .buttonStyle(.bordered).clipShape(Capsule())
-            Spacer()
+        HStack(spacing: 6) {
+            CrIcon("ic_info", size: 16, tint: CrichereColor.onSurfaceVariant)
+            Text("Nothing has changed on your account.").crichere(.sans(12.5, lineHeight: 16.875), CrichereColor.onSurfaceVariant)
         }
-        .padding(.horizontal, 36).padding(.bottom, 80)
-        .frame(maxWidth: .infinity)
     }
 
-    private func section<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+    private func row(_ blocker: DeletionBlockerDto) -> some View {
+        let live = blocker.reason == .auctionLive
+        return HStack(spacing: 12) {
+            LeagueTile(id: blocker.leagueId, name: blocker.leagueName, logoUrl: blocker.leagueLogoUrl, size: 40, fontSize: 12)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(blocker.leagueName).crichere(.sans(14.5, .semiBold, lineHeight: 17.4), CrichereColor.onBackground).lineLimit(1)
+                HStack(alignment: .top, spacing: 6) {
+                    CrIcon(live ? "ic_gavel" : "ic_person_add", size: 16, tint: live ? CrichereColor.onWarning : CrichereColor.primary).padding(.top, 1)
+                    Text(live ? "Auction is live. Wait for it to end." : "Add a co-organizer or mark the league completed.")
+                        .crichere(.sans(13, lineHeight: 17.55), bodyInk)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            CrIcon("ic_chevron_right", size: 20, tint: CrichereColor.inkDisabled)
+        }
+        .padding(14)
+        .contentShape(Rectangle())
+    }
+}
+
+/// D5.
+private struct ErrorStateView: View {
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            CrIcon("ic_cloud_off", size: 40, tint: CrichereColor.onSurfaceVariant)
+            Text("Couldn't check your account").crichere(.archivo(18, .bold, lineHeight: 21.6), CrichereColor.onBackground)
+            Text("Check your connection and try again. Nothing has been deleted.").crichere(.sans(14, lineHeight: 21), bodyInk)
+            Spacer().frame(height: 8)
+            CheckAgainButton(label: "Retry", action: onRetry).frame(width: 160)
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 36)
+        .padding(.bottom, 80)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct DeletionSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(BrandFont.archivo(14.5, .bold)).foregroundColor(Brand.ink)
+            Text(title).crichere(.archivo(14.5, .bold, lineHeight: 14.5), CrichereColor.onBackground).padding(.top, 4)
             content()
         }
     }
+}
 
-    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(spacing: 0) { content() }
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Brand.outlineVariant, lineWidth: 1))
+private struct DeletionCard<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        VStack(alignment: .leading, spacing: 0, content: content)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CrichereColor.surface)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(CrichereColor.outlineVariant, lineWidth: 1))
     }
 }
 
-/// D6a–e as a sheet: the TextField takes capitals with no autocorrect, Confirm is enabled only for
-/// exactly `DELETE` (the shared `canConfirm`), and the sheet can't be swiped away while submitting.
-struct DeleteAccountConfirmSheet: View {
+private struct RowDivider: View {
+    var body: some View { CrichereColor.surfaceVariant.frame(height: 1) }
+}
+
+/// The bottom action bar: hairline on top, 12/20/28 padding.
+private struct DeleteBottomBar<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            CrichereColor.outlineVariant.frame(height: 1)
+            content()
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+        }
+        .background(CrichereColor.background)
+    }
+}
+
+/// D3's destructive 52 pt pill; greyed out while the check runs (D2).
+private struct DeleteButton: View {
+    let enabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("Delete account").crichere(.sans(15, .semiBold)).padding(.horizontal, 16).frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
+        }
+        .buttonStyle(PillButtonStyle(fill: enabled ? CrichereColor.errorStrong : CrichereColor.disabledContainer,
+                                     pressedFill: CrichereColor.errorStrong.opacity(0.85),
+                                     content: enabled ? .white : CrichereColor.inkSubtle, radius: 26))
+        .disabled(!enabled)
+    }
+}
+
+/// D4 "Check again" and D5 "Retry": 48 pt outlined pill with a refresh icon.
+private struct CheckAgainButton: View {
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                CrIcon("ic_refresh", size: 18, tint: CrichereColor.primary)
+                Text(label).crichere(.sans(14.5, .semiBold))
+            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
+        }
+        .buttonStyle(PillButtonStyle(fill: .clear, pressedFill: CrichereColor.primary.opacity(0.08), content: CrichereColor.primary,
+                                     border: CrichereColor.outline, radius: 24))
+    }
+}
+
+/// D6a-e (androidApp `DeleteAccountConfirmDialog.kt`): the typed-DELETE confirmation. Confirm is enabled
+/// only for exactly `DELETE`; any other input shows the D6b helper. While submitting (D6d) nothing in it
+/// responds and the scrim can't close it. A failure (D6e) keeps it open.
+struct DeleteAccountConfirmDialog: View {
     let state: DeleteAccountDialogState
     let erasesOn: String
     let onInputChange: (String) -> Void
-    let onCancel: () -> Void
+    let onDismiss: () -> Void
     let onConfirm: () -> Void
 
     var body: some View {
+        let submitting = state.isSubmitting
         VStack(alignment: .leading, spacing: 14) {
-            Image(systemName: "trash.slash").font(.system(size: 24)).foregroundColor(errorStrong)
-            Text("Delete your account?").font(.system(size: 19, weight: .semibold)).foregroundColor(Brand.ink)
+            CrIcon("ic_delete_forever", size: 26, tint: CrichereColor.errorStrong)
+            Text("Delete your account?").crichere(.sans(19, .semiBold, lineHeight: 22.8), CrichereColor.ink)
             Text("You'll be signed out on all your devices. Your account is erased on \(erasesOn) unless you sign in before then.")
-                .font(.system(size: 13.5)).foregroundColor(Color(hex: 0x3E4A41))
+                .crichere(.sans(13.5, lineHeight: 19.575), bodyInk)
+                .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Type DELETE to confirm").font(.system(size: 12.5, weight: .semibold)).foregroundColor(Color(hex: 0x3E4A41))
-                TextField("DELETE", text: Binding(get: { state.input }, set: onInputChange))
-                    .font(BrandFont.mono(16, .medium))
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
-                    .disabled(state.isSubmitting)
-                    .padding(.horizontal, 14).frame(height: 56)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(state.showMismatch ? Brand.error : Brand.primary, lineWidth: 1.6))
-                if state.showMismatch && !state.isSubmitting {
-                    Text("Type it in capital letters: DELETE").font(.system(size: 12.5)).foregroundColor(Brand.error)
+                Text("Type DELETE to confirm").crichere(.sans(12.5, .semiBold), bodyInk)
+                ConfirmField(state: state, onInputChange: onInputChange)
+                if state.showMismatch && !submitting {
+                    Text("Type it in capital letters: DELETE").crichere(.sans(12.5, lineHeight: 16.875), CrichereColor.error)
                 }
             }
             if state.failed {
-                Label("Couldn't delete your account. Check your connection and try again.", systemImage: "exclamationmark.circle.fill")
-                    .font(.system(size: 13)).foregroundColor(Brand.error)
+                HStack(alignment: .top, spacing: 8) {
+                    CrIcon("ic_error_filled", size: 18, tint: CrichereColor.error)
+                    Text("Couldn't delete your account. Check your connection and try again.").crichere(.sans(13, lineHeight: 18.2), CrichereColor.error)
+                }
             }
-            HStack(spacing: 22) {
-                Spacer()
-                Button("Cancel", action: onCancel).foregroundColor(Brand.primary).disabled(state.isSubmitting).opacity(state.isSubmitting ? 0.38 : 1)
+            HStack(spacing: 14) {
+                Spacer(minLength: 0)
+                Button(action: onDismiss) { Text("Cancel").crichere(.sans(14, .semiBold), CrichereColor.primary).padding(4) }
+                    .buttonStyle(.plain)
+                    .opacity(submitting ? 0.38 : 1)
+                    .disabled(submitting)
                 Button(action: onConfirm) {
                     HStack(spacing: 8) {
-                        if state.isSubmitting { ProgressView().tint(errorStrong) }
-                        Text(state.isSubmitting ? "Deleting…" : "Delete account")
+                        if submitting {
+                            CrichereSpinner(color: CrichereColor.errorStrong, track: CrichereColor.errorStrong.opacity(0.25), lineWidth: 1.6, size: 16)
+                        }
+                        Text(submitting ? "Deleting…" : "Delete account")
+                            .crichere(.sans(14, .semiBold), state.canConfirm || submitting ? CrichereColor.errorStrong : CrichereColor.ink.opacity(0.38))
                     }
+                    .padding(4)
                 }
-                .foregroundColor(state.canConfirm || state.isSubmitting ? errorStrong : Brand.ink.opacity(0.38))
-                .disabled(!state.canConfirm)
+                .buttonStyle(.plain)
+                .allowsHitTesting(state.canConfirm)  // the label already greys itself; .disabled would dim it again
             }
-            .font(.system(size: 14, weight: .semibold))
+            .padding(.top, 4)
         }
         .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CrichereColor.dialogSurface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(.horizontal, 1)
     }
 }
 
-/// Design D10: a deleted user never shows a photo or initials.
-struct DeletedUserAvatar: View {
-    let size: CGFloat
-    var body: some View {
-        Image(systemName: "person.fill")
-            .font(.system(size: size * 0.5))
-            .foregroundColor(Color(hex: 0x8A948C))
-            .frame(width: size, height: size)
-            .background(Circle().fill(Color(hex: 0xE3E8DD)))
-            .accessibilityLabel("Deleted user")
-    }
-}
+/// The 56 pt field: mono capitals, no autocorrect. Green border while focused, red with an error icon on a
+/// mismatch (D6b), plain once it loses focus (D6e), greyed while submitting (D6d).
+private struct ConfirmField: View {
+    let state: DeleteAccountDialogState
+    let onInputChange: (String) -> Void
 
-/// D7 / D9: a tinted notice with a close button.
-struct DismissibleNotice: View {
-    let systemImage: String
-    let text: String
-    let container: Color
-    let ink: Color
-    let onDismiss: () -> Void
+    @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage).foregroundColor(ink)
-            Text(text).font(.system(size: 13.5, weight: .medium)).foregroundColor(ink).frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: onDismiss) { Image(systemName: "xmark").foregroundColor(ink) }.accessibilityLabel("Dismiss")
+        let submitting = state.isSubmitting
+        let (width, color): (CGFloat, Color) = submitting ? (1, CrichereColor.outlineVariant)
+            : state.showMismatch ? (1.6, CrichereColor.error) : focused ? (1.6, CrichereColor.primary) : (1, CrichereColor.outline)
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        HStack(spacing: 0) {
+            ZStack(alignment: .leading) {
+                if state.input.isEmpty { Text("DELETE").crichere(.sans(15), CrichereColor.inkSubtle) }
+                TextField("", text: Binding(get: { state.input }, set: onInputChange))
+                    .font(CrichereTextStyle.mono(16, .medium).font)
+                    .tracking(1.28)
+                    .foregroundStyle(submitting ? CrichereColor.inkSubtle : CrichereColor.ink)
+                    .tint(CrichereColor.primary)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .keyboardType(.asciiCapable)
+                    .submitLabel(.done)
+                    .focused($focused)
+                    .disabled(submitting)
+            }
+            if !submitting {
+                if state.showMismatch {
+                    CrIcon("ic_error_filled", size: 20, tint: CrichereColor.error)
+                } else if state.canConfirm && focused {
+                    // D6e: once focus is gone the field is plain -- no check.
+                    CrIcon("ic_check_circle_filled", size: 20, tint: CrichereColor.primary)
+                }
+            }
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16).fill(container))
+        .padding(.horizontal, 14)
+        .frame(height: 56)
+        .background(submitting ? CrichereColor.background : CrichereColor.surface, in: shape)
+        .overlay(shape.strokeBorder(color, lineWidth: width))
+        .onAppear { focused = true }
     }
-}
-
-/// D7 amber and D9 green, shared with the other views.
-enum NoticeColors {
-    static let warningContainer = Color(hex: 0xFFF3D6)
-    static let onWarning = onWarningInk
-    static let greenContainer = greenContainerFill
-    static let onGreenContainer = onGreenContainerInk
 }
 
 /// Observes the shared one-time account notices (D7/D8).

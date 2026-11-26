@@ -97,7 +97,7 @@ internal fun ManageRolesRoute(
  * given what's being handed over or taken away -- not a bare tap.
  */
 @Composable
-private fun ManageRolesScreen(state: ManageRolesState, viewModel: ManageRolesViewModel, onBack: () -> Unit) {
+internal fun ManageRolesScreen(state: ManageRolesState, viewModel: ManageRolesViewModel, onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val focusManager = LocalFocusManager.current
     var showGrantConfirm by remember { mutableStateOf(false) }
@@ -384,7 +384,7 @@ private fun ErrorBanner(notice: RoleNotice) {
 
 /** K3 / K5: the board's 314dp dialog. */
 @Composable
-private fun ConfirmDialog(title: String, body: String, confirmLabel: String, confirmColor: Color, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+internal fun ConfirmDialog(title: String, body: String, confirmLabel: String, confirmColor: Color, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),

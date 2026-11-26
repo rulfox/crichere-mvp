@@ -3,7 +3,7 @@ import Shared
 
 /// Mirrors `AppStartViewModel`'s shared `StateFlow<AppStartDestination?>` -- `nil` while the
 /// silent app-start session check is in flight. Same pattern `OwnProfileViewModelWrapper`
-/// documents. **Authored but unverified** -- see docs/PHASE9.md.
+/// documents.
 @MainActor
 final class AppStartViewModelWrapper: ObservableObject {
     @Published var destination: AppStartDestination?
@@ -46,11 +46,19 @@ enum MainTab: Hashable {
 ///  - `.main` (My Profile tab) -> `.profileSetup(isEditMode: true)` / `.phoneEntry` (logout): real.
 private enum AuthDestination {
     case starting
-    case phoneEntry
+    /// [lockedOut]: bounced back after 5 wrong OTP attempts (design B6).
+    case phoneEntry(lockedOut: Bool)
     case otpVerify(phoneNumber: String, verificationId: String, resendToken: Any?)
     case profileSetup(isEditMode: Bool)
     case main(initialTab: MainTab)
     case suspended
+}
+
+/// Holds the Sign in wrapper so it can be kept (back) or replaced (fresh entry).
+@MainActor
+final class PhoneEntryHolder: ObservableObject {
+    @Published private(set) var wrapper = PhoneEntryViewModelWrapper()
+    func reset() { wrapper = PhoneEntryViewModelWrapper() }
 }
 
 /// Root of the app (see `iosAppApp.swift`). `pendingDeepLinkLeagueId` (a `crichere://leagues/{id}`
@@ -65,6 +73,9 @@ struct AppRootView: View {
     @Binding var pendingDeepLinkLeagueId: String?
 
     @State private var destination: AuthDestination = .starting
+    /// Sign in's state outlives the screen, like an Android back-stack entry: a voluntary back from OTP
+    /// Verify finds the typed number; lockout / logout / suspension start a fresh one (`replaceAll`).
+    @StateObject private var phoneEntry = PhoneEntryHolder()
     @StateObject private var accountNotices = AccountNoticesWrapper()
 
     var body: some View {
@@ -73,31 +84,35 @@ struct AppRootView: View {
             case .suspended:
                 SuspendedView(maskedPhone: accountNotices.suspendedPhone) {
                     accountNotices.dismissSuspended()
-                    destination = .phoneEntry
+                    phoneEntry.reset()
+                    destination = .phoneEntry(lockedOut: false)
                 }
 
             case .starting:
                 AppStartRootView { resolved in
                     // A suspended refresh also resolves as "no session": the suspended screen wins (board R13).
                     guard !accountNotices.isSuspended else { return }
-                    switch resolved {
-                    case .phoneEntry: destination = .phoneEntry
+                    switch onEnum(of: resolved) {
+                    case .phoneEntry: destination = .phoneEntry(lockedOut: false)
                     case .profileSetup: destination = .profileSetup(isEditMode: false)
                     case .main: destination = .main(initialTab: .dashboard)
                     }
                 }
 
-            case .phoneEntry:
-                PhoneEntryView { phoneNumber, verificationId, resendToken in
+            case let .phoneEntry(lockedOut):
+                PhoneEntryView(wrapper: phoneEntry.wrapper, showLockoutNotice: lockedOut) { phoneNumber, verificationId, resendToken in
                     destination = .otpVerify(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken)
                 }
 
             case let .otpVerify(phoneNumber, verificationId, resendToken):
-                OtpVerifyView(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken) { event in
-                    switch event {
+                OtpVerifyView(phoneNumber: phoneNumber, verificationId: verificationId, resendToken: resendToken) { event, lockedOut in
+                    switch onEnum(of: event) {
                     case .navigateToProfileSetup: destination = .profileSetup(isEditMode: false)
                     case .navigateToOwnProfile: destination = .main(initialTab: .dashboard)
-                    case .navigateToPhoneEntry: destination = .phoneEntry
+                    case .navigateToPhoneEntry:
+                        // The on-screen "Edit" is a back (number kept); the lockout gets a fresh Sign in with its notice.
+                        if lockedOut { phoneEntry.reset() }
+                        destination = .phoneEntry(lockedOut: lockedOut)
                     }
                 }
 
@@ -117,7 +132,10 @@ struct AppRootView: View {
                     initialTab: initialTab,
                     pendingLeagueId: $pendingDeepLinkLeagueId,
                     onNavigateToEditProfile: { destination = .profileSetup(isEditMode: true) },
-                    onNavigateToPhoneEntry: { destination = .phoneEntry }
+                    onNavigateToPhoneEntry: {
+                        phoneEntry.reset()
+                        destination = .phoneEntry(lockedOut: false)
+                    }
                 )
             }
         }
@@ -138,24 +156,62 @@ private struct AppStartRootView: View {
     @StateObject private var wrapper = AppStartViewModelWrapper()
 
     var body: some View {
-        Group {
-            if wrapper.isOffline {
-                // Session still stored; the backend just couldn't be reached (see AppStartViewModel).
-                VStack(spacing: 12) {
-                    Image(systemName: "icloud.slash").font(.system(size: 36)).foregroundStyle(.secondary)
-                    Text("Couldn't connect").font(.headline)
+        AppStartContent(isOffline: wrapper.isOffline, onRetry: wrapper.retry)
+            .onReceive(wrapper.$destination) { resolved in
+                // Existential `AppStartDestination` isn't `Equatable`, so observe the `@Published`
+                // publisher rather than `onChange(of:)`.
+                if let resolved { onResolved(resolved) }
+            }
+    }
+}
+
+/// The app-start check (androidApp `AuthNavHost.kt` `AppStartRoute`): Material's 40 pt spinner, or
+/// "Couldn't connect" with Try again when the session is stored but the backend can't be reached.
+struct AppStartContent: View {
+    let isOffline: Bool
+    let onRetry: () -> Void
+
+    var body: some View {
+        ZStack {
+            if isOffline {
+                VStack(spacing: 0) {
+                    CrIcon("ic_cloud_off", size: 40, tint: CrichereColor.onSurfaceVariant)
+                    Spacer().frame(height: 14)
+                    Text("Couldn't connect").crichere(.sans(17, .semiBold), CrichereColor.onBackground)
+                    Spacer().frame(height: 6)
                     Text("Check your internet connection and try again.")
-                        .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    Button("Try again") { wrapper.retry() }.buttonStyle(.bordered)
+                        .crichere(.sans(13, lineHeight: 18), CrichereColor.onSurfaceVariant)
+                        .multilineTextAlignment(.center)
+                    Spacer().frame(height: 20)
+                    CrichereOutlinedButton("Try again", action: onRetry)
                 }
-                .padding(40)
             } else {
-                ProgressView()
+                CrichereSpinner(color: CrichereColor.primary, lineWidth: 4, size: 40)
             }
         }
-        .onChange(of: wrapper.destination) { _, resolved in
-            if let resolved { onResolved(resolved) }
+        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(CrichereColor.background.ignoresSafeArea())
+    }
+}
+
+/// D8 (androidApp `AuthNavHost.kt` `DeletionCancelledSnack`): dark bar with a green check, 16 pt in from
+/// the sides and 15 pt above the tab bar; tap to dismiss.
+struct DeletionCancelledSnack: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            CrIcon("ic_check_circle_filled", size: 20, tint: Color(hex: 0x9CD49A))
+            Text("Welcome back. Your account deletion was cancelled.")
+                .crichere(.sans(14, .medium, lineHeight: 18.9), .white)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(CrichereColor.onBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.4), radius: 8, y: 6)
+        .onTapGesture(perform: onDismiss)
     }
 }
 
@@ -167,7 +223,7 @@ private enum MainDestination: Hashable {
     case leagueCreation(String?)
     case joinLeague(String)
     case claimFranchise(String)
-    case screenshotViewer(String)
+    case screenshotViewer(String, title: String = "Payment screenshot")
     case auctionSettings(String)
     case auctionLive(String)
     case manageRoles(String)
@@ -216,44 +272,27 @@ struct MainTabView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            TabView(selection: $selectedTab) {
-                LeagueDashboardView(
-                    onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
-                    onCreateLeague: { path.append(MainDestination.leagueCreation(nil)) }
-                )
-                .tabItem { Label("Dashboard", systemImage: "list.bullet") }
-                .tag(MainTab.dashboard)
-
-                MyLeaguesView(onOpenLeague: { path.append(MainDestination.leagueDetail($0)) })
-                    .tabItem { Label("My Leagues", systemImage: "person.2") }
-                    .tag(MainTab.myLeagues)
-
-                OwnProfileView(
-                    onNavigateToEditProfile: onNavigateToEditProfile,
-                    onNavigateToPhoneEntry: onNavigateToPhoneEntry,
-                    onDeleteAccount: { path.append(MainDestination.deleteAccount) },
-                    onBlockedPeople: { path.append(MainDestination.blockedPeople) }
-                )
-                    .tabItem { Label("My Profile", systemImage: "person.crop.circle") }
-                    .tag(MainTab.myProfile)
-            }
-            .navigationDestination(for: MainDestination.self) { mainDestinationView($0) }
-        }
-        // D8: a sign-in that cancelled a pending deletion says so once (a toast on iOS).
-        .overlay(alignment: .bottom) {
-            if notices.deletionCancelled {
-                Label("Welcome back. Your account deletion was cancelled.", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16).padding(.vertical, 14)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Brand.ink))
-                    .padding(.horizontal, 16).padding(.bottom, 64)
-                    .onTapGesture { notices.dismissCancelled() }
-                    .task {
-                        try? await Task.sleep(nanoseconds: 4_000_000_000)
-                        notices.dismissCancelled()
+            // Android's MainRoute: the selected tab's screen above the board's tab bar (MainBottomBar).
+            VStack(spacing: 0) {
+                ZStack(alignment: .bottom) {
+                    tabContent
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if notices.deletionCancelled {
+                        DeletionCancelledSnack(onDismiss: notices.dismissCancelled)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 15)
+                            .transition(.opacity)
+                            .task {
+                                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                                notices.dismissCancelled()
+                            }
                     }
+                }
+                .animation(.easeOut(duration: 0.2), value: notices.deletionCancelled)
+                CrichereTabBar(tabs: Self.tabs, selected: selectedTab) { selectedTab = $0 }
             }
+            .crichereScreen()
+            .navigationDestination(for: MainDestination.self) { mainDestinationView($0) }
         }
         // Loads the block list once signed in, and queues removed-image notices (R12b to R12e).
         .modifier(ModerationNoticeHost())
@@ -262,6 +301,38 @@ struct MainTabView: View {
         // the foreground on the Main destination) -- `.onAppear` alone would miss that, since it
         // only fires once per appearance, not on every later change to the bound value.
         .onChange(of: pendingLeagueId) { _, _ in consumePendingLeagueIdIfAny() }
+    }
+
+    static let tabs = [
+        CrichereTab(id: MainTab.dashboard, label: "Dashboard", icon: "ic_sports_cricket", selectedIcon: "ic_sports_cricket_filled"),
+        CrichereTab(id: MainTab.myLeagues, label: "My Leagues", icon: "ic_groups", selectedIcon: "ic_groups_filled"),
+        CrichereTab(id: MainTab.myProfile, label: "My Profile", icon: "ic_account_circle", selectedIcon: "ic_account_circle_filled"),
+    ]
+
+    /// Like Android's `when (tab)`: only the selected tab's screen exists.
+    @ViewBuilder private var tabContent: some View {
+        switch selectedTab {
+        case .dashboard:
+            LeagueDashboardView(
+                onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
+                onCreateLeague: { path.append(MainDestination.leagueCreation(nil)) },
+                onOpenProfile: { selectedTab = .myProfile }
+            )
+        case .myLeagues:
+            MyLeaguesView(
+                onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
+                onBrowseLeagues: { selectedTab = .dashboard },
+                onCreateLeague: { path.append(MainDestination.leagueCreation(nil)) }
+            )
+        case .myProfile:
+            OwnProfileView(
+                onNavigateToEditProfile: onNavigateToEditProfile,
+                onNavigateToPhoneEntry: onNavigateToPhoneEntry,
+                onViewPhoto: { path.append(MainDestination.screenshotViewer($0, title: "Profile photo")) },
+                onDeleteAccount: { path.append(MainDestination.deleteAccount) },
+                onBlockedPeople: { path.append(MainDestination.blockedPeople) }
+            )
+        }
     }
 
     private func consumePendingLeagueIdIfAny() {
@@ -274,10 +345,11 @@ struct MainTabView: View {
     private func mainDestinationView(_ destination: MainDestination) -> some View {
         switch destination {
         case .blockedPeople:
-            BlockedPeopleView()
+            BlockedPeopleView(onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .deleteAccount:
             DeleteAccountView(
+                onBack: { if !path.isEmpty { path.removeLast() } },
                 onOpenLeague: { path.append(MainDestination.leagueDetail($0)) },
                 // D7: the session is gone; back to Sign in, which shows the one-time notice.
                 onSignedOut: onNavigateToPhoneEntry
@@ -314,18 +386,19 @@ struct MainTabView: View {
         case .claimFranchise(let leagueId):
             ClaimFranchiseView(leagueId: leagueId, onDone: { if !path.isEmpty { path.removeLast() } })
 
-        case .screenshotViewer(let imageUrl):
-            ScreenshotViewerView(imageUrl: imageUrl)
+        case let .screenshotViewer(imageUrl, title):
+            ScreenshotViewerView(imageUrl: imageUrl, title: title, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .auctionSettings(let leagueId):
-            AuctionSettingsView(leagueId: leagueId)
+            AuctionSettingsView(leagueId: leagueId, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .auctionLive(let leagueId):
-            AuctionLiveView(leagueId: leagueId)
+            AuctionLiveView(leagueId: leagueId, onBack: { if !path.isEmpty { path.removeLast() } })
 
         case .manageRoles(let leagueId):
             ManageRolesView(
                 leagueId: leagueId,
+                onBack: { if !path.isEmpty { path.removeLast() } },
                 onAccessRevoked: { leagueName in
                     leagueNotices[leagueId] = "You're no longer a co-organizer of \(leagueName)."
                     if !path.isEmpty { path.removeLast() }

@@ -7,26 +7,54 @@ name: iosApp
 options:
   bundleIdPrefix: com.crichere
   deploymentTarget:
-    iOS: "16.0" # matches ProfileSetupView.swift's PhotosPicker usage, iOS 16+ only
+    iOS: "17.0" # the SwiftUI views use the two-param onChange(of:initial:_:), which is iOS 17+
+                # (ProfileSetupView's PhotosPicker needs 16+, so 17 satisfies that too)
 
 packages:
-  # Pin an exact version by checking https://github.com/firebase/firebase-ios-sdk/releases at
-  # build time -- same "check live sources, don't assume from training data" discipline this
-  # repo's libs.versions.toml comments document for every other dependency. Placeholder version
-  # below MUST be updated before `xcodegen generate` is run for real.
+  # Pinned to the version the app was built and tested with (2026-11-23), so a release archive
+  # can't silently pick up a newer SDK. Bump deliberately.
   FirebaseIOS:
     url: https://github.com/firebase/firebase-ios-sdk
-    from: "11.0.0"
+    exactVersion: "11.15.0"
 
 targets:
   iosApp:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: iosApp
+    # Info.plist is GENERATED from these properties on every `xcodegen generate` -- edit keys here,
+    # never in iosApp/Info.plist (a hand edit there is overwritten; that once dropped the fonts,
+    # the URL scheme and the location string, docs/IOS-REDESIGN-PLAN.md §2).
     info:
       path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: Crichere
+        CFBundleShortVersionString: "1.0.0" # matches Android versionName
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        # Portrait only (owner, 2026-11-07). iPhone only for 1.0 (owner, 2026-11-23): see
+        # TARGETED_DEVICE_FAMILY below; iPads run it in iPhone compatibility mode.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # Only HTTPS / the OS's own crypto: exempt, so App Store Connect skips the export
+        # compliance question on every upload.
+        ITSAppUsesNonExemptEncryption: false
+        # Brand faces, same variable files as androidApp/res/font (iosApp/Fonts, copied to the
+        # bundle root): Archivo headlines, Instrument Sans UI text, JetBrains Mono money/phone/OTP.
+        UIAppFonts:
+          - archivo_variable.ttf
+          - instrument_sans_variable.ttf
+          - jetbrains_mono_variable.ttf
+        # Phase 3 deep link crichere://leagues/{id} (same as Android's intent-filter), handled by
+        # iosAppApp.swift's onOpenURL.
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [crichere]
+        # League Dashboard "near me" and the "Use my location" pills prompt via
+        # LocationPermission.swift; iOS requires this string before it can prompt at all.
+        NSLocationWhenInUseUsageDescription: Crichere uses your location to show leagues and grounds near you.
+        # No NSAppTransportSecurity exception: the app only talks to https://api.crichere.com
+        # (docs/SECURITY-AUDIT.md, mobile).
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.crichere.app
@@ -35,6 +63,10 @@ targets:
         # fabricate.
         DEVELOPMENT_TEAM: ""
         SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1" # iPhone only (owner, 2026-11-23)
+        # Assets.xcassets/AppIcon: the Android launcher (web-viewer/assets/brand/ic-launcher-full.svg)
+        # at 1024 px, opaque; iOS applies the rounded mask.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: FirebaseIOS
         product: FirebaseAuth

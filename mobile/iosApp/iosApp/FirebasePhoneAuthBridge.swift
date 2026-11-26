@@ -71,7 +71,10 @@ final class FirebasePhoneAuthBridgeImpl: IosPhoneAuthBridge {
     private static func mapVerifyError(_ error: Error) -> KotlinThrowable {
         let nsError = error as NSError
         if nsError.domain == AuthErrorDomain, nsError.code == AuthErrorCode.invalidVerificationCode.rawValue {
-            return InvalidOtpCodeException(message: "The code you entered is incorrect.")
+            // Firebase keeps no server-side attempt count (OtpVerifyViewModel tracks its own), so
+            // attemptsRemaining is nil -- the only Swift-available initializer is the designated
+            // init(message:attemptsRemaining:); Kotlin/Native marks init(message:) unavailable.
+            return InvalidOtpCodeException(message: "The code you entered is incorrect.", attemptsRemaining: nil)
         }
         return KotlinThrowable(message: error.localizedDescription, cause: nil)
     }

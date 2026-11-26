@@ -6,7 +6,7 @@ import CoreLocation
 /// into the shared `LocationProvider`-backed ViewModel methods. Used by both League Dashboard's
 /// "near me" toggle and Profile Setup's "use my location" button.
 @MainActor
-final class LocationPermissionRequester: NSObject, CLLocationManagerDelegate {
+final class LocationPermissionRequester: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<Void, Never>?
 
@@ -20,6 +20,13 @@ final class LocationPermissionRequester: NSObject, CLLocationManagerDelegate {
             manager.delegate = self
             manager.requestWhenInUseAuthorization()
         }
+    }
+
+    /// The user said no (or a policy blocks it) -- Android's `locationDenied`, which shows the
+    /// "Location is off" banner instead of asking again.
+    var isDenied: Bool {
+        let status = manager.authorizationStatus
+        return status == .denied || status == .restricted
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

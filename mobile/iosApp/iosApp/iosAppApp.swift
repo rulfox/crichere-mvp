@@ -23,15 +23,31 @@ struct IosAppApp: App {
     init() {
         FirebaseApp.configure()
         IosPhoneAuthBridgeHolder.shared.bridge = FirebasePhoneAuthBridgeImpl()
-        initKoinIos()
-        applyCrichereAppearance()
+        KoinInitKt.doInitKoinIos()
         configureImageCache()
     }
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-gallery") {
+                DesignGallery()
+            } else if let board = ParityGallery.requestedBoard {
+                ParityGallery.view(for: board).lightStatusBarIcons(false)
+            } else {
+                root
+            }
+            #else
+            root
+            #endif
+        }
+    }
+
+    private var root: some View {
             AppRootView(pendingDeepLinkLeagueId: $pendingDeepLinkLeagueId)
-                .tint(Brand.primary)
+                .tint(CrichereColor.primary)
+                // Light-only app (Theme.kt); screens flip the status bar icons with lightStatusBarIcons.
+                .lightStatusBarIcons(false)
                 .onOpenURL { url in
                     // crichere://leagues/{id} -- see docs/PHASE3.md. A URL arriving while the app
                     // is already running updates this same @State, which AppRootView re-reads via
@@ -44,6 +60,5 @@ struct IosAppApp: App {
                     guard let id = url.pathComponents.dropFirst().first, UUID(uuidString: id) != nil else { return }
                     pendingDeepLinkLeagueId = id
                 }
-        }
     }
 }

@@ -105,7 +105,7 @@ private enum class PickTarget { Logo, Screenshot }
  * claim-failure banner and the refunds/disputes disclaimer -- see docs/PHASE3.md.
  */
 @Composable
-private fun ClaimFranchiseScreen(state: ClaimFranchiseState, viewModel: ClaimFranchiseViewModel, onCancel: () -> Unit) {
+internal fun ClaimFranchiseScreen(state: ClaimFranchiseState, viewModel: ClaimFranchiseViewModel, onCancel: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var pickTarget by remember { mutableStateOf(PickTarget.Logo) }

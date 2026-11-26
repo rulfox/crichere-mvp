@@ -116,7 +116,7 @@ internal fun DeleteAccountRoute(onBack: () -> Unit, onOpenLeague: (String) -> Un
 }
 
 @Composable
-private fun DeleteAccountScreen(
+internal fun DeleteAccountScreen(
     screen: DeleteAccountScreenState,
     onBack: () -> Unit,
     onOpenLeague: (String) -> Unit,

@@ -318,7 +318,7 @@ fun AuthNavHost(pendingDeepLinkLeagueId: String? = null) {
 
 /** Bottom navigation per the design board (screen D): tinted bar, pill indicator, filled icon when selected. */
 @Composable
-private fun MainBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
+internal fun MainBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
     val selectedInk = MaterialTheme.colorScheme.onPrimaryContainer
     val unselectedInk = Color(0xFF4A564D)
     NavigationBar(containerColor = Color(0xFFEDF0E8), tonalElevation = 0.dp) {
@@ -370,7 +370,12 @@ private fun AppStartRoute(onResolved: (AppStartDestination) -> Unit) {
     LaunchedEffect(resolvedDestination) {
         resolvedDestination?.let(onResolved)
     }
+    AppStartContent(isOffline = isOffline, onRetry = viewModel::retry)
+}
 
+/** Board S1 (spinner) / S2 (offline): what [AppStartRoute] shows while the app-start check runs. */
+@Composable
+internal fun AppStartContent(isOffline: Boolean, onRetry: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 40.dp),
         contentAlignment = Alignment.Center,
@@ -392,7 +397,7 @@ private fun AppStartRoute(onResolved: (AppStartDestination) -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(20.dp))
-                CrichereOutlinedButton(text = "Try again", onClick = viewModel::retry)
+                CrichereOutlinedButton(text = "Try again", onClick = onRetry)
             }
         } else {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)

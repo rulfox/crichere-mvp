@@ -84,7 +84,7 @@ internal fun JoinLeagueRoute(
  * the free-league summary, and the refunds/disputes disclaimer -- see docs/PHASE3.md.
  */
 @Composable
-private fun JoinLeagueScreen(state: JoinLeagueState, viewModel: JoinLeagueViewModel, onCancel: () -> Unit) {
+internal fun JoinLeagueScreen(state: JoinLeagueState, viewModel: JoinLeagueViewModel, onCancel: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var picked by remember { mutableStateOf<PickedPhoto?>(null) }

@@ -133,7 +133,7 @@ private enum class AreaLevel(val title: String, val search: String) {
  * `AuthNavHost`'s `MainRoute` tab `Scaffold`, which owns the bottom navigation.
  */
 @Composable
-private fun LeagueDashboardScreen(
+internal fun LeagueDashboardScreen(
     state: LeagueDashboardState,
     showLocationOff: Boolean,
     onStateSelected: (StateDto) -> Unit,
