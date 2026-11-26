@@ -1,6 +1,6 @@
 # Phase 20: Admin web (moderation and insights)
 
-**Status:** planned; design approved by the owner 2026-11-21 (alignment pass done); no code yet. **Date:** 2026-11-21.
+**Status:** done, live on production 2026-11-21 (PRs #5 to #8; Step 11 closed, see the end of section 13). **Date:** 2026-11-21.
 
 ## 1. Scope
 
@@ -601,3 +601,20 @@ Step 11 update (2026-11-21, 21:50 IST): client IP, second try.
   checks that `X-Forwarded-For` is ignored. 630/630 pass.
 - After deploy: 11 refused sign-ins, each with a different made-up `X-Real-IP`, must reach 429 (shows Railway
   overwrites a client-sent `X-Real-IP`), and the logged IP must be the owner's 103.182.167.128.
+- PR #8 merged (`553df9f`), backend deployed. Checked on production (2026-11-21, 17:20 UTC): 11 refused admin
+  sign-ins from one machine, each with a different made-up `X-Real-IP` and `X-Forwarded-For`, got 401 x10 then 429,
+  so Railway overwrites a client-sent `X-Real-IP` and the limit is per client. Every refusal logged
+  "Admin sign-in refused from 157.51.238.232", which is this machine's public IP at that moment (three lookup
+  services agree; it had changed from 103.182.167.128 earlier in the day). Client IP fixed.
+- Step 11 left: dismiss a test report and see it in the audit log (owner signed in), O7 internal numbers, O8 Play
+  Data safety. The two 403 CORS preflights stay a follow-up (not reproduced).
+- Moderation check on production (2026-11-21): a test account (signed in with OTP) filed report `4c8a9bf1` from
+  the app at 17:34:04 UTC (201); the owner signed in at 17:34:34 and dismissed it at 17:35:39 (204); owner confirmed
+  the audit log entry. The owner's sign-in came from the real IP. New-report alert email arrived (owner confirmed).
+
+**Phase 20 closed (2026-11-21).** Owner marked the test account, own numbers and the reviewer number internal (O7)
+and updated Play Data safety (O8). All of section 10 is done. Follow-ups, not blocking:
+- Two CORS preflights with 403 (Step 11 update, 21:30 IST): not reproduced.
+- Local Google sign-in on `http://localhost:3001` also needs `http://localhost` (no port) on the OAuth client.
+- The backend IAM user is still `crichere-claude` (same key as the local CLI) and now also holds the SES policy;
+  splitting it is in OPEN-ITEMS.
