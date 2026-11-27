@@ -123,6 +123,10 @@ class KoinHelper : KoinComponent {
     val accountNotices: AccountNotices
         get() = get()
 
+    // Phase 23 -- forced update (docs/PHASE23.md).
+    val appUpdateNotices: com.crichere.app.account.AppUpdateNotices
+        get() = get()
+
     // Phase 18 -- report, block and notices (docs/PHASE18.md).
     val reportViewModel: ReportViewModel
         get() = get()

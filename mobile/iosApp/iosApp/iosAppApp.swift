@@ -23,6 +23,9 @@ struct IosAppApp: App {
     init() {
         FirebaseApp.configure()
         IosPhoneAuthBridgeHolder.shared.bridge = FirebasePhoneAuthBridgeImpl()
+        // docs/PHASE23.md: lets the backend turn away builds older than its minimum. Before Koin builds the clients.
+        ApiConfigKt.configureAppInfo(platform: "ios",
+                                     version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0")
         KoinInitKt.doInitKoinIos()
         configureImageCache()
     }

@@ -653,10 +653,11 @@ private struct ImageActions: View {
     }
 }
 
-/// Compose `FlowRow`: items left to right, wrapping onto new lines.
-private struct FlowRow: Layout {
+/// Compose `FlowRow`: items left to right, wrapping onto new lines. Also the bid-step labels and
+/// suggestion buttons on the live auction screen.
+struct FlowRow: Layout {
     var spacing: CGFloat
-    var lineSpacing: CGFloat
+    var lineSpacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)

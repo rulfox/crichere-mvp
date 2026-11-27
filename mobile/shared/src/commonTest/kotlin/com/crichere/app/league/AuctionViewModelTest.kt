@@ -473,16 +473,98 @@ class AuctionViewModelTest {
 
     private suspend fun kotlinx.coroutines.test.TestScope.ownerOnBlock(
         state: AuctionStateDto = onTheBlock(),
+        league: LeagueDto = liveLeague(),
         configure: FakeAuctionRepository.() -> Unit = {},
     ): Pair<AuctionViewModel, FakeAuctionRepository> {
         val auctionRepository = FakeAuctionRepository().apply {
             stream = MutableSharedFlow<AuctionStateDto>(replay = 1).apply { tryEmit(state) }
             configure()
         }
-        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(liveLeague())), auctionRepository, StubAuthRepository("owner-1"))
+        val viewModel = AuctionViewModel("l1", FakeLeagueRepository(leaguesByArea = listOf(league)), auctionRepository, StubAuthRepository("owner-1"))
         viewModel.retry()
         advanceUntilIdle()
         return viewModel to auctionRepository
+    }
+
+    // ---------------------------------------------------------------- bid steps (docs/PHASE22.md)
+
+    /** Base 250; +250 to 1,000; +500 to 3,000; +1,000 to 15,000; +2,500 above. */
+    private fun steppedLeague() = liveLeague().copy(
+        auctionBasePrice = 250.0,
+        auctionBidIncrement = 2500.0,
+        auctionBidRanges = listOf(BidRangeDto(1000.0, 250.0), BidRangeDto(3000.0, 500.0), BidRangeDto(15000.0, 1000.0)),
+    )
+
+    @Test
+    fun `with bid steps the minimum and the plus button follow the range`() = viewModelTest {
+        val (viewModel, _) = ownerOnBlock(onTheBlock(currentBid = 2500.0), league = steppedLeague())
+
+        assertEquals(3000.0, viewModel.state.value.minimumNextBid)
+        assertEquals("3000", viewModel.state.value.bidAmountInput)
+        assertEquals(1000.0, viewModel.state.value.stepButtonAmount) // 3,000 is in the +1,000 range
+
+        viewModel.onStepBid()
+        assertEquals("4000", viewModel.state.value.bidAmountInput)
+
+        viewModel.onBidAmountChanged("2700") // off the ladder: + snaps up to the next step
+        assertEquals(500.0, viewModel.state.value.stepButtonAmount)
+        viewModel.onStepBid()
+        assertEquals("3000", viewModel.state.value.bidAmountInput)
+    }
+
+    @Test
+    fun `step labels show only when the league has ranges, with the current bid's range marked`() = viewModelTest {
+        val (stepped, _) = ownerOnBlock(onTheBlock(currentBid = 1500.0), league = steppedLeague())
+        assertEquals(listOf("+250 till 1K", "+500 till 3K", "+1K till 15K", "+2.5K above"), stepped.state.value.stepLabels.map { it.text })
+        assertEquals(listOf(false, true, false, false), stepped.state.value.stepLabels.map { it.isCurrent })
+
+        val (flat, _) = ownerOnBlock()
+        assertTrue(flat.state.value.stepLabels.isEmpty())
+    }
+
+    @Test
+    fun `an amount that is not a bid step is caught before it is sent, with tap-to-fill suggestions`() = viewModelTest {
+        val (viewModel, repository) = ownerOnBlock(onTheBlock(currentBid = 1500.0), league = steppedLeague())
+
+        viewModel.onBidAmountChanged("2200")
+        viewModel.placeBid()
+        advanceUntilIdle()
+
+        assertTrue(repository.placeBidRequests.isEmpty())
+        assertEquals("₹2,200 isn't a bid step.", viewModel.state.value.bidError)
+        assertEquals(listOf(2000.0, 2500.0), viewModel.state.value.bidSuggestions)
+
+        viewModel.onSuggestionPicked(2500.0)
+        assertEquals("2500", viewModel.state.value.bidAmountInput)
+        assertNull(viewModel.state.value.bidError)
+        assertTrue(viewModel.state.value.bidSuggestions.isEmpty())
+    }
+
+    @Test
+    fun `a flat league rejects amounts between steps too, and BID_NOT_ON_LADDER from the server reads the same`() = viewModelTest {
+        val (viewModel, repository) = ownerOnBlock()
+
+        viewModel.onBidAmountChanged("15700")
+        viewModel.placeBid()
+        advanceUntilIdle()
+        assertTrue(repository.placeBidRequests.isEmpty())
+        assertEquals(listOf(15500.0, 16000.0), viewModel.state.value.bidSuggestions)
+
+        repository.actionError = AuctionActionFailedException("400", code = "BID_NOT_ON_LADDER")
+        viewModel.onBidAmountChanged("16000")
+        viewModel.placeBid()
+        advanceUntilIdle()
+        assertEquals("₹16,000 isn't a bid step.", viewModel.state.value.bidError)
+        assertEquals(listOf(16500.0), viewModel.state.value.bidSuggestions)
+    }
+
+    @Test
+    fun `purse short uses the stepped minimum`() = viewModelTest {
+        val (viewModel, _) = ownerOnBlock(onTheBlock(currentBid = 1000.0), league = steppedLeague()) {
+            nextResults = resultsFor(won = 9, left = 1200.0)
+        }
+
+        assertEquals(DockMode.PurseShort(1500.0), viewModel.state.value.dockMode)
     }
 
     @Test

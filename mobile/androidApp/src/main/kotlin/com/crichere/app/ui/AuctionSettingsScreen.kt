@@ -63,7 +63,7 @@ import com.crichere.app.R
 import com.crichere.app.league.AuctionField
 import com.crichere.app.league.AuctionSettingsState
 import com.crichere.app.league.AuctionSettingsViewModel
-import com.crichere.app.league.amountText
+import com.crichere.app.league.rupeesText
 import com.crichere.app.ui.theme.ArchivoFamily
 import com.crichere.app.ui.theme.CrichereDisabledContainer
 import com.crichere.app.ui.theme.CrichereOnWarning
@@ -79,7 +79,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val PoolListText = Color(0xFF3E4A41)
 private val DisabledSaveText = Color(0xFF6B756D)
 private const val SAVED_NOTICE_MS = 3_000L
 
@@ -135,16 +134,16 @@ internal fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Aucti
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(start = 19.dp, end = 19.dp, top = 5.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Fields(state, viewModel, onScheduleCleared = { clearedSchedule = it })
-                        state.squadWarning?.let { warning ->
-                            SquadWarningNote(
-                                "Squad max × franchises (${warning.squadMax} × ${warning.franchises} = ${warning.total}) is more than " +
-                                    "players required (${warning.playersRequired}). Some squads may not fill.",
-                            )
+                        if (state.isLocked) LockedAuctionNote()
+                        state.joinedSummary?.let { JoinedSummary(it) }
+                        if (state.isLocked) {
+                            LockedSettings(state)
+                        } else {
+                            Fields(state, viewModel, onScheduleCleared = { clearedSchedule = it })
+                            state.squadWarning?.let { SquadWarningNote(it.message) }
                         }
-                        PoolCard(state)
                     }
                     val bottom = Modifier.align(Alignment.BottomCenter).padding(start = 13.dp, end = 13.dp, bottom = 19.dp)
                     val saveError = state.saveError
@@ -167,32 +166,82 @@ internal fun AuctionSettingsScreen(state: AuctionSettingsState, viewModel: Aucti
                         )
                     }
                 }
-                SaveBar(state, onSave = viewModel::submit)
+                if (!state.isLocked) SaveBar(state, onSave = viewModel::submit)
             }
         }
     }
 }
 
 /**
- * J3: the fields fade to 55% and stop taking input while saving. Each field reserves 7dp above
- * its box for the notched label, so the board's 12dp gaps are 5dp here.
+ * The editable settings in three sections (Auction Settings redesign, canvas screens 1-4): When,
+ * Franchises, Bidding. J3: they fade to 55% and stop taking input while saving.
  */
 @Composable
 private fun Fields(state: AuctionSettingsState, viewModel: AuctionSettingsViewModel, onScheduleCleared: (String) -> Unit) {
     val errors = state.fieldErrors
     val amount = KeyboardOptions(keyboardType = KeyboardType.Decimal)
     val count = KeyboardOptions(keyboardType = KeyboardType.Number)
-    Column(Modifier.alpha(if (state.isSaving) 0.55f else 1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        SettingField(state.basePrice, viewModel::onBasePriceChanged, "Base price", errors[AuctionField.BasePrice], amount, state.isSaving)
-        SettingField(state.purse, viewModel::onPurseChanged, "Purse per franchise", errors[AuctionField.Purse], amount, state.isSaving)
-        // Board V1.
-        Text(AUCTION_MONEY_NOTE, style = pText(12.sp, lineHeight = 18.sp), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 2.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SettingField(state.squadMin, viewModel::onSquadMinChanged, "Squad size (min)", errors[AuctionField.SquadMin], count, state.isSaving, Modifier.weight(1f))
-            SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Squad size (max)", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f))
+    val colors = MaterialTheme.colorScheme
+    Column(Modifier.alpha(if (state.isSaving) 0.55f else 1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionTitle("When")
+            ScheduledAtField(state, viewModel::onScheduledAtChanged, onCleared = onScheduleCleared)
         }
-        SettingField(state.bidIncrement, viewModel::onBidIncrementChanged, "Bid increment", errors[AuctionField.BidIncrement], amount, state.isSaving)
-        ScheduledAtField(state, viewModel::onScheduledAtChanged, onCleared = onScheduleCleared)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionTitle("Franchises")
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                    SettingField(state.squadMin, viewModel::onSquadMinChanged, "Min players", errors[AuctionField.SquadMin], count, state.isSaving, Modifier.weight(1f))
+                    SettingField(state.squadMax, viewModel::onSquadMaxChanged, "Max players", errors[AuctionField.SquadMax], count, state.isSaving, Modifier.weight(1f))
+                }
+                FieldHelp("How many players each franchise buys.")
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                SettingField(state.purse, viewModel::onPurseChanged, "Budget per franchise (₹)", errors[AuctionField.Purse], amount, state.isSaving)
+                FieldHelp(AUCTION_MONEY_NOTE)
+            }
+        }
+        BiddingSection(state, viewModel)
+    }
+}
+
+/** The one-line summary at the top: "4 players and 2 franchises have joined". */
+@Composable
+private fun JoinedSummary(text: String) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(colors.surfaceVariant).padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_groups), contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
+        Text(text, style = pText(13.5.sp, FontWeight.Medium, 18.sp), color = colors.onBackground)
+    }
+}
+
+/** Canvas screen 5: after the auction starts, every setting as a read-only row. */
+@Composable
+private fun LockedSettings(state: AuctionSettingsState) {
+    val league = state.league ?: return
+    val zone = ZoneId.systemDefault()
+    val time = league.auctionScheduledAt?.let { runCatching { Instant.parse(it).atZone(zone) }.getOrNull() }
+        ?.format(DateTimeFormatter.ofPattern("EEE, d MMM · h:mm a", Locale.getDefault())) ?: "Not set"
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        LockedGroup("When", listOf("Auction date & time" to time))
+        LockedGroup(
+            "Franchises",
+            listOf("Players per franchise" to "${state.squadMin} to ${state.squadMax}", "Budget per franchise" to rupeesText(state.purse)),
+        )
+        val changes = state.lockedSteps.size > 1
+        LockedGroup(
+            "Bidding",
+            listOfNotNull(
+                "Starting price" to rupeesText(state.basePrice),
+                "How bids go up" to if (changes) "Changes with price" else "Same amount always",
+                if (changes) null else "Each bid adds" to rupeesText(state.bidIncrement),
+            ),
+            extra = if (changes) ({ LockedRanges(state.lockedSteps) }) else null,
+        )
     }
 }
 
@@ -212,7 +261,7 @@ private fun ScheduledAtField(state: AuctionSettingsState, onChange: (String?) ->
     val current = scheduledAt?.let { runCatching { Instant.parse(it).atZone(zone) }.getOrNull() }
     val error = state.scheduledAtError
     CrichereTapField(
-        label = "Auction date & time (optional)",
+        label = "Auction date & time",
         value = current?.format(DateTimeFormatter.ofPattern("d MMM yyyy · h:mm a", Locale.getDefault())),
         onClick = { if (!readOnly) pickingDate = true },
         look = FieldVariant.Form,
@@ -241,7 +290,7 @@ private fun ScheduledAtField(state: AuctionSettingsState, onChange: (String?) ->
                 }
                 // U5 J14: no zone name -- "GMT+05:30" means nothing to most organizers.
                 else -> Text(
-                    "Uses your phone's time zone.",
+                    "Optional. Uses your phone’s time zone.",
                     style = pText(12.sp, lineHeight = 16.sp),
                     color = colors.onSurfaceVariant,
                     modifier = Modifier.padding(start = 14.dp),
@@ -402,6 +451,7 @@ private fun SettingField(
     keyboardOptions: KeyboardOptions,
     readOnly: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     CrichereTextField(
         value = value,
@@ -413,6 +463,7 @@ private fun SettingField(
         keyboardOptions = keyboardOptions,
         readOnly = readOnly,
         modifier = modifier,
+        enabled = enabled,
     )
 }
 
@@ -427,41 +478,7 @@ private fun SquadWarningNote(text: String) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(painterResource(R.drawable.ic_warning), contentDescription = null, tint = CrichereOnWarning, modifier = Modifier.padding(top = 3.6.dp).size(18.dp))
-        Text(text, style = pText(12.5.sp, FontWeight.Medium, 17.5.sp), color = CrichereOnWarning)
-    }
-}
-
-@Composable
-private fun PoolCard(state: AuctionSettingsState) {
-    val colors = MaterialTheme.colorScheme
-    val league = state.league ?: return
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(14.dp))
-            .border(1.dp, colors.outlineVariant, RoundedCornerShape(14.dp))
-            .padding(start = 15.dp, end = 15.dp, top = 13.dp, bottom = 13.dp),
-    ) {
-        Text("Auction pool", style = TextStyle(fontFamily = ArchivoFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 14.sp), color = colors.onBackground)
-        Spacer(Modifier.height(6.dp))
-        Text("${league.players.size} player(s) joined", style = pText(13.sp, lineHeight = 16.9.sp), color = colors.onBackground)
-        Spacer(Modifier.height(6.dp))
-        if (league.franchises.isEmpty()) {
-            Text(
-                "No franchises yet. They appear here once owners claim them.",
-                style = pText(13.sp, lineHeight = 18.2.sp),
-                color = colors.onSurfaceVariant,
-            )
-        } else {
-            val purse = league.auctionPurse?.let { amountText(it) } ?: "not set"
-            Text("Franchises (purse: $purse each):", style = pText(13.sp, lineHeight = 16.9.sp), color = colors.onBackground)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                league.franchises.joinToString("\n") { "- ${it.name}" },
-                style = pText(12.5.sp, lineHeight = 18.75.sp),
-                color = PoolListText,
-            )
-        }
+        Text(text, style = pText(13.5.sp, FontWeight.Medium, 19.sp), color = CrichereOnWarning)
     }
 }
 

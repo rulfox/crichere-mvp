@@ -445,9 +445,12 @@ enum ParityGallery {
     private static func auctionState(squadMin: String = "8", squadMax: String = "12", scheduledAt: String? = "2026-10-11T13:30:00Z",
                                      scheduleError: String? = nil, passed: Bool = false, touched: Set<AuctionField> = [],
                                      saving: Bool = false, saveError: AuctionSaveError? = nil, saved: Bool = false,
-                                     loadFailed: Bool = false) -> AuctionSettingsState {
-        AuctionSettingsState(isLoading: false, loadFailed: loadFailed, league: loadFailed ? nil : Fixtures.league(), basePrice: "1000",
-                             purse: "100000", squadMin: squadMin, squadMax: squadMax, bidIncrement: "500", scheduledAt: scheduledAt,
+                                     loadFailed: Bool = false, basePrice: String = "1000", bidIncrement: String = "500",
+                                     ranges: [BidRangeRow] = [], touchedRanges: Set<KotlinInt> = [], league: LeagueDto = Fixtures.league()) -> AuctionSettingsState {
+        AuctionSettingsState(isLoading: false, loadFailed: loadFailed, league: loadFailed ? nil : league, basePrice: basePrice,
+                             purse: "100000", squadMin: squadMin, squadMax: squadMax, bidIncrement: bidIncrement,
+                             bidMode: ranges.isEmpty ? .sameAlways : .changesWithPrice, ranges: ranges, stashedRanges: [], touchedRanges: touchedRanges,
+                             scheduledAt: scheduledAt,
                              scheduledAtError: scheduleError, scheduledAtPassed: passed, touched: touched, submitAttempted: false,
                              isSaving: saving, saveError: saveError, showSavedNotice: saved)
     }
@@ -486,6 +489,14 @@ enum ParityGallery {
         },
         "J12": { auction(auctionState(scheduleError: "Pick a time after the league's registrations close.")) },
         "J-error": { auction(auctionState(loadFailed: true)) },
+        // Auction Settings redesign (canvas screens 2, 3, 5).
+        "J-ranges": { auction(auctionState(basePrice: "250", bidIncrement: "1000",
+                                           ranges: [BidRangeRow(upTo: "1000", step: "250"), BidRangeRow(upTo: "3000", step: "500")])) },
+        "J-ranges-error": { auction(auctionState(touched: [.bidIncrement], basePrice: "250", bidIncrement: "250",
+                                                 ranges: [BidRangeRow(upTo: "1000", step: "250"), BidRangeRow(upTo: "3000", step: "300")],
+                                                 touchedRanges: [KotlinInt(value: 1)])) },
+        "J-locked": { auction(auctionState(basePrice: "250", bidIncrement: "1000",
+                                           league: Fixtures.league(auctionStatus: .inProgress))) },
     ]
     // MARK: - K Co-organizers (ManageRolesScreen.kt)
 
@@ -577,7 +588,7 @@ enum ParityGallery {
         AuctionState(isLoading: auction == nil && !loadFailed, loadFailed: loadFailed, connectionLost: phase == .lost, connectionPhase: phase,
                      lastEventAtMillis: KotlinLong(value: Int64(Date().timeIntervalSince1970 * 1000) - 34_000), league: Fixtures.league(),
                      isOrganizer: organizer, myFranchiseId: mine, auction: auction, results: results, bidAmountInput: input, isActing: false,
-                     isBidding: bidding, bidError: bidError, actionError: nil, isEndConfirmOpen: endOpen, isEnding: ending, endFailure: endFailure)
+                     isBidding: bidding, bidError: bidError, bidSuggestions: [], actionError: nil, isEndConfirmOpen: endOpen, isEnding: ending, endFailure: endFailure)
     }
 
     private static func live(_ state: AuctionState) -> AnyView {

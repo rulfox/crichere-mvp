@@ -8,6 +8,7 @@ import com.crichere.backend.common.PhotoUploadUrlResponse
 import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.ground.GroundRepository
 import com.crichere.backend.league.dto.AuctionSettingsSaveRequest
+import com.crichere.backend.league.dto.BidRangeRequest
 import com.crichere.backend.league.dto.LeagueSaveRequest
 import com.crichere.backend.player.PlayerRepository
 import com.crichere.backend.profile.ProfileEntity
@@ -483,6 +484,48 @@ class LeagueServiceTest {
         assertEquals(15, saved.captured.auctionSquadMax)
         assertEquals(BigDecimal("100"), saved.captured.auctionBidIncrement)
         assertEquals(BigDecimal("500"), response.auctionBasePrice)
+    }
+
+    @Test
+    fun `updateAuctionSettings saves bid-step ranges and returns them`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+        val saved = slot<LeagueEntity>()
+        every { leagueRepository.save(capture(saved)) } answers { firstArg() }
+        val request = validAuctionSettings().copy(
+            bidIncrement = BigDecimal("1000"),
+            bidRanges = listOf(BidRangeRequest(BigDecimal("1500"), BigDecimal("100")), BidRangeRequest(BigDecimal("3500"), BigDecimal("500"))),
+        )
+
+        val response = service.updateAuctionSettings(leagueId, organizerId, request)
+
+        val expected = listOf(BidRange(BigDecimal("1500"), BigDecimal("100")), BidRange(BigDecimal("3500"), BigDecimal("500")))
+        assertEquals(expected, saved.captured.auctionBidRanges)
+        assertEquals(listOf(BigDecimal("1500"), BigDecimal("3500")), response.auctionBidRanges.map { it.upTo })
+    }
+
+    @Test
+    fun `updateAuctionSettings keeps saved ranges when an older app leaves bidRanges out, and clears them on an empty list`() {
+        val ranges = listOf(BidRange(BigDecimal("1500"), BigDecimal("50")))
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague().apply { auctionBidRanges = ranges })
+        val saved = slot<LeagueEntity>()
+        every { leagueRepository.save(capture(saved)) } answers { firstArg() }
+
+        service.updateAuctionSettings(leagueId, organizerId, validAuctionSettings())
+        assertEquals(ranges, saved.captured.auctionBidRanges)
+
+        service.updateAuctionSettings(leagueId, organizerId, validAuctionSettings().copy(bidRanges = emptyList()))
+        assertEquals(emptyList(), saved.captured.auctionBidRanges)
+    }
+
+    @Test
+    fun `updateAuctionSettings rejects bid steps that break a rule`() {
+        every { leagueRepository.findById(leagueId) } returns Optional.of(existingLeague())
+
+        val error = assertFailsWith<BidRangesInvalidException> {
+            service.updateAuctionSettings(leagueId, organizerId, validAuctionSettings().copy(bidRanges = listOf(BidRangeRequest(BigDecimal("1000"), BigDecimal("300")))))
+        }
+        assertEquals(0, error.rangeIndex)
+        verify(exactly = 0) { leagueRepository.save(any()) }
     }
 
     @Test

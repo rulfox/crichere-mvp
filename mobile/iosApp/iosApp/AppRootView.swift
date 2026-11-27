@@ -77,6 +77,7 @@ struct AppRootView: View {
     /// Verify finds the typed number; lockout / logout / suspension start a fresh one (`replaceAll`).
     @StateObject private var phoneEntry = PhoneEntryHolder()
     @StateObject private var accountNotices = AccountNoticesWrapper()
+    @StateObject private var appUpdate = AppUpdateNoticesWrapper()
 
     var body: some View {
         Group {
@@ -138,6 +139,10 @@ struct AppRootView: View {
                     }
                 )
             }
+        }
+        // docs/PHASE23.md: an outdated build is covered by Update required, over everything.
+        .overlay {
+            if let notice = appUpdate.required { UpdateRequiredView(notice: notice).transition(.opacity) }
         }
         // Any request can be the one that finds out (docs/PHASE18.md): nothing stale stays on screen.
         .onChange(of: accountNotices.isSuspended) { _, suspended in

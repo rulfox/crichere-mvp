@@ -269,7 +269,7 @@ class AdminBrowseService(
     fun leagueAuction(id: UUID): Map<String, Any?> {
         val settings = jdbc.query(
             """
-            select auction_status, auction_base_price, auction_purse, auction_squad_min, auction_squad_max, auction_bid_increment,
+            select auction_status, auction_base_price, auction_purse, auction_squad_min, auction_squad_max, auction_bid_increment, auction_bid_ranges,
                    auction_allow_exceed_purse, auction_scheduled_at, auction_completed_at, auction_lot_counter
             from leagues where id = :id
             """,

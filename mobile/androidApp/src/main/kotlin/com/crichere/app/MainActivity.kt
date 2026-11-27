@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.crichere.app.ui.AuthNavHost
+import com.crichere.app.ui.UpdateRequiredGate
 import com.crichere.app.ui.theme.CrichereTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,6 +41,8 @@ class MainActivity : ComponentActivity() {
             CrichereTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AuthNavHost(pendingDeepLinkLeagueId = pendingDeepLinkLeagueId)
+                    // docs/PHASE23.md: an outdated build is covered by Update required, over everything.
+                    UpdateRequiredGate()
                 }
             }
         }

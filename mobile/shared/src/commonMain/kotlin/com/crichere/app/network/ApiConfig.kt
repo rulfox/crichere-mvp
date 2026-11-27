@@ -27,6 +27,22 @@ fun configureNetworkLogging(enabled: Boolean) {
 }
 
 /**
+ * Which app is calling (`android`/`ios`) and its version (Android `versionName`, iOS
+ * `CFBundleShortVersionString`), sent on every backend request as `X-App-Platform` / `X-App-Version` so
+ * the backend can turn away builds older than its minimum (docs/PHASE23.md). Set by the platform entry
+ * point before the HTTP clients are built; unset, no headers are sent and the backend never blocks.
+ */
+internal var appPlatform: String? = null
+    private set
+internal var appVersion: String? = null
+    private set
+
+fun configureAppInfo(platform: String, version: String) {
+    appPlatform = platform
+    appVersion = version
+}
+
+/**
  * The public web viewer's base URL (docs/PHASE6.md) -- a plain `https://` link pasted into a chat
  * app, not a URL the app process itself connects to.
  */

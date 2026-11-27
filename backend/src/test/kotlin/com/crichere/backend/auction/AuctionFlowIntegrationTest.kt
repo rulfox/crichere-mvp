@@ -343,6 +343,47 @@ class AuctionFlowIntegrationTest : AbstractWebIntegrationTest {
     }
 
     @Test
+    fun `bids follow the saved bid steps -- ranges round-trip, off-ladder and below-minimum bids are rejected`() {
+        val leagueId = createLeague(organizerToken)
+        val settings = mapOf(
+            "basePrice" to 100, "purse" to 100000, "squadMin" to 1, "squadMax" to 1, "bidIncrement" to 500,
+            "bidRanges" to listOf(mapOf("upTo" to 500, "step" to 100), mapOf("upTo" to 1500, "step" to 250)),
+        )
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", settings)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.auctionBidRanges.length()").value(2))
+            .andExpect(jsonPath("$.auctionBidRanges[1].upTo").value(1500))
+            .andExpect(jsonPath("$.auctionBidRanges[1].step").value(250))
+        val bad = settings + ("bidRanges" to listOf(mapOf("upTo" to 500, "step" to 150)))
+        authedPut(organizerToken, "/api/v1/leagues/$leagueId/auction-settings", bad)
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("BID_RANGES_INVALID"))
+            .andExpect(jsonPath("$.rangeIndex").value(0))
+
+        joinAsPlayer(signInNewUser(), leagueId)
+        val ownerA = signInNewUser()
+        val franchiseA = claimFranchise(ownerA, leagueId, "Chennai Kings")
+        val ownerB = signInNewUser()
+        val franchiseB = claimFranchise(ownerB, leagueId, "Mumbai Mavericks")
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/start").andExpect(status().isOk)
+        authedPostNoBody(organizerToken, "/api/v1/leagues/$leagueId/auction/next-player").andExpect(status().isOk)
+
+        authedPost(ownerA, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseA, "amount" to 500)).andExpect(status().isOk)
+        authedPost(ownerB, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseB, "amount" to 600))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("BID_TOO_LOW"))
+            .andExpect(jsonPath("$.minimumAmount").value(750))
+        authedPost(ownerB, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseB, "amount" to 900))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.code").value("BID_NOT_ON_LADDER"))
+            .andExpect(jsonPath("$.lower").value(750))
+            .andExpect(jsonPath("$.upper").value(1000))
+        authedPost(ownerB, "/api/v1/leagues/$leagueId/auction/bids", mapOf("franchiseId" to franchiseB, "amount" to 2000))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.currentBidAmount").value(2000))
+    }
+
+    @Test
     fun `canAnyoneBid turns false once the only franchise's squad is full with players still waiting`() {
         val leagueId = createLeague(organizerToken)
         configureAuction(organizerToken, leagueId, squadMax = 1)

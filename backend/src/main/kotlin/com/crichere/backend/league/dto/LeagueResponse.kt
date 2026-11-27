@@ -45,7 +45,10 @@ data class LeagueResponse(
     val auctionPurse: BigDecimal?,
     val auctionSquadMin: Int?,
     val auctionSquadMax: Int?,
+    /** The step above the last of [auctionBidRanges]; with no ranges, the one flat step (docs/PHASE22.md). */
     val auctionBidIncrement: BigDecimal?,
+    /** Optional bid-step ranges, in order; each starts where the previous ended (the base price for the first). */
+    val auctionBidRanges: List<BidRangeResponse> = emptyList(),
     /** `true` when `auctionSquadMax * franchisesRequired > playersRequired` (both present) -- a save-time-only warning, never a rejection (see docs/PHASE4.md's two-stage squad-math check; the hard-block re-check against real counts is Phase 5's). */
     val auctionSquadMaxWarning: Boolean,
     /** Active co-organizer grants (see docs/PHASE7.md) -- public, same posture as [organizerUserId] and every franchise owner's name already on this response. */
@@ -63,3 +66,6 @@ data class LeagueResponse(
     /** The organizer's account was deleted: they can't be blocked, so the apps hide the link. */
     val organizerDeleted: Boolean = false,
 )
+
+/** One bid-step range in [LeagueResponse.auctionBidRanges]. */
+data class BidRangeResponse(val upTo: BigDecimal, val step: BigDecimal)

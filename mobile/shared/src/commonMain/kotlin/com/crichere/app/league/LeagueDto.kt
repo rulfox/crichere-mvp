@@ -142,7 +142,10 @@ data class LeagueDto(
     val auctionPurse: Double? = null,
     val auctionSquadMin: Int? = null,
     val auctionSquadMax: Int? = null,
+    /** The step above the last of [auctionBidRanges]; with no ranges, the one flat step (docs/PHASE22.md). */
     val auctionBidIncrement: Double? = null,
+    /** Optional bid-step ranges, in order; each starts where the previous ended (the base price for the first). Empty from an older backend. */
+    val auctionBidRanges: List<BidRangeDto> = emptyList(),
     val auctionSquadMaxWarning: Boolean = false,
     val coOrganizers: List<LeagueRoleDto> = emptyList(),
     /** Optional "bidding opens at" time, ISO-8601 instant (docs/PHASE11.md D3). */
@@ -191,7 +194,14 @@ data class AuctionSettingsSaveRequestDto(
     val purse: Double,
     val squadMin: Int,
     val squadMax: Int,
+    /** The step above the last of [bidRanges]; with no ranges, the one flat step. */
     val bidIncrement: Double,
     /** Optional ISO-8601 instant -- `null` clears it (docs/PHASE11.md D3). */
     val scheduledAt: String? = null,
+    /** Bid-step ranges (docs/PHASE22.md); always sent, so an empty list clears them. */
+    val bidRanges: List<BidRangeDto>,
 )
+
+/** One bid-step range: bids up to, not including, [upTo] go up by [step]. Its start is the previous range's end. */
+@Serializable
+data class BidRangeDto(val upTo: Double, val step: Double)

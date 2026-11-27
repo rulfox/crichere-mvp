@@ -9,6 +9,7 @@ import com.crichere.backend.franchise.FranchiseRepository
 import com.crichere.backend.franchise.NotFranchiseOwnerException
 import com.crichere.backend.league.AuctionLastActionType
 import com.crichere.backend.league.AuctionStatus
+import com.crichere.backend.league.BidRange
 import com.crichere.backend.league.LeagueAuthorization
 import com.crichere.backend.league.LeagueEntity
 import com.crichere.backend.league.LeagueRepository
@@ -113,6 +114,7 @@ class AuctionServiceTest {
         squadMax: Int? = 5,
         bidIncrement: BigDecimal? = BigDecimal("50"),
         lotCounter: Int = 0,
+        bidRanges: List<BidRange> = emptyList(),
     ) = LeagueEntity(
         id = leagueId,
         organizerUserId = organizerId,
@@ -126,6 +128,7 @@ class AuctionServiceTest {
         auctionSquadMin = squadMin,
         auctionSquadMax = squadMax,
         auctionBidIncrement = bidIncrement,
+        auctionBidRanges = bidRanges,
         auctionStatus = status,
         auctionCurrentPlayerId = currentPlayerId,
         auctionCurrentBidAmount = currentBidAmount,
@@ -312,6 +315,40 @@ class AuctionServiceTest {
         assertFailsWith<BidTooLowException> {
             service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("120"))
         }
+    }
+
+    @Test
+    fun `placeBid that is not a bid step is rejected with the valid bids either side`() {
+        every { leagueRepository.findByIdForUpdate(leagueId) } returns
+            league(currentPlayerId = playerId, currentBidAmount = BigDecimal("100"), currentLeadingFranchiseId = UUID.randomUUID())
+        every { franchiseRepository.findById(franchiseId) } returns Optional.of(franchise())
+
+        val error = assertFailsWith<BidNotOnLadderException> {
+            service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("220"))
+        }
+        assertEquals(BigDecimal("200"), error.lower)
+        assertEquals(BigDecimal("250"), error.upper)
+    }
+
+    @Test
+    fun `placeBid follows the league's bid-step ranges`() {
+        val ranges = listOf(BidRange(BigDecimal("1000"), BigDecimal("250")), BidRange(BigDecimal("3000"), BigDecimal("500")))
+        fun at(current: String) = league(
+            currentPlayerId = playerId, currentBidAmount = BigDecimal(current), currentLeadingFranchiseId = UUID.randomUUID(),
+            basePrice = BigDecimal("250"), bidIncrement = BigDecimal("1000"), bidRanges = ranges, purse = BigDecimal("100000"),
+        )
+        every { franchiseRepository.findById(franchiseId) } returns Optional.of(franchise())
+        every { playerRepository.findBySoldToFranchiseId(franchiseId) } returns emptyList()
+        mockSaves()
+
+        every { leagueRepository.findByIdForUpdate(leagueId) } returns at("1000")
+        val tooLow = assertFailsWith<BidTooLowException> { service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("1250")) }
+        assertEquals(BigDecimal("1500"), tooLow.minimumAmount)
+        assertEquals(BigDecimal("1500"), service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("1500")).currentBidAmount)
+
+        every { leagueRepository.findByIdForUpdate(leagueId) } returns at("3000")
+        assertFailsWith<BidNotOnLadderException> { service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("4500")) }
+        assertEquals(BigDecimal("5000"), service.placeBid(leagueId, franchiseId, franchiseOwnerId, BigDecimal("5000")).currentBidAmount)
     }
 
     @Test

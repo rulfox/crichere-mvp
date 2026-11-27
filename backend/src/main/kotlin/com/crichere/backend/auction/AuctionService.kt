@@ -138,14 +138,15 @@ class AuctionService(
      * against each other rather than both reading the same stale current-bid value (see
      * docs/PHASE5.md's Security section). Every hard block below is re-validated here even though
      * a well-behaved client already checks them -- a direct API call must not be able to bypass
-     * squad max, purse, or the minimum-bid rule.
+     * squad max, purse, the minimum-bid rule, or the bid steps.
      *
      * @throws com.crichere.backend.common.ContentRateLimitExceededException the caller has bid too many times recently.
      * @throws LeagueFranchiseNotFoundException [franchiseId] is not an active franchise in this league.
      * @throws NotFranchiseOwnerException [callerId] does not own [franchiseId].
      * @throws AuctionNoPlayerOpenException no player is currently open.
      * @throws AlreadyLeadingException [franchiseId] already holds the leading bid -- a franchise cannot outbid itself.
-     * @throws BidTooLowException [amount] is below the current bid plus increment (or base price if none yet).
+     * @throws BidTooLowException [amount] is below the next ladder value above the current bid (or base price if none yet).
+     * @throws BidNotOnLadderException [amount] isn't one of the league's bid steps (see [BidLadder], docs/PHASE22.md).
      * @throws SquadFullException this bid would push the franchise's squad past `auctionSquadMax`.
      * @throws PurseExceededException this bid would exceed the franchise's remaining purse and exceeding it isn't allowed.
      */
@@ -169,9 +170,13 @@ class AuctionService(
         // Checked under the row lock, so two quick taps from the same owner can't both land.
         if (league.auctionCurrentLeadingFranchiseId == franchiseId) throw AlreadyLeadingException()
 
-        val minimum = league.auctionCurrentBidAmount?.plus(requireNotNull(league.auctionBidIncrement))
-            ?: requireNotNull(league.auctionBasePrice)
+        val ladder = BidLadder(requireNotNull(league.auctionBasePrice), league.auctionBidRanges, requireNotNull(league.auctionBidIncrement))
+        val minimum = ladder.minimumNext(league.auctionCurrentBidAmount)
         if (amount < minimum) throw BidTooLowException(minimum)
+        if (!ladder.isOnLadder(amount)) {
+            val (lower, upper) = ladder.neighbours(amount, minimum)
+            throw BidNotOnLadderException(lower, upper)
+        }
 
         val wonPlayers = playerRepository.findBySoldToFranchiseId(franchiseId)
         val squadMax = requireNotNull(league.auctionSquadMax)
