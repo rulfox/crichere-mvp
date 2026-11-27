@@ -72,12 +72,12 @@ class BidLadder(
 
     /**
      * Design S1's "Bids will go" preview: one line per segment, its step and the bids it adds
-     * (`250 · 500 · 750 · 1,000`, long runs shortened to `4,000 · 5,000 · 6,000 … 15,000`, the open
+     * (`250 → 500 → 750 → 1,000`, long runs shortened to `4,000 → 5,000 → 6,000 … 15,000`, the open
      * last one to its first three and `…`).
      */
     fun previewLines(): List<LadderPreviewLine> = segments.mapIndexed { index, segment ->
         val first = if (index == 0) segment.from else segment.from + segment.step
-        fun join(amounts: List<Long>) = amounts.joinToString(" · ") { groupedRupees(it) }
+        fun join(amounts: List<Long>) = amounts.joinToString(" → ") { groupedRupees(it) }
         // Longest first; the screen shows the longest that fits on one line, so the "…" ends the row.
         val options = if (segment.to == null) {
             (PREVIEW_MAX_VALUES downTo 3).map { n -> join(List(n) { first + it * segment.step }) + " …" }
@@ -91,13 +91,13 @@ class BidLadder(
     }
 
     /**
-     * Design L1's step labels (`+250 to 1K`, `+2.5K above`), with the one holding [currentBid] (or the
+     * Design L1's step labels (`+250 till 1K`, `+2.5K above`), with the one holding [currentBid] (or the
      * base price before any bid) marked [StepLabel.isCurrent].
      */
     fun stepLabels(currentBid: Double?): List<StepLabel> {
         val current = segmentAt(floorLong(currentBid ?: basePrice.toDouble()))
         return segments.map { segment ->
-            val text = "+" + shortRupees(segment.step) + (segment.to?.let { " to " + shortRupees(it) } ?: " above")
+            val text = "+" + shortRupees(segment.step) + (segment.to?.let { " till " + shortRupees(it) } ?: " above")
             StepLabel(text, isCurrent = segment == current)
         }
     }

@@ -31,6 +31,8 @@ final class AuctionSettingsViewModelWrapper: ObservableObject {
     func onRemoveRange(_ index: Int32) { viewModel.onRemoveRange(index: index) }
     func onRangeUpToChanged(_ index: Int32, _ value: String) { viewModel.onRangeUpToChanged(index: index, value: value) }
     func onRangeStepChanged(_ index: Int32, _ value: String) { viewModel.onRangeStepChanged(index: index, value: value) }
+    func onBidModeChanged(_ mode: BidMode) { viewModel.onBidModeChanged(mode: mode) }
+    func onRangeSuggestionPicked(_ index: Int32, _ amount: Int64) { viewModel.onRangeSuggestionPicked(index: index, amount: amount) }
     /// `nil` clears it; otherwise stored as an ISO-8601 instant (docs/PHASE11.md D3).
     func onScheduledAtChanged(_ value: Date?) {
         viewModel.onScheduledAtChanged(value: value.map { ISO8601DateFormatter().string(from: $0) })
@@ -79,6 +81,8 @@ struct AuctionSettingsView: View {
                 onRemoveRange: wrapper.onRemoveRange,
                 onRangeUpTo: wrapper.onRangeUpToChanged,
                 onRangeStep: wrapper.onRangeStepChanged,
+                onBidMode: wrapper.onBidModeChanged,
+                onRangeSuggestion: wrapper.onRangeSuggestionPicked,
                 onPickSchedule: { pickingDate = true },
                 onClearSchedule: {
                     guard let current = state.scheduledAt else { return }
@@ -174,6 +178,8 @@ struct AuctionSettingsActions {
     var onRemoveRange: (Int32) -> Void = { _ in }
     var onRangeUpTo: (Int32, String) -> Void = { _, _ in }
     var onRangeStep: (Int32, String) -> Void = { _, _ in }
+    var onBidMode: (BidMode) -> Void = { _ in }
+    var onRangeSuggestion: (Int32, Int64) -> Void = { _, _ in }
     var onPickSchedule: () -> Void = {}
     var onClearSchedule: () -> Void = {}
     var onUndoClear: () -> Void = {}
@@ -191,17 +197,18 @@ struct AuctionSettingsContent: View {
             BackTitleBar(title: "Auction Settings", onBack: actions.onBack)
             if state.isLoading && state.league == nil {
                 CrichereSpinner(color: CrichereColor.primary, lineWidth: 4, size: 40).frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let league = state.league {
+            } else if state.league != nil {
                 ZStack(alignment: .bottom) {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 16) {
                             if state.isLocked { LockedAuctionNote() }
-                            SettingsFields(state: state, actions: actions)
-                            if let warning = state.squadWarning {
-                                SquadWarningNote(text: "Squad max × franchises (\(warning.squadMax) × \(warning.franchises) = \(warning.total)) is more than "
-                                                 + "players required (\(warning.playersRequired)). Some squads may not fill.")
+                            if let summary = state.joinedSummary { JoinedSummary(text: summary) }
+                            if state.isLocked {
+                                LockedSettings(state: state)
+                            } else {
+                                SettingsFields(state: state, actions: actions)
+                                if let warning = state.squadWarning { SquadWarningNote(text: warning.message) }
                             }
-                            PoolCard(league: league)
                         }
                         .padding(.horizontal, 19)
                         .padding(.top, 5)
@@ -232,30 +239,34 @@ struct AuctionSettingsContent: View {
     }
 }
 
-/// J3: the fields fade to 55% and stop taking input while saving. Each field reserves 7 pt above its
-/// box for the notched label, so the board's 12 pt gaps are 5 pt here.
+/// The editable settings in three sections (Auction Settings redesign, canvas screens 1-4): When,
+/// Franchises, Bidding. J3: they fade to 55% and stop taking input while saving.
 private struct SettingsFields: View {
     let state: AuctionSettingsState
     let actions: AuctionSettingsActions
 
     var body: some View {
         let errors = state.fieldErrors
-        VStack(alignment: .leading, spacing: 5) {
-            field(state.basePrice, actions.onBasePrice, "Base price", errors[.basePrice], .decimalPad)
-            field(state.purse, actions.onPurse, "Purse per franchise", errors[.purse], .decimalPad)
-            // Board V1.
-            Text(auctionMoneyNote).crichere(.sans(12, lineHeight: 18), CrichereColor.onSurfaceVariant).padding(.horizontal, 2)
-            HStack(alignment: .top, spacing: 10) {
-                field(state.squadMin, actions.onSquadMin, "Squad size (min)", errors[.squadMin], .numberPad)
-                field(state.squadMax, actions.onSquadMax, "Squad size (max)", errors[.squadMax], .numberPad)
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionTitle("When")
+                ScheduledAtField(state: state, actions: actions)
             }
-            // Design S1-S4 (docs/PHASE22.md): the bid steps replace the single bid increment field.
-            if state.isLocked {
-                LockedBidSteps(rows: state.lockedSteps).padding(.vertical, 8)
-            } else {
-                BidStepsSection(state: state, actions: actions).padding(.bottom, 8)
+            VStack(alignment: .leading, spacing: 10) {
+                SectionTitle("Franchises")
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .top, spacing: 10) {
+                        field(state.squadMin, actions.onSquadMin, "Min players", errors[.squadMin], .numberPad)
+                        field(state.squadMax, actions.onSquadMax, "Max players", errors[.squadMax], .numberPad)
+                    }
+                    FieldHelp("How many players each franchise buys.")
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    field(state.purse, actions.onPurse, "Budget per franchise (₹)", errors[.purse], .decimalPad)
+                    FieldHelp(auctionMoneyNote)
+                }
             }
-            if !state.isLocked { ScheduledAtField(state: state, actions: actions) }
+            BiddingSection(state: state, actions: actions)
         }
         .opacity(state.isSaving ? 0.55 : 1)
     }
@@ -263,7 +274,52 @@ private struct SettingsFields: View {
     private func field(_ value: String, _ onChange: @escaping (String) -> Void, _ label: String, _ error: String?,
                        _ keyboard: UIKeyboardType) -> some View {
         CrichereTextField(text: Binding(get: { value }, set: onChange), label: label, look: .form, error: error, mono: true,
-                          readOnly: state.isSaving, enabled: !state.isLocked, keyboard: keyboard)
+                          readOnly: state.isSaving, keyboard: keyboard)
+    }
+}
+
+/// The one-line summary at the top: "4 players and 2 franchises have joined".
+private struct JoinedSummary: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            CrIcon("ic_groups", size: 20, tint: CrichereColor.primary)
+            Text(text).crichere(.sans(13.5, .medium, lineHeight: 18), CrichereColor.onBackground)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(CrichereColor.surfaceVariant, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+/// Canvas screen 5: after the auction starts, every setting as a read-only row.
+private struct LockedSettings: View {
+    let state: AuctionSettingsState
+
+    var body: some View {
+        let league = state.league
+        let time = parseInstant(league?.auctionScheduledAt).map { lockedFormatter.string(from: $0) } ?? "Not set"
+        let changes = state.lockedSteps.count > 1
+        var bidding: [(String, String)] = [("Starting price", rupees(state.basePrice)),
+                                           ("How bids go up", changes ? "Changes with price" : "Same amount always")]
+        if !changes { bidding.append(("Each bid adds", rupees(state.bidIncrement))) }
+        return VStack(alignment: .leading, spacing: 16) {
+            LockedGroup(title: "When", rows: [("Auction date & time", time)])
+            LockedGroup(title: "Franchises", rows: [("Players per franchise", "\(state.squadMin) to \(state.squadMax)"),
+                                                    ("Budget per franchise", rupees(state.purse))])
+            LockedGroup(title: "Bidding", rows: bidding, ranges: changes ? state.lockedSteps : [])
+        }
+    }
+
+    private func rupees(_ text: String) -> String { AuctionSettingsViewModelKt.rupeesText(text: text) }
+
+    private var lockedFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = "EEE, d MMM · h:mm a"
+        return formatter
     }
 }
 
@@ -280,7 +336,7 @@ private struct ScheduledAtField: View {
         let readOnly = state.isSaving
         let current = parseInstant(state.scheduledAt)
         CrichereTapField(
-            label: "Auction date & time (optional)",
+            label: "Auction date & time",
             value: current.map { valueFormatter.string(from: $0) },
             look: .form,
             error: state.scheduledAtError,
@@ -315,7 +371,7 @@ private struct ScheduledAtField: View {
             .padding(.leading, 14)
         } else {
             // U5 J14: no zone name -- "GMT+05:30" means nothing to most organizers.
-            Text("Uses your phone's time zone.").crichere(.sans(12, lineHeight: 16), CrichereColor.onSurfaceVariant).padding(.leading, 14)
+            Text("Optional. Uses your phone’s time zone.").crichere(.sans(12, lineHeight: 16), CrichereColor.onSurfaceVariant).padding(.leading, 14)
         }
     }
 }
@@ -327,36 +383,12 @@ private struct SquadWarningNote: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             CrIcon("ic_warning", size: 18, tint: CrichereColor.onWarning).padding(.top, 3.6)
-            Text(text).crichere(.sans(12.5, .medium, lineHeight: 17.5), CrichereColor.onWarning)
+            Text(text).crichere(.sans(13.5, .medium, lineHeight: 19), CrichereColor.onWarning)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(CrichereColor.warningContainer, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-}
-
-private struct PoolCard: View {
-    let league: LeagueDto
-
-    var body: some View {
-        let card = RoundedRectangle(cornerRadius: 14, style: .continuous)
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Auction pool").crichere(.archivo(14, .bold, lineHeight: 14), CrichereColor.onBackground)
-            Text("\(league.players.count) player(s) joined").crichere(.sans(13, lineHeight: 16.9), CrichereColor.onBackground)
-            if league.franchises.isEmpty {
-                Text("No franchises yet. They appear here once owners claim them.").crichere(.sans(13, lineHeight: 18.2), CrichereColor.onSurfaceVariant)
-            } else {
-                let purse = league.auctionPurse.map { AuctionSettingsViewModelKt.amountText(value: $0) } ?? "not set"
-                Text("Franchises (purse: \(purse) each):").crichere(.sans(13, lineHeight: 16.9), CrichereColor.onBackground)
-                Text(league.franchises.map { "- \($0.name)" }.joined(separator: "\n")).crichere(.sans(12.5, lineHeight: 18.75), Color(hex: 0x3E4A41))
-            }
-        }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 13)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CrichereColor.surface, in: card)
-        .overlay(card.strokeBorder(CrichereColor.outlineVariant, lineWidth: 1))
     }
 }
 

@@ -132,10 +132,10 @@ class AuctionSettingsViewModelTest {
         assertEquals("₹15,000", validSteps.aboveStartText)
         assertEquals(
             listOf(
-                LadderPreviewLine("+250", "250 · 500 · 750 · 1,000"),
-                LadderPreviewLine("+500", "1,500 · 2,000 · 2,500 · 3,000"),
-                LadderPreviewLine("+1,000", "4,000 · 5,000 · 6,000 … 15,000"),
-                LadderPreviewLine("+2,500", "17,500 · 20,000 · 22,500 …"),
+                LadderPreviewLine("+250", "250 → 500 → 750 → 1,000"),
+                LadderPreviewLine("+500", "1,500 → 2,000 → 2,500 → 3,000"),
+                LadderPreviewLine("+1,000", "4,000 → 5,000 → 6,000 … 15,000"),
+                LadderPreviewLine("+2,500", "17,500 → 20,000 → 22,500 …"),
             ),
             validSteps.ladderPreview?.map { it.copy(longer = emptyList()) },
         )
@@ -146,22 +146,22 @@ class AuctionSettingsViewModelTest {
         val flat = validSteps.copy(ranges = emptyList(), bidIncrement = "250")
         assertTrue(validate(flat).isEmpty())
         assertEquals("₹250", flat.aboveStartText)
-        assertEquals(listOf(LadderPreviewLine("+250", "250 · 500 · 750 …")), flat.ladderPreview?.map { it.copy(longer = emptyList()) })
+        assertEquals(listOf(LadderPreviewLine("+250", "250 → 500 → 750 …")), flat.ladderPreview?.map { it.copy(longer = emptyList()) })
     }
 
     @Test
     fun `row errors -- end not above start, uneven split with suggestions, steps that don't grow, whole rupees`() {
         val uneven = validateRanges(validSteps.copy(ranges = listOf(BidRangeRow("1000", "250"), BidRangeRow("3000", "300"))))
         assertEquals(
-            RangeRowError(RangeField.Step, "₹1,000 to ₹3,000 doesn't split into steps of ₹300. Try ₹400."),
+            RangeRowError(RangeField.Step, "Adding ₹300 each time won’t land exactly on ₹3,000.", listOf(400L, 500L)),
             uneven[1],
         )
         val backwards = validateRanges(validSteps.copy(ranges = listOf(BidRangeRow("1000", "250"), BidRangeRow("3000", "500"), BidRangeRow("2500", "1000"))))
-        assertEquals(RangeRowError(RangeField.UpTo, "Must be more than ₹3,000."), backwards[2])
+        assertEquals(RangeRowError(RangeField.UpTo, "End price must be more than ₹3,000."), backwards[2])
         val shrinking = validateRanges(validSteps.copy(ranges = listOf(BidRangeRow("1000", "250"), BidRangeRow("3000", "200"))))
-        assertEquals(RangeRowError(RangeField.Step, "Must be bigger than the step above (₹250)."), shrinking[1])
+        assertEquals(RangeRowError(RangeField.Step, "Higher prices should add more. Make this more than ₹250."), shrinking[1])
         assertEquals(RangeRowError(RangeField.UpTo, "Use whole rupees"), validateRanges(validSteps.copy(ranges = listOf(BidRangeRow("1000.5", "250"))))[0])
-        assertEquals("Must be bigger than the step above (₹1,000).", validate(validSteps.copy(bidIncrement = "500"))[AuctionField.BidIncrement])
+        assertEquals("Higher prices should add more. Make this more than ₹1,000.", validate(validSteps.copy(bidIncrement = "500"))[AuctionField.BidIncrement])
         assertEquals("Use whole rupees", validate(validSteps.copy(basePrice = "250.5"))[AuctionField.BasePrice])
         assertNull(validSteps.copy(bidIncrement = "500").ladderPreview)
     }
@@ -172,7 +172,9 @@ class AuctionSettingsViewModelTest {
         viewModel.retry()
         advanceUntilIdle()
 
-        viewModel.onAddRange()
+        viewModel.onAddRange() // only in "Changes with price"
+        assertTrue(viewModel.state.value.ranges.isEmpty())
+        viewModel.onBidModeChanged(BidMode.ChangesWithPrice) // starts one blank row
         viewModel.onRangeUpToChanged(0, "1000")
         viewModel.onRangeStepChanged(0, "250")
         viewModel.onAddRange()
@@ -196,7 +198,7 @@ class AuctionSettingsViewModelTest {
         viewModel.retry()
         advanceUntilIdle()
 
-        viewModel.onAddRange()
+        viewModel.onBidModeChanged(BidMode.ChangesWithPrice)
         viewModel.submit()
         advanceUntilIdle()
 
@@ -217,20 +219,68 @@ class AuctionSettingsViewModelTest {
 
         val state = viewModel.state.value
         assertEquals(listOf(BidRangeRow("1000", "250"), BidRangeRow("3000", "500")), state.ranges)
+        assertEquals(BidMode.ChangesWithPrice, state.bidMode)
         assertTrue(state.isLocked)
         assertFalse(state.canSave)
         assertFalse(state.canAddRange)
         assertEquals(
             listOf(
-                LadderPreviewLine("+₹250", "₹250 – ₹1,000"),
-                LadderPreviewLine("+₹500", "₹1,000 – ₹3,000"),
-                LadderPreviewLine("+₹2,500", "₹3,000 and above"),
+                LadderPreviewLine("add ₹250", "₹250 to ₹1,000"),
+                LadderPreviewLine("add ₹500", "₹1,000 to ₹3,000"),
+                LadderPreviewLine("add ₹2,500", "Above ₹3,000"),
             ),
             state.lockedSteps,
         )
         viewModel.submit()
         advanceUntilIdle()
         assertTrue(repository.updateAuctionSettingsRequests.isEmpty())
+    }
+
+    @Test
+    fun `switching to same amount sets the ranges aside and switching back brings them back`() = viewModelTest {
+        val saved = configured.copy(auctionBasePrice = 250.0, auctionBidIncrement = 2500.0, auctionBidRanges = listOf(BidRangeDto(1000.0, 250.0)))
+        val (viewModel, repository) = loaded(saved) { nextAuctionSettingsUpdated = configured }
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.onBidModeChanged(BidMode.SameAlways)
+        assertEquals(BidMode.SameAlways, viewModel.state.value.bidMode)
+        assertTrue(viewModel.state.value.ranges.isEmpty())
+        assertFalse(viewModel.state.value.canAddRange)
+        viewModel.onBidModeChanged(BidMode.ChangesWithPrice)
+        assertEquals(listOf(BidRangeRow("1000", "250")), viewModel.state.value.ranges)
+
+        viewModel.onRemoveRange(0) // the last range gone: one amount again
+        assertEquals(BidMode.SameAlways, viewModel.state.value.bidMode)
+        viewModel.submit()
+        advanceUntilIdle()
+        assertEquals(emptyList(), repository.updateAuctionSettingsRequests.single().bidRanges)
+    }
+
+    @Test
+    fun `a suggestion chip fills the row's amount and clears the error`() = viewModelTest {
+        val (viewModel, _) = loaded(configured.copy(auctionBasePrice = 250.0, auctionBidIncrement = 2500.0, auctionBidRanges = listOf(BidRangeDto(1000.0, 250.0), BidRangeDto(3000.0, 500.0))))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        viewModel.onRangeStepChanged(1, "300")
+        assertEquals(listOf(400L, 500L), viewModel.state.value.rangeErrorFor(1)?.suggestions)
+        viewModel.onRangeSuggestionPicked(1, 400)
+        assertEquals("400", viewModel.state.value.ranges[1].step)
+        assertNull(viewModel.state.value.rangeErrorFor(1))
+    }
+
+    @Test
+    fun `examples, placeholder and summary follow what's typed`() {
+        assertEquals("e.g. 250 → 500 …", AuctionSettingsState().sameExample)
+        assertEquals("e.g. 100 → 150 …", AuctionSettingsState(basePrice = "100", bidIncrement = "50").sameExample)
+        assertEquals("Enter a starting price and an amount to see how bids will go.", AuctionSettingsState().previewPlaceholder)
+        assertEquals("Fix the highlighted rows to see how bids will go.", validSteps.previewPlaceholder)
+        assertEquals("No players or franchises have joined yet", AuctionSettingsState(league = configured.copy(players = emptyList(), franchises = emptyList())).joinedSummary)
+        assertEquals(
+            "2 franchises with up to 10 players each need 20 players, but the league is set for 4. Some squads may not fill.",
+            SquadWarning(squadMax = 10, franchises = 2, playersRequired = 4).message,
+        )
     }
 
     @Test

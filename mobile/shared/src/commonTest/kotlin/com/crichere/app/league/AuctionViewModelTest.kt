@@ -515,7 +515,7 @@ class AuctionViewModelTest {
     @Test
     fun `step labels show only when the league has ranges, with the current bid's range marked`() = viewModelTest {
         val (stepped, _) = ownerOnBlock(onTheBlock(currentBid = 1500.0), league = steppedLeague())
-        assertEquals(listOf("+250 to 1K", "+500 to 3K", "+1K to 15K", "+2.5K above"), stepped.state.value.stepLabels.map { it.text })
+        assertEquals(listOf("+250 till 1K", "+500 till 3K", "+1K till 15K", "+2.5K above"), stepped.state.value.stepLabels.map { it.text })
         assertEquals(listOf(false, true, false, false), stepped.state.value.stepLabels.map { it.isCurrent })
 
         val (flat, _) = ownerOnBlock()
