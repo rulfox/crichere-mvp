@@ -153,7 +153,7 @@ class AuctionSettingsViewModelTest {
     fun `row errors -- end not above start, uneven split with suggestions, steps that don't grow, whole rupees`() {
         val uneven = validateRanges(validSteps.copy(ranges = listOf(BidRangeRow("1000", "250"), BidRangeRow("3000", "300"))))
         assertEquals(
-            RangeRowError(RangeField.Step, "₹1,000 to ₹3,000 doesn't split into steps of ₹300. Try ₹250 or ₹400."),
+            RangeRowError(RangeField.Step, "₹1,000 to ₹3,000 doesn't split into steps of ₹300. Try ₹400."),
             uneven[1],
         )
         val backwards = validateRanges(validSteps.copy(ranges = listOf(BidRangeRow("1000", "250"), BidRangeRow("3000", "500"), BidRangeRow("2500", "1000"))))
