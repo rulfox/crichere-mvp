@@ -52,4 +52,21 @@ class BidLadderTest {
     fun `compact amounts for the step labels`() {
         assertEquals(listOf("250", "1K", "2.5K", "15K", "1L", "1.5L"), listOf(250L, 1000L, 2500L, 15000L, 100000L, 150000L).map { shortRupees(it) })
     }
+
+    @Test
+    fun `preview offers longer lines, longest first, so the screen can fill the row`() {
+        val open = flat.previewLines().single()
+        assertEquals("100 · 150 · 200 …", open.values)
+        assertEquals("100 · 150 · 200 · 250 · 300 · 350 · 400 · 450 · 500 · 550 · 600 · 650 …", open.options.first())
+        assertEquals(10, open.options.size)
+        assertTrue(open.options.all { it.endsWith(" …") })
+
+        val run = tiered.previewLines()[2] // 4,000 to 15,000 in steps of 1,000: twelve values
+        assertEquals("4,000 · 5,000 · 6,000 · 7,000 · 8,000 · 9,000 · 10,000 · 11,000 · 12,000 · 13,000 · 14,000 · 15,000", run.options.first())
+        assertEquals("4,000 · 5,000 · 6,000 · 7,000 · 8,000 · 9,000 · 10,000 · 11,000 · 12,000 · 13,000 … 15,000", run.options[1])
+        assertEquals("4,000 · 5,000 · 6,000 … 15,000", run.options.last())
+
+        val short = tiered.previewLines()[0] // 250 to 1,000: fits as is
+        assertEquals(listOf("250 · 500 · 750 · 1,000"), short.options)
+    }
 }

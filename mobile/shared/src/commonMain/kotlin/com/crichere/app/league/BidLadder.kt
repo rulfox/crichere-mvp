@@ -77,14 +77,17 @@ class BidLadder(
      */
     fun previewLines(): List<LadderPreviewLine> = segments.mapIndexed { index, segment ->
         val first = if (index == 0) segment.from else segment.from + segment.step
-        val values = if (segment.to == null) {
-            List(3) { first + it * segment.step }.joinToString(" · ") { groupedRupees(it) } + " …"
+        fun join(amounts: List<Long>) = amounts.joinToString(" · ") { groupedRupees(it) }
+        // Longest first; the screen shows the longest that fits on one line, so the "…" ends the row.
+        val options = if (segment.to == null) {
+            (PREVIEW_MAX_VALUES downTo 3).map { n -> join(List(n) { first + it * segment.step }) + " …" }
         } else {
             val all = generateSequence(first) { it + segment.step }.takeWhile { it <= segment.to }.toList()
-            if (all.size <= 4) all.joinToString(" · ") { groupedRupees(it) }
-            else all.take(3).joinToString(" · ") { groupedRupees(it) } + " … " + groupedRupees(all.last())
+            if (all.size <= 4) listOf(join(all))
+            else listOfNotNull(join(all).takeIf { all.size <= PREVIEW_MAX_VALUES }) +
+                (minOf(all.size - 2, PREVIEW_MAX_VALUES - 1) downTo 3).map { k -> join(all.take(k)) + " … " + groupedRupees(all.last()) }
         }
-        LadderPreviewLine(step = "+" + groupedRupees(segment.step), values = values)
+        LadderPreviewLine(step = "+" + groupedRupees(segment.step), values = options.last(), longer = options.dropLast(1))
     }
 
     /**
@@ -110,7 +113,16 @@ class BidLadder(
     }
 }
 
-data class LadderPreviewLine(val step: String, val values: String)
+/**
+ * One "Bids will go" row: [values] is the shortest text (three values and `…`); [longer] holds fuller
+ * versions, longest first, for screens with room to fill the line.
+ */
+data class LadderPreviewLine(val step: String, val values: String, val longer: List<String> = emptyList()) {
+    /** Every version, longest first. */
+    val options: List<String> get() = longer + values
+}
+
+private const val PREVIEW_MAX_VALUES = 12
 
 data class StepLabel(val text: String, val isCurrent: Boolean)
 

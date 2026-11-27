@@ -137,7 +137,7 @@ class AuctionSettingsViewModelTest {
                 LadderPreviewLine("+1,000", "4,000 · 5,000 · 6,000 … 15,000"),
                 LadderPreviewLine("+2,500", "17,500 · 20,000 · 22,500 …"),
             ),
-            validSteps.ladderPreview,
+            validSteps.ladderPreview?.map { it.copy(longer = emptyList()) },
         )
     }
 
@@ -146,7 +146,7 @@ class AuctionSettingsViewModelTest {
         val flat = validSteps.copy(ranges = emptyList(), bidIncrement = "250")
         assertTrue(validate(flat).isEmpty())
         assertEquals("₹250", flat.aboveStartText)
-        assertEquals(listOf(LadderPreviewLine("+250", "250 · 500 · 750 …")), flat.ladderPreview)
+        assertEquals(listOf(LadderPreviewLine("+250", "250 · 500 · 750 …")), flat.ladderPreview?.map { it.copy(longer = emptyList()) })
     }
 
     @Test

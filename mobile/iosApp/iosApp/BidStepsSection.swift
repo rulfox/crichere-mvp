@@ -109,7 +109,13 @@ private struct LadderPreview: View {
                         Text(line.step).crichere(.mono(11, .bold, lineHeight: 20), CrichereColor.onGreenContainer)
                             .padding(.horizontal, 8)
                             .background(Capsule().fill(CrichereColor.greenContainer))
-                        Text(line.values).crichere(.mono(12, .medium, lineHeight: 20), CrichereColor.onBackground)
+                        // The longest version that fits on one line, so a trailing "…" ends the row.
+                        ViewThatFits(in: .horizontal) {
+                            ForEach(line.options, id: \.self) { option in
+                                Text(option).crichere(.mono(12, .medium, lineHeight: 20), CrichereColor.onBackground).lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }

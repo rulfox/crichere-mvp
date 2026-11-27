@@ -49,6 +49,10 @@ import com.crichere.app.ui.theme.CrichereOnGreenContainer
 import com.crichere.app.ui.theme.CrichereOnWarning
 import com.crichere.app.ui.theme.CrichereWarningContainer
 import com.crichere.app.ui.theme.JetBrainsMonoFamily
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.rememberTextMeasurer
 
 private val wholeRupees = KeyboardOptions(keyboardType = KeyboardType.Number)
 
@@ -193,9 +197,22 @@ private fun LadderPreview(lines: List<LadderPreviewLine>) {
                         modifier = Modifier.clip(CircleShape).background(CrichereGreenContainer).padding(horizontal = 8.dp),
                     )
                 }
-                Text(line.values, style = monoText(12, lineHeight = 20), color = colors.onBackground, modifier = Modifier.weight(1f))
+                FillingLine(line.options, monoText(12, lineHeight = 20), colors.onBackground, Modifier.weight(1f))
             }
         }
+    }
+}
+
+/** Shows the longest of [options] (longest first) that fits on one line, so a trailing "…" ends the row. */
+@Composable
+private fun FillingLine(options: List<String>, style: TextStyle, color: Color, modifier: Modifier) {
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier) {
+        val width = constraints.maxWidth
+        val text = remember(options, width, style) {
+            options.firstOrNull { measurer.measure(it, style, maxLines = 1, softWrap = false).size.width <= width } ?: options.last()
+        }
+        Text(text, style = style, color = color)
     }
 }
 
